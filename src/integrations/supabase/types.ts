@@ -431,6 +431,47 @@ export type Database = {
           },
         ]
       }
+      scoring_templates: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string
+          description: string | null
+          emoji: string
+          id: string
+          league_id: string
+          name: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          created_by: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          league_id: string
+          name: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          league_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoring_templates_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_player_mapping: {
         Row: {
           created_at: string
