@@ -112,27 +112,6 @@ export const SetupMode = ({
     }
   };
 
-  // Keep draft order aligned with team slots when league size changes (preserve any manual reordering)
-  useEffect(() => {
-    if (teams.length === 0) return;
-
-    const teamNames = teams.map((t) => t.name);
-    const current = draftOrder as string[];
-
-    const hasMismatch =
-      current.length !== teamNames.length ||
-      current.some((name) => !teamNames.includes(name)) ||
-      teamNames.some((name) => !current.includes(name));
-
-    if (!hasMismatch) return;
-
-    const merged = current.filter((name) => teamNames.includes(name));
-    teamNames.forEach((name) => {
-      if (!merged.includes(name)) merged.push(name);
-    });
-
-    onSetDraftOrder(merged as Player[]);
-  }, [teams, draftOrder, onSetDraftOrder]);
 
   const handleRenameTeam = async (teamId: string, oldName: string) => {
     const trimmedName = editTeamName.trim();
@@ -486,14 +465,9 @@ export const SetupMode = ({
                     <span className="font-bold text-accent">{index + 1}</span>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium truncate">{String(player)}</span>
-                        {team && !isFilled && (
-                          <span className="text-xs text-muted-foreground italic whitespace-nowrap">(unassigned)</span>
-                        )}
-                      </div>
-                      {team && isFilled && (
-                        <p className="text-xs text-muted-foreground truncate">{team.user_email || "Assigned"}</p>
+                      <span className="font-medium truncate">{String(player)}</span>
+                      {team?.user_email && (
+                        <span className="text-xs text-muted-foreground ml-2">({team.user_email})</span>
                       )}
                     </div>
 

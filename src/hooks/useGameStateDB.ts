@@ -393,27 +393,36 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   }, [sessionId]);
 
   // If league size changes, automatically expand/shrink draft order to match team slots (preserve any manual ordering)
+  // Note: We intentionally exclude state.draftOrder from deps to avoid circular updates
   useEffect(() => {
-    if (!sessionId) return;
-    if (leagueTeams.length === 0) return;
+    if (!sessionId || leagueTeams.length === 0) return;
 
     const teamNames = leagueTeams.map((t) => t.name);
     const current = (state.draftOrder || []) as string[];
 
+    // Check if sync is needed
+    const currentSet = new Set(current);
+    const teamSet = new Set(teamNames);
+    
     const hasMismatch =
       current.length !== teamNames.length ||
-      current.some((name) => !teamNames.includes(name)) ||
-      teamNames.some((name) => !current.includes(name));
+      current.some((name) => !teamSet.has(name)) ||
+      teamNames.some((name) => !currentSet.has(name));
 
     if (!hasMismatch) return;
 
-    const merged = current.filter((name) => teamNames.includes(name));
+    // Build new order: keep existing order for teams that still exist, add new teams at end
+    const merged: string[] = [];
+    current.forEach((name) => {
+      if (teamSet.has(name)) merged.push(name);
+    });
     teamNames.forEach((name) => {
       if (!merged.includes(name)) merged.push(name);
     });
 
     setDraftOrder(merged as Player[]);
-  }, [sessionId, leagueTeams, state.draftOrder, setDraftOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, leagueTeams, setDraftOrder]);
 
   const setDraftType = async (draftType: DraftType) => {
     if (!sessionId) return;
