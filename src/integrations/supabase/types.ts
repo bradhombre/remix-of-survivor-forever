@@ -221,6 +221,65 @@ export type Database = {
         }
         Relationships: []
       }
+      league_memberships: {
+        Row: {
+          id: string
+          joined_at: string | null
+          league_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          league_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          league_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_memberships_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leagues: {
+        Row: {
+          created_at: string | null
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          scoring_config: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invite_code: string
+          name: string
+          owner_id: string
+          scoring_config?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+          scoring_config?: Json | null
+        }
+        Relationships: []
+      }
       player_profiles: {
         Row: {
           avatar: string | null
@@ -356,6 +415,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_league_role: {
+        Args: { _league_id: string; _roles: string[]; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -363,6 +426,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_league_member: {
+        Args: { _league_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
