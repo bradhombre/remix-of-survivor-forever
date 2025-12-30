@@ -23,24 +23,26 @@ export const DraftMode = ({
   onUndoPick,
   onStartGame,
 }: DraftModeProps) => {
-  const totalPicks = 16;
+  const teamCount = draftOrder.length;
+  const picksPerTeam = 4;
+  const totalPicks = teamCount * picksPerTeam;
   const availableContestants = contestants.filter((c) => !c.owner);
   const draftedContestants = contestants.filter((c) => c.owner);
   
   const getCurrentDrafter = () => {
-    if (currentDraftIndex >= totalPicks) return null;
+    if (currentDraftIndex >= totalPicks || teamCount === 0) return null;
     
     if (draftType === "snake") {
-      const round = Math.floor(currentDraftIndex / 4);
-      const posInRound = currentDraftIndex % 4;
-      return round % 2 === 0 ? draftOrder[posInRound] : draftOrder[3 - posInRound];
+      const round = Math.floor(currentDraftIndex / teamCount);
+      const posInRound = currentDraftIndex % teamCount;
+      return round % 2 === 0 ? draftOrder[posInRound] : draftOrder[teamCount - 1 - posInRound];
     } else {
-      return draftOrder[currentDraftIndex % 4];
+      return draftOrder[currentDraftIndex % teamCount];
     }
   };
 
   const currentDrafter = getCurrentDrafter();
-  const progress = (currentDraftIndex / totalPicks) * 100;
+  const progress = totalPicks > 0 ? (currentDraftIndex / totalPicks) * 100 : 0;
   const isDraftComplete = currentDraftIndex >= totalPicks;
 
   const getPlayerContestants = (player: Player) => {
@@ -49,12 +51,17 @@ export const DraftMode = ({
       .sort((a, b) => (a.pickNumber || 0) - (b.pickNumber || 0));
   };
 
-  const playerColors: Record<Player, string> = {
-    Brad: "border-l-secondary",
-    Coco: "border-l-primary",
-    Kalin: "border-l-accent",
-    Roy: "border-l-success",
-  };
+  // Generate colors dynamically based on position
+  const teamColors = [
+    "border-l-secondary",
+    "border-l-primary", 
+    "border-l-accent",
+    "border-l-success",
+    "border-l-destructive",
+    "border-l-warning",
+  ];
+  
+  const getPlayerColor = (index: number) => teamColors[index % teamColors.length];
 
   return (
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
@@ -100,7 +107,7 @@ export const DraftMode = ({
 
       {/* Team Display */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {draftOrder.map((player) => {
+        {draftOrder.map((player, index) => {
           const playerTeam = getPlayerContestants(player);
           const isCurrentDrafter = player === currentDrafter;
 
@@ -109,12 +116,12 @@ export const DraftMode = ({
               key={player}
               className={`glass p-4 space-y-3 transition-all ${
                 isCurrentDrafter ? "ring-4 ring-accent scale-105" : ""
-              } border-l-4 ${playerColors[player]}`}
+              } border-l-4 ${getPlayerColor(index)}`}
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold">{player}</h3>
                 <span className="text-sm glass-strong px-2 py-1 rounded-full">
-                  {playerTeam.length}/4
+                  {playerTeam.length}/{picksPerTeam}
                 </span>
               </div>
 
