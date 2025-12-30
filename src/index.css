@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 30% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 100% / 0.05;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 30% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 280 85% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 80% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 100% / 0.08;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 45 95% 58%;
+    --accent-foreground: 220 30% 10%;
+
+    --success: 142 70% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 0 75% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 100% / 0.12;
+    --input: 0 0% 100% / 0.08;
+    --ring: 280 85% 65%;
+
+    --radius: 0.75rem;
+
+    --gradient-start: 220 40% 12%;
+    --gradient-mid: 280 50% 15%;
+    --gradient-end: 250 45% 18%;
+
+    --glass-bg: 0 0% 100% / 0.06;
+    --glass-border: 0 0% 100% / 0.15;
+
+    --gold: 45 95% 58%;
+    --silver: 0 0% 75%;
+    --bronze: 25 70% 52%;
+
+    --player-brad: 200 80% 55%;
+    --player-coco: 330 75% 60%;
+    --player-kalin: 280 75% 60%;
+    --player-roy: 150 65% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-[hsl(var(--gradient-start))] via-[hsl(var(--gradient-mid))] to-[hsl(var(--gradient-end))] text-foreground min-h-screen;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-strong {
+    background: hsl(0 0% 100% / 0.1);
+    backdrop-filter: blur(24px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+  }
+
+  .player-brad {
+    border-color: hsl(var(--player-brad) / 0.5);
+    background: hsl(var(--player-brad) / 0.08);
+  }
+
+  .player-coco {
+    border-color: hsl(var(--player-coco) / 0.5);
+    background: hsl(var(--player-coco) / 0.08);
+  }
+
+  .player-kalin {
+    border-color: hsl(var(--player-kalin) / 0.5);
+    background: hsl(var(--player-kalin) / 0.08);
+  }
+
+  .player-roy {
+    border-color: hsl(var(--player-roy) / 0.5);
+    background: hsl(var(--player-roy) / 0.08);
+  }
+}
