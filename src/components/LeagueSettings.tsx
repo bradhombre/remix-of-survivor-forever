@@ -608,23 +608,66 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                             {template.description}. This will replace your current scoring configuration. Custom actions will be preserved.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
-                        <div className="max-h-48 overflow-y-auto space-y-1 my-4 text-sm">
-                          <p className="font-medium mb-2">Point values:</p>
-                          <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                            {Object.entries(template.config).slice(0, 10).map(([key, value]) => {
-                              const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
-                              if (!action || typeof value !== 'number') return null;
-                              return (
-                                <div key={key} className="flex justify-between">
-                                  <span>{action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 15)}</span>
-                                  <span className={value < 0 ? 'text-destructive' : 'text-accent'}>
-                                    {value > 0 ? '+' : ''}{value}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                        <div className="max-h-64 overflow-y-auto space-y-3 my-4 text-sm">
+                          {/* Summary */}
+                          {(() => {
+                            const enabledCount = Object.values(template.config).filter(v => v !== null).length;
+                            const totalCount = Object.keys(SCORING_ACTIONS).length;
+                            return (
+                              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                                <Badge variant={enabledCount === totalCount ? "default" : "secondary"}>
+                                  {enabledCount} of {totalCount} actions enabled
+                                </Badge>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Enabled actions */}
+                          <div>
+                            <p className="font-medium mb-2 text-foreground">Enabled:</p>
+                            <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                              {Object.entries(template.config)
+                                .filter(([_, value]) => value !== null)
+                                .slice(0, 8)
+                                .map(([key, value]) => {
+                                  const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
+                                  if (!action) return null;
+                                  return (
+                                    <div key={key} className="flex justify-between text-xs">
+                                      <span className="truncate">{action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 12)}</span>
+                                      <span className={(value as number) < 0 ? 'text-destructive' : 'text-green-600'}>
+                                        {(value as number) > 0 ? '+' : ''}{value as number}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                            {Object.entries(template.config).filter(([_, v]) => v !== null).length > 8 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                +{Object.entries(template.config).filter(([_, v]) => v !== null).length - 8} more...
+                              </p>
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-2">...and more</p>
+                          
+                          {/* Disabled actions */}
+                          {Object.values(template.config).some(v => v === null) && (
+                            <div>
+                              <p className="font-medium mb-2 text-muted-foreground">Disabled:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {Object.entries(template.config)
+                                  .filter(([_, value]) => value === null)
+                                  .map(([key]) => {
+                                    const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
+                                    if (!action) return null;
+                                    return (
+                                      <span key={key} className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground line-through">
+                                        {action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 10)}
+                                      </span>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
