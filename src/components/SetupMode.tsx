@@ -98,9 +98,6 @@ export const SetupMode = ({
     setIsResizing(true);
     try {
       await resizeLeague(newSize);
-      // Update draft order with new team names
-      const newTeamNames = getTeamNames();
-      onSetDraftOrder(newTeamNames);
       toast({ title: `League size updated to ${newSize}` });
     } catch (err: any) {
       toast({ title: "Failed to resize league", description: err.message, variant: "destructive" });
@@ -108,6 +105,12 @@ export const SetupMode = ({
       setIsResizing(false);
     }
   };
+
+  // Sync draft order when teams change
+  const teamNames = teams.map(t => t.name);
+  if (teams.length > 0 && draftOrder.length !== teams.length) {
+    onSetDraftOrder(teamNames);
+  }
 
   const handleRenameTeam = async (teamId: string, oldName: string) => {
     const trimmedName = editTeamName.trim();

@@ -28,9 +28,10 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     }
 
     try {
-      const { data, error: fetchError } = await supabase
+      // Fetch teams without the problematic FK join
+      const { data: teamsData, error: fetchError } = await supabase
         .from('league_teams')
-        .select('*, profiles:user_id(email)')
+        .select('*')
         .eq('league_id', leagueId)
         .order('position', { ascending: true });
 
@@ -38,14 +39,35 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
         throw fetchError;
       }
 
-      // Flatten the profile email into user_email
-      const teamsWithEmail = (data || []).map((team: any) => ({
+      // Get user IDs that are filled
+      const filledUserIds = (teamsData || [])
+        .filter(t => t.user_id)
+        .map(t => t.user_id as string);
+
+      // Fetch emails separately if there are filled slots
+      let emailMap: Record<string, string> = {};
+      if (filledUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', filledUserIds);
+        
+        if (profiles) {
+          emailMap = profiles.reduce((acc, p) => {
+            acc[p.id] = p.email;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
+
+      // Map teams with emails
+      const teamsWithEmail = (teamsData || []).map((team) => ({
         id: team.id,
         league_id: team.league_id,
         name: team.name,
         position: team.position,
         user_id: team.user_id,
-        user_email: team.profiles?.email || null,
+        user_email: team.user_id ? emailMap[team.user_id] || null : null,
         created_at: team.created_at,
       }));
 
