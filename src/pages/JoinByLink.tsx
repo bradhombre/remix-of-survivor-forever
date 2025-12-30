@@ -1,0 +1,78 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+
+export default function JoinByLink() {
+  const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(true);
+
+  useEffect(() => {
+    const processJoin = async () => {
+      if (!code) {
+        toast.error('Invalid invite link');
+        navigate('/leagues');
+        return;
+      }
+
+      // Check if user is logged in
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        // Redirect to auth with return URL
+        navigate(`/auth?returnTo=/join/${code}`);
+        return;
+      }
+
+      // User is logged in, attempt to join
+      try {
+        const { data, error } = await supabase.rpc('join_league', {
+          invite_code_input: code.toUpperCase()
+        });
+
+        if (error) {
+          if (error.message.includes('Already a member')) {
+            toast.info('You are already a member of this league');
+            // Find the league and redirect to it
+            const { data: leagues } = await supabase
+              .from('leagues')
+              .select('id')
+              .eq('invite_code', code.toUpperCase())
+              .single();
+            
+            if (leagues?.id) {
+              navigate(`/league/${leagues.id}`);
+            } else {
+              navigate('/leagues');
+            }
+          } else if (error.message.includes('Invalid invite code')) {
+            toast.error('Invalid invite code');
+            navigate('/leagues');
+          } else {
+            toast.error(error.message);
+            navigate('/leagues');
+          }
+        } else if (data) {
+          toast.success('Successfully joined the league!');
+          navigate(`/league/${data.league_id}`);
+        }
+      } catch (err) {
+        toast.error('Failed to join league');
+        navigate('/leagues');
+      }
+    };
+
+    processJoin();
+  }, [code, navigate]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Joining league...</p>
+      </div>
+    </div>
+  );
+}

@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale } from "lucide-react";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 
@@ -157,6 +157,14 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
     if (league?.invite_code) {
       navigator.clipboard.writeText(league.invite_code);
       toast.success("Invite code copied to clipboard");
+    }
+  };
+
+  const handleCopyInviteLink = () => {
+    if (league?.invite_code) {
+      const link = `${window.location.origin}/join/${league.invite_code}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Invite link copied to clipboard");
     }
   };
 
@@ -315,7 +323,11 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
             />
             <Button variant="outline" onClick={handleCopyInviteCode}>
               <Copy className="h-4 w-4 mr-2" />
-              Copy
+              Copy Code
+            </Button>
+            <Button variant="outline" onClick={handleCopyInviteLink}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Copy Link
             </Button>
           </div>
         </CardContent>

@@ -96,11 +96,11 @@ export function useAuth() {
     return { error };
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectUrl?: string) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/leagues`
+        redirectTo: redirectUrl || `${window.location.origin}/leagues`
       }
     });
     return { error };
