@@ -112,6 +112,27 @@ export const SetupMode = ({
     }
   };
 
+  // Keep draft order aligned with team slots when league size changes (preserve any manual reordering)
+  useEffect(() => {
+    if (teams.length === 0) return;
+
+    const teamNames = teams.map((t) => t.name);
+    const current = draftOrder as string[];
+
+    const hasMismatch =
+      current.length !== teamNames.length ||
+      current.some((name) => !teamNames.includes(name)) ||
+      teamNames.some((name) => !current.includes(name));
+
+    if (!hasMismatch) return;
+
+    const merged = current.filter((name) => teamNames.includes(name));
+    teamNames.forEach((name) => {
+      if (!merged.includes(name)) merged.push(name);
+    });
+
+    onSetDraftOrder(merged as Player[]);
+  }, [teams, draftOrder, onSetDraftOrder]);
 
   const handleRenameTeam = async (teamId: string, oldName: string) => {
     const trimmedName = editTeamName.trim();

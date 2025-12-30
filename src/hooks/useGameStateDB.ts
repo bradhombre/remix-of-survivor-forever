@@ -389,60 +389,53 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   const setDraftOrder = useCallback(async (draftOrder: Player[]) => {
     if (!sessionId) return;
 
-    // Delete existing draft order
-    await supabase.from("draft_order").delete().eq("session_id", sessionId);
+    // Optimistic UI update so buttons feel responsive even if realtime isn't firing
+    setState((prev) => ({ ...prev, draftOrder }));
 
-    // Insert all draft order rows in a single atomic operation
+    const { error: deleteError } = await supabase
+      .from("draft_order")
+      .delete()
+      .eq("session_id", sessionId);
+
+    if (deleteError) {
+      console.error("Failed to clear draft order:", deleteError);
+      toast.error("Failed to save draft order");
+      return;
+    }
+
     if (draftOrder.length > 0) {
       const rows = draftOrder.map((player, index) => ({
         session_id: sessionId,
         player_name: player,
         position: index,
       }));
-      
-      const { error } = await supabase.from("draft_order").insert(rows);
-      if (error) {
-        console.error("Failed to insert draft order:", error);
+
+      const { error: insertError } = await supabase.from("draft_order").insert(rows);
+      if (insertError) {
+        console.error("Failed to insert draft order:", insertError);
         toast.error("Failed to save draft order");
       }
     }
   }, [sessionId]);
 
-  // If league size changes, automatically expand/shrink draft order to match team slots (preserve any manual ordering)
-  // Note: We intentionally exclude state.draftOrder from deps to avoid circular updates
-  useEffect(() => {
-    if (!sessionId || leagueTeams.length === 0) return;
-
-    const teamNames = leagueTeams.map((t) => t.name);
-    const current = (state.draftOrder || []) as string[];
-
-    // Check if sync is needed
-    const currentSet = new Set(current);
-    const teamSet = new Set(teamNames);
-    
-    const hasMismatch =
-      current.length !== teamNames.length ||
-      current.some((name) => !teamSet.has(name)) ||
-      teamNames.some((name) => !currentSet.has(name));
-
-    if (!hasMismatch) return;
-
-    // Build new order: keep existing order for teams that still exist, add new teams at end
-    const merged: string[] = [];
-    current.forEach((name) => {
-      if (teamSet.has(name)) merged.push(name);
-    });
-    teamNames.forEach((name) => {
-      if (!merged.includes(name)) merged.push(name);
-    });
-
-    setDraftOrder(merged as Player[]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, leagueTeams, setDraftOrder]);
 
   const setDraftType = async (draftType: DraftType) => {
     if (!sessionId) return;
-    await supabase.from("game_sessions").update({ draft_type: draftType }).eq("id", sessionId);
+
+    // Optimistic UI update
+    setState((prev) => ({ ...prev, draftType }));
+
+    const { error } = await supabase
+      .from("game_sessions")
+      .update({ draft_type: draftType })
+      .eq("id", sessionId);
+
+    if (error) {
+      console.error("Failed to update draft type:", error);
+      toast.error("Failed to update draft type");
+      // Re-sync local state from DB
+      await loadGameState(sessionId);
+    }
   };
 
   const draftContestant = async (contestantId: string) => {
