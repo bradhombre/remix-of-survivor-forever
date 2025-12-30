@@ -17,11 +17,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut, ChevronDown, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 import { QRCodeSVG } from "qrcode.react";
 import { Switch } from "@/components/ui/switch";
+
+// Group scoring actions by category
+const SCORING_CATEGORIES = {
+  "Idols & Advantages": ["FIND_IDOL", "ACQUIRE_IDOL", "FIND_ADVANTAGE", "ACQUIRE_ADVANTAGE", "VOTED_OUT_WITH_IDOL"],
+  "Challenges": ["WIN_IMMUNITY", "CATCH_TOSS", "DROP_TOSS"],
+  "Tribal & Survival": ["TRIBAL_VOTE_CORRECT", "SURVIVE_PRE", "SURVIVE_POST", "VOTED_OUT", "QUIT"],
+  "Milestones": ["MAKE_JURY", "MAKE_FINAL", "WIN_SURVIVOR"],
+  "Miscellaneous": ["CRY", "EPISODE_TITLE", "MISC_25", "MISC_50", "MISC_NEG_10", "MISC_NEG_25"],
+};
 
 interface LeagueSettingsProps {
   leagueId: string;
@@ -228,6 +242,11 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
       // Disable by setting to null
       setScoringConfig(prev => ({ ...prev, [key]: null }));
     }
+  };
+
+  const handleResetToDefaults = () => {
+    setScoringConfig(getDefaultScoringConfig());
+    toast.success("Scoring rules reset to defaults (save to apply)");
   };
 
   const hasUnsavedScoringChanges = () => {
@@ -485,50 +504,71 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid gap-3">
-              {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
-                const enabled = isActionEnabled(key, scoringConfig);
-                return (
-                  <div 
-                    key={key} 
-                    className={`flex items-center justify-between gap-4 py-2 border-b border-border last:border-0 transition-opacity ${
-                      !enabled ? 'opacity-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {isOwner && (
-                        <Switch
-                          checked={enabled}
-                          onCheckedChange={(checked) => handleScoringToggle(key, checked)}
-                        />
-                      )}
-                      <span className="text-lg">{action.emoji}</span>
-                      <span className={`text-sm font-medium ${!enabled ? 'line-through text-muted-foreground' : ''}`}>
-                        {action.label.replace(` ${action.emoji}`, '')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {enabled ? (
-                        <>
-                          <Input
-                            type="number"
-                            value={scoringConfig[key] ?? action.points}
-                            onChange={(e) => handleScoringChange(key, parseInt(e.target.value) || 0)}
-                            className="w-24 text-right"
-                            disabled={!isOwner}
-                          />
-                          <span className="text-sm text-muted-foreground w-8">pts</span>
-                        </>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Disabled</span>
-                      )}
-                    </div>
+            {Object.entries(SCORING_CATEGORIES).map(([category, actionKeys]) => (
+              <Collapsible key={category} defaultOpen>
+                <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <span className="font-semibold text-sm">{category}</span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <div className="space-y-2 pl-2">
+                    {actionKeys.map((key) => {
+                      const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
+                      if (!action) return null;
+                      const enabled = isActionEnabled(key, scoringConfig);
+                      
+                      return (
+                        <div 
+                          key={key} 
+                          className={`flex items-center justify-between gap-4 py-2 px-2 rounded-md transition-opacity ${
+                            !enabled ? 'opacity-50 bg-muted/30' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {isOwner && (
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) => handleScoringToggle(key, checked)}
+                              />
+                            )}
+                            <span className="text-lg">{action.emoji}</span>
+                            <span className={`text-sm font-medium ${!enabled ? 'line-through text-muted-foreground' : ''}`}>
+                              {action.label.replace(` ${action.emoji}`, '')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {enabled ? (
+                              <>
+                                <Input
+                                  type="number"
+                                  value={scoringConfig[key] ?? action.points}
+                                  onChange={(e) => handleScoringChange(key, parseInt(e.target.value) || 0)}
+                                  className="w-20 text-right h-8"
+                                  disabled={!isOwner}
+                                />
+                                <span className="text-sm text-muted-foreground w-6">pts</span>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Disabled</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))}
+            
             {isOwner && (
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-between items-center pt-4 border-t border-border">
+                <Button 
+                  variant="outline"
+                  onClick={handleResetToDefaults}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset to Defaults
+                </Button>
                 <Button 
                   onClick={handleSaveScoringConfig} 
                   disabled={savingScoring || !hasUnsavedScoringChanges()}
