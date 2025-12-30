@@ -154,7 +154,7 @@ const LeagueDashboard = () => {
                   <Users className="h-4 w-4 mr-2" />
                   Draft
                 </Button>
-                {isAdmin && (
+                {isLeagueAdmin && (
                   <Button
                     onClick={() => { setMode("setup"); setSettingsMode(false); }}
                     variant={state.mode === "setup" && !settingsMode ? "accent" : "ghost"}
@@ -172,7 +172,7 @@ const LeagueDashboard = () => {
                   <History className="h-4 w-4 mr-2" />
                   History
                 </Button>
-                {isAdmin && (
+                {isLeagueAdmin && (
                   <Button
                     onClick={() => { setMode("admin"); setSettingsMode(false); }}
                     variant={state.mode === "admin" && !settingsMode ? "accent" : "ghost"}
@@ -260,7 +260,7 @@ const LeagueDashboard = () => {
           cryingThisEpisode={state.cryingThisEpisode}
           playerProfiles={state.playerProfiles}
           scoringConfig={scoringConfig}
-          isAdmin={isAdmin}
+          isAdmin={isLeagueAdmin}
           playerName={playerName}
           sessionId={sessionId || undefined}
           onEpisodeChange={setEpisode}
@@ -273,7 +273,7 @@ const LeagueDashboard = () => {
         />
       )}
 
-      {!settingsMode && state.mode === "admin" && isAdmin && (
+      {!settingsMode && state.mode === "admin" && isLeagueAdmin && (
         <div className="container max-w-7xl mx-auto p-4">
           <AdminPanel 
             currentEpisode={state.episode}
