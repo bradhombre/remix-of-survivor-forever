@@ -2,14 +2,16 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useGameStateDB } from "@/hooks/useGameStateDB";
 import { useAuth } from "@/hooks/useAuth";
+import { useLeagueRole } from "@/hooks/useLeagueRole";
 import { supabase } from "@/integrations/supabase/client";
 import { SetupMode } from "@/components/SetupMode";
 import { DraftMode } from "@/components/DraftMode";
 import { GameMode } from "@/components/GameMode";
 import { HistoryMode } from "@/components/HistoryMode";
 import { AdminPanel } from "@/components/AdminPanel";
+import { LeagueSettings } from "@/components/LeagueSettings";
 import { Button } from "@/components/ui/button";
-import { Settings, Users, Trophy, History, Shield, LogOut, ArrowLeft } from "lucide-react";
+import { Settings, Users, Trophy, History, Shield, LogOut, ArrowLeft, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 const LeagueDashboard = () => {
@@ -48,7 +50,9 @@ const LeagueDashboard = () => {
   } = useGameStateDB({ leagueId });
   
   const { user, isAdmin, playerName, loading, signOut } = useAuth();
+  const { isLeagueAdmin, loading: roleLoading } = useLeagueRole(leagueId);
   const navigate = useNavigate();
+  const [settingsMode, setSettingsMode] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -83,7 +87,7 @@ const LeagueDashboard = () => {
     navigate('/auth');
   };
 
-  if (loading || gameLoading || leagueLoading) {
+  if (loading || gameLoading || leagueLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Loading...</p>
@@ -132,8 +136,8 @@ const LeagueDashboard = () => {
               <h1 className="text-xl font-bold hidden sm:block">🔥 Survivor Fantasy</h1>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => setMode("game")}
-                  variant={state.mode === "game" ? "accent" : "ghost"}
+                  onClick={() => { setMode("game"); setSettingsMode(false); }}
+                  variant={state.mode === "game" && !settingsMode ? "accent" : "ghost"}
                   size="sm"
                   disabled={state.currentDraftIndex < 16}
                 >
@@ -141,8 +145,8 @@ const LeagueDashboard = () => {
                   Game
                 </Button>
                 <Button
-                  onClick={() => setMode("draft")}
-                  variant={state.mode === "draft" ? "accent" : "ghost"}
+                  onClick={() => { setMode("draft"); setSettingsMode(false); }}
+                  variant={state.mode === "draft" && !settingsMode ? "accent" : "ghost"}
                   size="sm"
                   disabled={state.contestants.length < 16}
                 >
@@ -151,8 +155,8 @@ const LeagueDashboard = () => {
                 </Button>
                 {isAdmin && (
                   <Button
-                    onClick={() => setMode("setup")}
-                    variant={state.mode === "setup" ? "accent" : "ghost"}
+                    onClick={() => { setMode("setup"); setSettingsMode(false); }}
+                    variant={state.mode === "setup" && !settingsMode ? "accent" : "ghost"}
                     size="sm"
                   >
                     <Settings className="h-4 w-4 mr-2" />
@@ -160,8 +164,8 @@ const LeagueDashboard = () => {
                   </Button>
                 )}
                 <Button
-                  onClick={() => setMode("history")}
-                  variant={state.mode === "history" ? "accent" : "ghost"}
+                  onClick={() => { setMode("history"); setSettingsMode(false); }}
+                  variant={state.mode === "history" && !settingsMode ? "accent" : "ghost"}
                   size="sm"
                 >
                   <History className="h-4 w-4 mr-2" />
@@ -169,12 +173,22 @@ const LeagueDashboard = () => {
                 </Button>
                 {isAdmin && (
                   <Button
-                    onClick={() => setMode("admin")}
-                    variant={state.mode === "admin" ? "accent" : "ghost"}
+                    onClick={() => { setMode("admin"); setSettingsMode(false); }}
+                    variant={state.mode === "admin" && !settingsMode ? "accent" : "ghost"}
                     size="sm"
                   >
                     <Shield className="h-4 w-4 mr-2" />
                     Admin
+                  </Button>
+                )}
+                {isLeagueAdmin && (
+                  <Button
+                    onClick={() => setSettingsMode(true)}
+                    variant={settingsMode ? "accent" : "ghost"}
+                    size="sm"
+                  >
+                    <Wrench className="h-4 w-4 mr-2" />
+                    Settings
                   </Button>
                 )}
               </div>
@@ -192,7 +206,11 @@ const LeagueDashboard = () => {
         </div>
       </div>
 
-      {state.mode === "setup" && (
+      {settingsMode && leagueId && (
+        <LeagueSettings leagueId={leagueId} />
+      )}
+
+      {!settingsMode && state.mode === "setup" && (
         <SetupMode
           season={state.season}
           contestants={state.contestants}
@@ -212,14 +230,14 @@ const LeagueDashboard = () => {
         />
       )}
 
-      {state.mode === "history" && (
+      {!settingsMode && state.mode === "history" && (
         <HistoryMode
           archivedSeasons={state.archivedSeasons}
           playerProfiles={state.playerProfiles}
         />
       )}
 
-      {state.mode === "draft" && (
+      {!settingsMode && state.mode === "draft" && (
         <DraftMode
           contestants={state.contestants}
           draftOrder={state.draftOrder}
@@ -231,7 +249,7 @@ const LeagueDashboard = () => {
         />
       )}
 
-      {state.mode === "game" && (
+      {!settingsMode && state.mode === "game" && (
         <GameMode
           season={state.season}
           episode={state.episode}
@@ -253,7 +271,7 @@ const LeagueDashboard = () => {
         />
       )}
 
-      {state.mode === "admin" && isAdmin && (
+      {!settingsMode && state.mode === "admin" && isAdmin && (
         <div className="container max-w-7xl mx-auto p-4">
           <AdminPanel 
             currentEpisode={state.episode}
