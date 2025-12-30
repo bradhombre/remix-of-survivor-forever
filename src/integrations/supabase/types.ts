@@ -193,6 +193,7 @@ export type Database = {
           episode: number
           id: string
           is_post_merge: boolean
+          league_id: string | null
           mode: string
           season: number
           updated_at: string
@@ -204,6 +205,7 @@ export type Database = {
           episode?: number
           id?: string
           is_post_merge?: boolean
+          league_id?: string | null
           mode?: string
           season?: number
           updated_at?: string
@@ -215,11 +217,20 @@ export type Database = {
           episode?: number
           id?: string
           is_post_merge?: boolean
+          league_id?: string | null
           mode?: string
           season?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       league_memberships: {
         Row: {
