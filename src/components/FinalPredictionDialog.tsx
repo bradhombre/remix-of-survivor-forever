@@ -205,6 +205,12 @@ export const FinalPredictionDialog = ({
       });
     }
 
+    // Mark the voted out contestant as eliminated
+    const votedOutContestant = finalists.find(c => c.name === actualVoteOut);
+    if (votedOutContestant) {
+      onScore(votedOutContestant.id, votedOutContestant.name, "Voted Out 💀", 0);
+    }
+
     onOpenChange(false);
   };
 

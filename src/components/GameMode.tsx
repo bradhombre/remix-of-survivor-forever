@@ -3,12 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Player, Contestant, ScoringEvent, SCORING_ACTIONS } from "@/types/survivor";
-import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, Grid3x3, List, Upload, User, Trophy } from "lucide-react";
+import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, Grid3x3, List, Upload, User, Trophy, Scale, Flame, TreePalm } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
 import { getPoints, isActionEnabled, ScoringConfig } from "@/lib/scoring";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 interface GameModeProps {
   season: number;
   episode: number;
@@ -59,6 +69,8 @@ export const GameMode = ({
   const [expandedPlayers, setExpandedPlayers] = useState<Set<Player>>(new Set());
   const [scoringView, setScoringView] = useState<"team" | "all">("team");
   const [showPredictionDialog, setShowPredictionDialog] = useState(false);
+  const [showJuryDialog, setShowJuryDialog] = useState(false);
+  const [showSurvivorsDialog, setShowSurvivorsDialog] = useState(false);
   const { toast } = useToast();
 
   const handleAvatarUpload = (player: Player, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,6 +216,75 @@ export const GameMode = ({
     ? SCORING_ACTIONS.SURVIVE_POST
     : SCORING_ACTIONS.SURVIVE_PRE;
 
+  // Helper: Get contestants eligible for jury points (non-eliminated, owned, no existing Make Jury event)
+  const getContestantsForJuryPoints = () => {
+    const alreadyAwarded = new Set(
+      scoringEvents
+        .filter(e => e.action === SCORING_ACTIONS.MAKE_JURY.label)
+        .map(e => e.contestantId)
+    );
+    return contestants.filter(c => 
+      !c.isEliminated && 
+      c.owner && 
+      !alreadyAwarded.has(c.id)
+    );
+  };
+
+  // Helper: Get contestants eligible for survival points this episode
+  const getContestantsForSurvivalPoints = () => {
+    const surviveLabel = isPostMerge 
+      ? SCORING_ACTIONS.SURVIVE_POST.label 
+      : SCORING_ACTIONS.SURVIVE_PRE.label;
+    
+    const alreadyAwarded = new Set(
+      scoringEvents
+        .filter(e => e.episode === episode && e.action === surviveLabel)
+        .map(e => e.contestantId)
+    );
+    
+    return contestants.filter(c => 
+      !c.isEliminated && 
+      c.owner && 
+      !alreadyAwarded.has(c.id)
+    );
+  };
+
+  // Handler: Award jury points to all eligible contestants
+  const handleAwardAllJuryPoints = () => {
+    const eligible = getContestantsForJuryPoints();
+    const points = getPoints("MAKE_JURY", scoringConfig);
+    
+    for (const contestant of eligible) {
+      onAddScoringEvent(contestant.id, contestant.name, SCORING_ACTIONS.MAKE_JURY.label, points);
+    }
+    
+    toast({
+      title: "Jury Points Awarded! ⚖️",
+      description: `Awarded ${points} points to ${eligible.length} contestant(s)`,
+    });
+    
+    setShowJuryDialog(false);
+  };
+
+  // Handler: Award survival points to all eligible contestants
+  const handleAwardAllSurvivalPoints = () => {
+    const eligible = getContestantsForSurvivalPoints();
+    const actionKey = isPostMerge ? "SURVIVE_POST" : "SURVIVE_PRE";
+    const action = SCORING_ACTIONS[actionKey];
+    const points = getPoints(actionKey, scoringConfig);
+    
+    for (const contestant of eligible) {
+      onAddScoringEvent(contestant.id, contestant.name, action.label, points);
+    }
+    
+    toast({
+      title: `Survival Points Awarded! ${isPostMerge ? "🔥" : "🌴"}`,
+      description: `Awarded ${points} points to ${eligible.length} contestant(s)`,
+    });
+    
+    setShowSurvivorsDialog(false);
+  };
+
   return (
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
       {/* Header */}
@@ -256,6 +337,86 @@ export const GameMode = ({
               <Trophy className="h-4 w-4" />
               Tribal Prediction
             </Button>
+
+            {/* Bulk Survival Points Button - Admin only */}
+            {isAdmin && (
+              <AlertDialog open={showSurvivorsDialog} onOpenChange={setShowSurvivorsDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    {isPostMerge ? <Flame className="h-4 w-4" /> : <TreePalm className="h-4 w-4" />}
+                    {isPostMerge ? "🔥" : "🌴"} Mark Survivors
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Award Survival Points</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Award {survivePoints} points ({isPostMerge ? "Post-Merge" : "Pre-Merge"}) to all surviving, owned contestants for Episode {episode}.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="max-h-48 overflow-y-auto space-y-1 my-4">
+                    {getContestantsForSurvivalPoints().map(c => (
+                      <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
+                        <span>{c.name}</span>
+                        <span className="text-muted-foreground">{c.owner}</span>
+                      </div>
+                    ))}
+                    {getContestantsForSurvivalPoints().length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">All contestants already awarded this episode</p>
+                    )}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleAwardAllSurvivalPoints}
+                      disabled={getContestantsForSurvivalPoints().length === 0}
+                    >
+                      Award {getContestantsForSurvivalPoints().length} Contestant(s)
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+
+            {/* Bulk Jury Points Button - Admin only, post-merge only */}
+            {isAdmin && isPostMerge && isActionEnabled("MAKE_JURY", scoringConfig) && (
+              <AlertDialog open={showJuryDialog} onOpenChange={setShowJuryDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Scale className="h-4 w-4" />
+                    ⚖️ Award Jury
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Award Jury Points</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Award {getPoints("MAKE_JURY", scoringConfig)} points to all surviving, owned contestants who haven't already received jury points.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="max-h-48 overflow-y-auto space-y-1 my-4">
+                    {getContestantsForJuryPoints().map(c => (
+                      <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
+                        <span>{c.name}</span>
+                        <span className="text-muted-foreground">{c.owner}</span>
+                      </div>
+                    ))}
+                    {getContestantsForJuryPoints().length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No eligible contestants</p>
+                    )}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleAwardAllJuryPoints}
+                      disabled={getContestantsForJuryPoints().length === 0}
+                    >
+                      Award {getContestantsForJuryPoints().length} Contestant(s)
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
 
             <Button onClick={onUndo} variant="outline" size="icon">
               <Undo className="h-4 w-4" />
