@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Shuffle, Upload, Download, Trash2, Play, List, GripVertical, Pencil, Check, X } from "lucide-react";
+import { Shuffle, Upload, Download, Trash2, Play, List, GripVertical, Pencil, Check, X, Plus, UserPlus } from "lucide-react";
 import { Player, Contestant, DraftType } from "@/types/survivor";
 import { useToast } from "@/hooks/use-toast";
+import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 
 interface SetupModeProps {
+  leagueId: string;
   season: number;
   contestants: Contestant[];
   draftOrder: Player[];
@@ -27,6 +29,7 @@ interface SetupModeProps {
 }
 
 export const SetupMode = ({
+  leagueId,
   season,
   contestants,
   draftOrder,
@@ -55,6 +58,93 @@ export const SetupMode = ({
   const [editAge, setEditAge] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const { toast } = useToast();
+
+  // Team management state
+  const { teams, loading: teamsLoading, addTeam, removeTeam, renameTeam } = useLeagueTeams({ leagueId });
+  const [newTeamName, setNewTeamName] = useState("");
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editTeamName, setEditTeamName] = useState("");
+
+  const handleAddTeam = async () => {
+    const trimmedName = newTeamName.trim();
+    if (!trimmedName) return;
+    
+    if (trimmedName.length < 2) {
+      toast({ title: "Team name must be at least 2 characters", variant: "destructive" });
+      return;
+    }
+    
+    if (teams.some(t => t.name.toLowerCase() === trimmedName.toLowerCase())) {
+      toast({ title: "Team name already exists", variant: "destructive" });
+      return;
+    }
+    
+    if (teams.length >= 10) {
+      toast({ title: "Maximum 10 teams allowed", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await addTeam(trimmedName);
+      setNewTeamName("");
+      // Add to draft order
+      onSetDraftOrder([...draftOrder, trimmedName]);
+      toast({ title: "Team added!", description: `${trimmedName} has been added.` });
+    } catch (err) {
+      toast({ title: "Failed to add team", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveTeam = async (teamId: string, teamName: string, isClaimed: boolean) => {
+    if (isClaimed) {
+      toast({ title: "Cannot remove claimed team", description: "This team is already claimed by a user.", variant: "destructive" });
+      return;
+    }
+    
+    if (teams.length <= 2) {
+      toast({ title: "Minimum 2 teams required", variant: "destructive" });
+      return;
+    }
+
+    if (!confirm(`Remove "${teamName}"? This cannot be undone.`)) return;
+
+    try {
+      await removeTeam(teamId);
+      // Remove from draft order
+      onSetDraftOrder(draftOrder.filter(p => p !== teamName));
+      toast({ title: "Team removed!", description: `${teamName} has been removed.` });
+    } catch (err) {
+      toast({ title: "Failed to remove team", variant: "destructive" });
+    }
+  };
+
+  const handleRenameTeam = async (teamId: string, oldName: string) => {
+    const trimmedName = editTeamName.trim();
+    if (!trimmedName || trimmedName === oldName) {
+      setEditingTeamId(null);
+      return;
+    }
+
+    if (trimmedName.length < 2) {
+      toast({ title: "Team name must be at least 2 characters", variant: "destructive" });
+      return;
+    }
+
+    if (teams.some(t => t.id !== teamId && t.name.toLowerCase() === trimmedName.toLowerCase())) {
+      toast({ title: "Team name already exists", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await renameTeam(teamId, trimmedName);
+      // Update draft order
+      onSetDraftOrder(draftOrder.map(p => p === oldName ? trimmedName : p));
+      setEditingTeamId(null);
+      toast({ title: "Team renamed!", description: `Renamed to ${trimmedName}.` });
+    } catch (err) {
+      toast({ title: "Failed to rename team", variant: "destructive" });
+    }
+  };
 
   const handleAddContestant = () => {
     if (!name.trim()) return;
@@ -283,6 +373,113 @@ export const SetupMode = ({
               </Button>
             </div>
           </div>
+        </Card>
+
+        {/* Teams Management */}
+        <Card className="glass p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-foreground">👥 Teams ({teams.length})</h2>
+          </div>
+
+          {teamsLoading ? (
+            <p className="text-muted-foreground">Loading teams...</p>
+          ) : (
+            <div className="space-y-2">
+              {teams.map((team, index) => {
+                const isEditing = editingTeamId === team.id;
+                const isClaimed = !!team.user_id;
+
+                return (
+                  <div key={team.id} className="glass p-3 rounded-lg flex items-center gap-3">
+                    <span className="font-bold text-accent w-6">{index + 1}.</span>
+                    
+                    {isEditing ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input
+                          value={editTeamName}
+                          onChange={(e) => setEditTeamName(e.target.value)}
+                          className="h-8 flex-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRenameTeam(team.id, team.name);
+                            if (e.key === "Escape") setEditingTeamId(null);
+                          }}
+                        />
+                        <Button
+                          onClick={() => handleRenameTeam(team.id, team.name)}
+                          size="sm"
+                          variant="success"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setEditingTeamId(null)}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex-1">
+                          <span className="font-medium">{team.name}</span>
+                          {isClaimed && (
+                            <span className="text-xs text-muted-foreground ml-2">(Claimed)</span>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            onClick={() => {
+                              setEditingTeamId(team.id);
+                              setEditTeamName(team.name);
+                            }}
+                            size="sm"
+                            variant="ghost"
+                            disabled={isClaimed}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => handleRemoveTeam(team.id, team.name, isClaimed)}
+                            size="sm"
+                            variant="ghost"
+                            disabled={isClaimed || teams.length <= 2}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Add new team */}
+              <div className="flex gap-2 pt-2">
+                <Input
+                  placeholder="New team name"
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTeam()}
+                  className="glass flex-1"
+                  disabled={teams.length >= 10}
+                />
+                <Button
+                  onClick={handleAddTeam}
+                  variant="outline"
+                  disabled={!newTeamName.trim() || teams.length >= 10}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Team
+                </Button>
+              </div>
+
+              {teams.length >= 10 && (
+                <p className="text-xs text-muted-foreground">Maximum 10 teams reached</p>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 
