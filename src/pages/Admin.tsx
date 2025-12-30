@@ -13,8 +13,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Users, Eye, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface LeagueWithDetails {
   id: string;
@@ -28,8 +40,10 @@ export default function Admin() {
   const { isSuperAdmin, loading: roleLoading } = useIsSuperAdmin();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [leagues, setLeagues] = useState<LeagueWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -44,61 +58,87 @@ export default function Admin() {
   useEffect(() => {
     if (!isSuperAdmin || roleLoading) return;
 
-    const fetchLeagues = async () => {
-      // Fetch all leagues with owner profiles
-      const { data: leaguesData, error: leaguesError } = await supabase
-        .from("leagues")
-        .select(`
-          id,
-          name,
-          created_at,
-          owner_id
-        `)
-        .order("created_at", { ascending: false });
-
-      if (leaguesError || !leaguesData) {
-        console.error("Error fetching leagues:", leaguesError);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch owner emails
-      const ownerIds = [...new Set(leaguesData.map((l) => l.owner_id))];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, email")
-        .in("id", ownerIds);
-
-      const profileMap = new Map(
-        profilesData?.map((p) => [p.id, p.email]) || []
-      );
-
-      // Fetch member counts
-      const { data: membershipsData } = await supabase
-        .from("league_memberships")
-        .select("league_id");
-
-      const memberCounts = new Map<string, number>();
-      membershipsData?.forEach((m) => {
-        if (m.league_id) {
-          memberCounts.set(m.league_id, (memberCounts.get(m.league_id) || 0) + 1);
-        }
-      });
-
-      const leaguesWithDetails: LeagueWithDetails[] = leaguesData.map((league) => ({
-        id: league.id,
-        name: league.name,
-        created_at: league.created_at,
-        owner_email: profileMap.get(league.owner_id) || "Unknown",
-        member_count: memberCounts.get(league.id) || 0,
-      }));
-
-      setLeagues(leaguesWithDetails);
-      setLoading(false);
-    };
-
     fetchLeagues();
   }, [isSuperAdmin, roleLoading]);
+
+  const fetchLeagues = async () => {
+    // Fetch all leagues with owner profiles
+    const { data: leaguesData, error: leaguesError } = await supabase
+      .from("leagues")
+      .select(`
+        id,
+        name,
+        created_at,
+        owner_id
+      `)
+      .order("created_at", { ascending: false });
+
+    if (leaguesError || !leaguesData) {
+      console.error("Error fetching leagues:", leaguesError);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch owner emails
+    const ownerIds = [...new Set(leaguesData.map((l) => l.owner_id))];
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", ownerIds);
+
+    const profileMap = new Map(
+      profilesData?.map((p) => [p.id, p.email]) || []
+    );
+
+    // Fetch member counts
+    const { data: membershipsData } = await supabase
+      .from("league_memberships")
+      .select("league_id");
+
+    const memberCounts = new Map<string, number>();
+    membershipsData?.forEach((m) => {
+      if (m.league_id) {
+        memberCounts.set(m.league_id, (memberCounts.get(m.league_id) || 0) + 1);
+      }
+    });
+
+    const leaguesWithDetails: LeagueWithDetails[] = leaguesData.map((league) => ({
+      id: league.id,
+      name: league.name,
+      created_at: league.created_at,
+      owner_email: profileMap.get(league.owner_id) || "Unknown",
+      member_count: memberCounts.get(league.id) || 0,
+    }));
+
+    setLeagues(leaguesWithDetails);
+    setLoading(false);
+  };
+
+  const handleDeleteLeague = async (leagueId: string, leagueName: string) => {
+    setDeletingId(leagueId);
+    
+    const { error } = await supabase
+      .from("leagues")
+      .delete()
+      .eq("id", leagueId);
+
+    if (error) {
+      console.error("Error deleting league:", error);
+      toast({
+        title: "Error",
+        description: `Failed to delete league: ${error.message}`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "League Deleted",
+        description: `"${leagueName}" has been permanently deleted.`,
+      });
+      setLeagues((prev) => prev.filter((l) => l.id !== leagueId));
+    }
+    
+    setDeletingId(null);
+  };
 
   if (authLoading || roleLoading || loading) {
     return (
@@ -144,6 +184,7 @@ export default function Admin() {
                     <TableHead>Owner Email</TableHead>
                     <TableHead className="text-center">Members</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -156,6 +197,48 @@ export default function Admin() {
                       <TableCell className="text-center">{league.member_count}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(league.created_at), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/league/${league.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                disabled={deletingId === league.id}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete League</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{league.name}"? This will permanently remove the league, all memberships, game sessions, and associated data. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteLeague(league.id, league.name)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete League
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
