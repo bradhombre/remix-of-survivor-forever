@@ -22,7 +22,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut, ChevronDown, RotateCcw, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut, ChevronDown, RotateCcw, Plus, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 import { QRCodeSVG } from "qrcode.react";
@@ -36,6 +45,7 @@ import {
   updateCustomAction,
   SCORING_TEMPLATES,
   applyTemplate,
+  ScoringTemplate,
 } from "@/lib/scoring";
 
 // Group scoring actions by category
@@ -64,6 +74,15 @@ interface Member {
   role: string;
   joined_at: string;
   email: string;
+}
+
+interface SavedTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  emoji: string;
+  config: ScoringConfig;
+  created_at: string;
 }
 
 // ScoringConfig can have number (enabled) or null (disabled), plus custom_actions array
@@ -102,6 +121,14 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   const [newActionLabel, setNewActionLabel] = useState("");
   const [newActionEmoji, setNewActionEmoji] = useState("⭐");
   const [newActionPoints, setNewActionPoints] = useState(10);
+  
+  // Saved templates state
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDescription, setNewTemplateDescription] = useState("");
+  const [newTemplateEmoji, setNewTemplateEmoji] = useState("⭐");
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -139,6 +166,17 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
         // Load custom actions
         const loadedCustomActions = getCustomActions(savedConfig);
         setCustomActions(loadedCustomActions);
+      }
+
+      // Fetch saved templates for this league
+      const { data: templatesData } = await supabase
+        .from("scoring_templates")
+        .select("id, name, description, emoji, config, created_at")
+        .eq("league_id", leagueId)
+        .order("created_at", { ascending: false });
+      
+      if (templatesData) {
+        setSavedTemplates(templatesData as SavedTemplate[]);
       }
 
       // Fetch members with their profile emails
@@ -335,6 +373,74 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   const handleDeleteCustomAction = (actionId: string) => {
     setCustomActions(prev => prev.filter(a => a.id !== actionId));
     toast.success("Custom action removed (save to apply)");
+  };
+
+  // Save current config as a template
+  const handleSaveAsTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      toast.error("Please enter a template name");
+      return;
+    }
+    if (!currentUserId) return;
+    
+    setSavingTemplate(true);
+    
+    // Build config to save (current scoring config + custom actions)
+    const configToSave = {
+      ...scoringConfig,
+      custom_actions: customActions,
+    };
+    
+    const { data, error } = await supabase
+      .from("scoring_templates")
+      .insert({
+        league_id: leagueId,
+        name: newTemplateName.trim(),
+        description: newTemplateDescription.trim() || null,
+        emoji: newTemplateEmoji,
+        config: configToSave,
+        created_by: currentUserId,
+      } as any)
+      .select()
+      .single();
+    
+    if (error) {
+      toast.error("Failed to save template");
+    } else {
+      toast.success(`Template "${newTemplateName}" saved`);
+      setSavedTemplates(prev => [data as SavedTemplate, ...prev]);
+      setSaveTemplateDialogOpen(false);
+      setNewTemplateName("");
+      setNewTemplateDescription("");
+      setNewTemplateEmoji("⭐");
+    }
+    
+    setSavingTemplate(false);
+  };
+
+  // Delete a saved template
+  const handleDeleteTemplate = async (templateId: string, templateName: string) => {
+    const { error } = await supabase
+      .from("scoring_templates")
+      .delete()
+      .eq("id", templateId);
+    
+    if (error) {
+      toast.error("Failed to delete template");
+    } else {
+      toast.success(`Template "${templateName}" deleted`);
+      setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
+    }
+  };
+
+  // Apply a saved template
+  const handleApplySavedTemplate = (template: SavedTemplate) => {
+    const config = template.config as ScoringConfig;
+    const mergedConfig = { ...getDefaultScoringConfig(), ...config };
+    setScoringConfig(mergedConfig);
+    const loadedCustomActions = getCustomActions(config);
+    setCustomActions(loadedCustomActions);
+    toast.success(`Applied "${template.name}" template`);
   };
 
   const handleRemoveMember = async (memberId: string, memberEmail: string) => {
@@ -583,111 +689,233 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
           <div className="space-y-4">
             {/* Scoring Templates */}
             {isOwner && (
-              <div className="space-y-3 pb-4 border-b border-border">
-                <p className="text-sm font-medium text-muted-foreground">Quick Apply Template</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                  {SCORING_TEMPLATES.map((template) => (
-                    <AlertDialog key={template.id}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-auto py-2 px-3 flex flex-col items-center gap-1 hover:bg-accent/50 transition-colors"
-                        >
-                          <span className="text-xl">{template.emoji}</span>
-                          <span className="text-xs font-medium">{template.name}</span>
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2">
-                            <span className="text-2xl">{template.emoji}</span>
-                            Apply "{template.name}" Template
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {template.description}. This will replace your current scoring configuration. Custom actions will be preserved.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <div className="max-h-64 overflow-y-auto space-y-3 my-4 text-sm">
-                          {/* Summary */}
-                          {(() => {
-                            const enabledCount = Object.values(template.config).filter(v => v !== null).length;
-                            const totalCount = Object.keys(SCORING_ACTIONS).length;
-                            return (
-                              <div className="flex items-center gap-2 pb-2 border-b border-border">
-                                <Badge variant={enabledCount === totalCount ? "default" : "secondary"}>
-                                  {enabledCount} of {totalCount} actions enabled
-                                </Badge>
-                              </div>
-                            );
-                          })()}
-                          
-                          {/* Enabled actions */}
-                          <div>
-                            <p className="font-medium mb-2 text-foreground">Enabled:</p>
-                            <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                              {Object.entries(template.config)
-                                .filter(([_, value]) => value !== null)
-                                .slice(0, 8)
-                                .map(([key, value]) => {
-                                  const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
-                                  if (!action) return null;
-                                  return (
-                                    <div key={key} className="flex justify-between text-xs">
-                                      <span className="truncate">{action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 12)}</span>
-                                      <span className={(value as number) < 0 ? 'text-destructive' : 'text-green-600'}>
-                                        {(value as number) > 0 ? '+' : ''}{value as number}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                            {Object.entries(template.config).filter(([_, v]) => v !== null).length > 8 && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                +{Object.entries(template.config).filter(([_, v]) => v !== null).length - 8} more...
-                              </p>
-                            )}
-                          </div>
-                          
-                          {/* Disabled actions */}
-                          {Object.values(template.config).some(v => v === null) && (
+              <div className="space-y-4 pb-4 border-b border-border">
+                {/* Predefined Templates */}
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-muted-foreground">Predefined Templates</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {SCORING_TEMPLATES.map((template) => (
+                      <AlertDialog key={template.id}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-auto py-2 px-3 flex flex-col items-center gap-1 hover:bg-accent/50 transition-colors"
+                          >
+                            <span className="text-xl">{template.emoji}</span>
+                            <span className="text-xs font-medium">{template.name}</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <span className="text-2xl">{template.emoji}</span>
+                              Apply "{template.name}" Template
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {template.description}. This will replace your current scoring configuration. Custom actions will be preserved.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="max-h-64 overflow-y-auto space-y-3 my-4 text-sm">
+                            {/* Summary */}
+                            {(() => {
+                              const enabledCount = Object.values(template.config).filter(v => v !== null).length;
+                              const totalCount = Object.keys(SCORING_ACTIONS).length;
+                              return (
+                                <div className="flex items-center gap-2 pb-2 border-b border-border">
+                                  <Badge variant={enabledCount === totalCount ? "default" : "secondary"}>
+                                    {enabledCount} of {totalCount} actions enabled
+                                  </Badge>
+                                </div>
+                              );
+                            })()}
+                            
+                            {/* Enabled actions */}
                             <div>
-                              <p className="font-medium mb-2 text-muted-foreground">Disabled:</p>
-                              <div className="flex flex-wrap gap-1">
+                              <p className="font-medium mb-2 text-foreground">Enabled:</p>
+                              <div className="grid grid-cols-2 gap-1 text-muted-foreground">
                                 {Object.entries(template.config)
-                                  .filter(([_, value]) => value === null)
-                                  .map(([key]) => {
+                                  .filter(([_, value]) => value !== null)
+                                  .slice(0, 8)
+                                  .map(([key, value]) => {
                                     const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
                                     if (!action) return null;
                                     return (
-                                      <span key={key} className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground line-through">
-                                        {action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 10)}
-                                      </span>
+                                      <div key={key} className="flex justify-between text-xs">
+                                        <span className="truncate">{action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 12)}</span>
+                                        <span className={(value as number) < 0 ? 'text-destructive' : 'text-green-600'}>
+                                          {(value as number) > 0 ? '+' : ''}{value as number}
+                                        </span>
+                                      </div>
                                     );
                                   })}
                               </div>
+                              {Object.entries(template.config).filter(([_, v]) => v !== null).length > 8 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  +{Object.entries(template.config).filter(([_, v]) => v !== null).length - 8} more...
+                                </p>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => {
-                              const newConfig = applyTemplate(template.id, scoringConfig);
-                              setScoringConfig(newConfig);
-                              // Preserve custom actions in state
-                              const existingCustom = getCustomActions(scoringConfig);
-                              setCustomActions(existingCustom);
-                              toast.success(`Applied "${template.name}" template`);
-                            }}
-                          >
-                            Apply Template
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  ))}
+                            
+                            {/* Disabled actions */}
+                            {Object.values(template.config).some(v => v === null) && (
+                              <div>
+                                <p className="font-medium mb-2 text-muted-foreground">Disabled:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {Object.entries(template.config)
+                                    .filter(([_, value]) => value === null)
+                                    .map(([key]) => {
+                                      const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
+                                      if (!action) return null;
+                                      return (
+                                        <span key={key} className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground line-through">
+                                          {action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 10)}
+                                        </span>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                const newConfig = applyTemplate(template.id, scoringConfig);
+                                setScoringConfig(newConfig);
+                                // Preserve custom actions in state
+                                const existingCustom = getCustomActions(scoringConfig);
+                                setCustomActions(existingCustom);
+                                toast.success(`Applied "${template.name}" template`);
+                              }}
+                            >
+                              Apply Template
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Saved Templates */}
+                {savedTemplates.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Bookmark className="h-4 w-4" />
+                      Your Saved Templates
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {savedTemplates.map((template) => (
+                        <div key={template.id} className="relative group">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full h-auto py-2 px-3 flex flex-col items-center gap-1 hover:bg-accent/50 transition-colors border-primary/30"
+                              >
+                                <span className="text-xl">{template.emoji}</span>
+                                <span className="text-xs font-medium truncate max-w-full">{template.name}</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                  <span className="text-2xl">{template.emoji}</span>
+                                  Apply "{template.name}"
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {template.description || "Your saved template"}. This will replace your current scoring configuration.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleApplySavedTemplate(template)}>
+                                  Apply Template
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          {/* Delete button */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{template.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteTemplate(template.id, template.name)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Save Current Config as Template */}
+                <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Bookmark className="h-4 w-4" />
+                      Save Current as Template
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Save Scoring Template</DialogTitle>
+                      <DialogDescription>
+                        Save your current scoring configuration as a template to reuse in future seasons.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <EmojiPicker value={newTemplateEmoji} onChange={setNewTemplateEmoji} />
+                        <Input
+                          placeholder="Template name"
+                          value={newTemplateName}
+                          onChange={(e) => setNewTemplateName(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Input
+                        placeholder="Description (optional)"
+                        value={newTemplateDescription}
+                        onChange={(e) => setNewTemplateDescription(e.target.value)}
+                      />
+                      <div className="text-sm text-muted-foreground">
+                        {(() => {
+                          const enabledCount = Object.entries(scoringConfig).filter(([k, v]) => v !== null && k !== 'custom_actions').length;
+                          return `This will save ${enabledCount} enabled actions and ${customActions.length} custom action(s).`;
+                        })()}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setSaveTemplateDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSaveAsTemplate} disabled={savingTemplate || !newTemplateName.trim()}>
+                        {savingTemplate ? "Saving..." : "Save Template"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
             {Object.entries(SCORING_CATEGORIES).map(([category, actionKeys]) => (
