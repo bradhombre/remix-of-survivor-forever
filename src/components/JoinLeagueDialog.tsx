@@ -20,7 +20,7 @@ const inviteCodeSchema = z.object({
 interface JoinLeagueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (leagueId: string) => void;
 }
 
 export function JoinLeagueDialog({ open, onOpenChange, onSuccess }: JoinLeagueDialogProps) {
@@ -50,11 +50,11 @@ export function JoinLeagueDialog({ open, onOpenChange, onSuccess }: JoinLeagueDi
       } else {
         toast.error(error.message || 'Failed to join league');
       }
-    } else {
+    } else if (data?.league_id) {
       toast.success('Successfully joined the league!');
       setCode('');
       onOpenChange(false);
-      onSuccess();
+      onSuccess(data.league_id);
     }
     setLoading(false);
   };
