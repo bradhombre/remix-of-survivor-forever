@@ -7,6 +7,7 @@ import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, 
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
+import { getPoints, ScoringConfig } from "@/lib/scoring";
 
 interface GameModeProps {
   season: number;
@@ -16,6 +17,7 @@ interface GameModeProps {
   scoringEvents: ScoringEvent[];
   cryingThisEpisode: Set<string>;
   playerProfiles: Record<Player, { avatar?: string }>;
+  scoringConfig?: ScoringConfig | null;
   isAdmin?: boolean;
   playerName?: string | null;
   sessionId?: string;
@@ -36,6 +38,7 @@ export const GameMode = ({
   scoringEvents,
   cryingThisEpisode,
   playerProfiles,
+  scoringConfig,
   isAdmin = false,
   playerName = null,
   sessionId,
@@ -173,7 +176,9 @@ export const GameMode = ({
     });
   };
 
-  const survivePoints = isPostMerge ? 10 : 5;
+  const survivePoints = isPostMerge 
+    ? getPoints("SURVIVE_POST", scoringConfig) 
+    : getPoints("SURVIVE_PRE", scoringConfig);
   const surviveAction = isPostMerge
     ? SCORING_ACTIONS.SURVIVE_POST
     : SCORING_ACTIONS.SURVIVE_PRE;
@@ -501,7 +506,7 @@ export const GameMode = ({
                             {isAdmin && !contestant.isEliminated && (
                               <Button
                                 onClick={() => {
-                                  handleQuickScore(contestant, SCORING_ACTIONS.VOTED_OUT.label, SCORING_ACTIONS.VOTED_OUT.points);
+                                  handleQuickScore(contestant, SCORING_ACTIONS.VOTED_OUT.label, getPoints("VOTED_OUT", scoringConfig));
                                 }}
                                 variant="destructive"
                                 size="sm"
@@ -520,7 +525,7 @@ export const GameMode = ({
                               handleQuickScore(
                                 contestant,
                                 SCORING_ACTIONS.WIN_IMMUNITY.label,
-                                SCORING_ACTIONS.WIN_IMMUNITY.points
+                                getPoints("WIN_IMMUNITY", scoringConfig)
                               )
                             }
                             variant="accent"
@@ -528,17 +533,17 @@ export const GameMode = ({
                             className="text-xs"
                           >
                             🏆 Immunity
-                            <br />+15
+                            <br />+{getPoints("WIN_IMMUNITY", scoringConfig)}
                           </Button>
                           {canCry && (
                             <Button
-                              onClick={() => handleQuickScore(contestant, SCORING_ACTIONS.CRY.label, SCORING_ACTIONS.CRY.points)}
+                              onClick={() => handleQuickScore(contestant, SCORING_ACTIONS.CRY.label, getPoints("CRY", scoringConfig))}
                               variant="outline"
                               size="sm"
                               className="text-xs"
                             >
                               😭 Cry
-                              <br />+5
+                              <br />+{getPoints("CRY", scoringConfig)}
                             </Button>
                           )}
                           <Button
@@ -558,21 +563,21 @@ export const GameMode = ({
                           <div className="glass-strong p-3 rounded-lg space-y-2 animate-in slide-in-from-top">
                             {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
                               if (key === "SURVIVE_PRE" || key === "SURVIVE_POST" || key === "VOTED_OUT" || key === "CRY") return null;
-                              
+                              const points = getPoints(key, scoringConfig);
                               return (
                                 <Button
                                   key={key}
                                   onClick={() =>
-                                    handleQuickScore(contestant, action.label, action.points)
+                                    handleQuickScore(contestant, action.label, points)
                                   }
-                                  variant={action.points > 0 ? "success" : "destructive"}
+                                  variant={points > 0 ? "success" : "destructive"}
                                   size="sm"
                                   className="w-full justify-between text-xs"
                                 >
                                   <span>{action.label}</span>
                                   <span className="font-bold">
-                                    {action.points > 0 ? "+" : ""}
-                                    {action.points}
+                                    {points > 0 ? "+" : ""}
+                                    {points}
                                   </span>
                                 </Button>
                               );
@@ -627,7 +632,7 @@ export const GameMode = ({
                       {isAdmin && !contestant.isEliminated && (
                         <Button
                           onClick={() => {
-                            handleQuickScore(contestant, SCORING_ACTIONS.VOTED_OUT.label, SCORING_ACTIONS.VOTED_OUT.points);
+                            handleQuickScore(contestant, SCORING_ACTIONS.VOTED_OUT.label, getPoints("VOTED_OUT", scoringConfig));
                           }}
                           variant="destructive"
                           size="sm"
@@ -646,7 +651,7 @@ export const GameMode = ({
                         handleQuickScore(
                           contestant,
                           SCORING_ACTIONS.WIN_IMMUNITY.label,
-                          SCORING_ACTIONS.WIN_IMMUNITY.points
+                          getPoints("WIN_IMMUNITY", scoringConfig)
                         )
                       }
                       variant="accent"
@@ -654,17 +659,17 @@ export const GameMode = ({
                       className="text-xs"
                     >
                       🏆 Immunity
-                      <br />+15
+                      <br />+{getPoints("WIN_IMMUNITY", scoringConfig)}
                     </Button>
                     {canCry && (
                       <Button
-                        onClick={() => handleQuickScore(contestant, SCORING_ACTIONS.CRY.label, SCORING_ACTIONS.CRY.points)}
+                        onClick={() => handleQuickScore(contestant, SCORING_ACTIONS.CRY.label, getPoints("CRY", scoringConfig))}
                         variant="outline"
                         size="sm"
                         className="text-xs"
                       >
                         😭 Cry
-                        <br />+5
+                        <br />+{getPoints("CRY", scoringConfig)}
                       </Button>
                     )}
                     <Button
@@ -684,21 +689,21 @@ export const GameMode = ({
                     <div className="glass-strong p-3 rounded-lg space-y-2 animate-in slide-in-from-top">
                       {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
                         if (key === "SURVIVE_PRE" || key === "SURVIVE_POST" || key === "VOTED_OUT" || key === "CRY") return null;
-
+                        const points = getPoints(key, scoringConfig);
                         return (
                           <Button
                             key={key}
                             onClick={() =>
-                              handleQuickScore(contestant, action.label, action.points)
+                              handleQuickScore(contestant, action.label, points)
                             }
-                            variant={action.points > 0 ? "success" : "destructive"}
+                            variant={points > 0 ? "success" : "destructive"}
                             size="sm"
                             className="w-full justify-between text-xs"
                           >
                             <span>{action.label}</span>
                             <span className="font-bold">
-                              {action.points > 0 ? "+" : ""}
-                              {action.points}
+                              {points > 0 ? "+" : ""}
+                              {points}
                             </span>
                           </Button>
                         );
