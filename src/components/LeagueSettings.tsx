@@ -5,7 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Save, Users, Link2, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface LeagueSettingsProps {
@@ -20,6 +31,7 @@ interface LeagueData {
 
 interface Member {
   id: string;
+  user_id: string;
   role: string;
   joined_at: string;
   email: string;
@@ -78,6 +90,7 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
 
         const membersWithEmail = memberships.map(m => ({
           id: m.id,
+          user_id: m.user_id,
           role: m.role,
           joined_at: m.joined_at || "",
           email: profiles?.find(p => p.id === m.user_id)?.email || "Unknown",
@@ -141,6 +154,44 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   };
 
   const isOwner = currentUserId === league?.owner_id;
+
+  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
+    const { error } = await supabase
+      .from("league_memberships")
+      .delete()
+      .eq("id", memberId);
+
+    if (error) {
+      toast.error("Failed to remove member");
+    } else {
+      toast.success(`${memberEmail} removed from league`);
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+    }
+  };
+
+  const handlePromoteToAdmin = async (memberId: string, memberEmail: string) => {
+    const { error } = await supabase
+      .from("league_memberships")
+      .update({ role: "league_admin" })
+      .eq("id", memberId);
+
+    if (error) {
+      toast.error("Failed to promote member");
+    } else {
+      toast.success(`${memberEmail} promoted to admin`);
+      setMembers(prev => prev.map(m => 
+        m.id === memberId ? { ...m, role: "league_admin" } : m
+      ));
+    }
+  };
+
+  const canManageMember = (member: Member) => {
+    // Can't manage yourself
+    if (member.user_id === currentUserId) return false;
+    // Can't manage other league_admins or super_admins
+    if (member.role === "league_admin" || member.role === "super_admin") return false;
+    return true;
+  };
 
   if (loading) {
     return (
@@ -231,12 +282,18 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {members.map((member) => (
                 <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.email}</TableCell>
+                  <TableCell className="font-medium">
+                    {member.email}
+                    {member.user_id === currentUserId && (
+                      <span className="text-muted-foreground ml-2">(you)</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(member.role)}>
                       {member.role.replace("_", " ")}
@@ -244,6 +301,47 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(member.joined_at)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {canManageMember(member) ? (
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePromoteToAdmin(member.id, member.email)}
+                        >
+                          <ShieldPlus className="h-4 w-4 mr-1" />
+                          Promote
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Member</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove {member.email} from this league? 
+                                They will need to rejoin using the invite code.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleRemoveMember(member.id, member.email)}
+                              >
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
