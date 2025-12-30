@@ -113,7 +113,7 @@ export const DraftMode = ({
 
           return (
             <Card
-              key={player}
+              key={`${String(player)}-${index}`}
               className={`glass p-4 space-y-3 transition-all ${
                 isCurrentDrafter ? "ring-4 ring-accent scale-105" : ""
               } border-l-4 ${getPlayerColor(index)}`}
