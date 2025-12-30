@@ -460,7 +460,7 @@ export const SetupMode = ({
                 const isFilled = !!team?.user_id;
 
                 return (
-                  <div key={String(player)} className="glass p-3 rounded-lg flex items-center gap-3">
+                  <div key={`${String(player)}-${index}`} className="glass p-3 rounded-lg flex items-center gap-3">
                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
                     <span className="font-bold text-accent">{index + 1}</span>
 

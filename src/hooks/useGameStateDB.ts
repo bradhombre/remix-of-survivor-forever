@@ -141,13 +141,25 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       console.log('Loaded contestants from DB:', contestants.length, contestants.map(c => ({ name: c.name, owner: c.owner, pick: c.pick_number })));
       const scoringEvents = scoringData.data || [];
       
-      // Use draft_order table if populated, otherwise use league teams
+      // Reconcile draft_order with league teams (self-healing)
+      const teamNames = teamsToUse.map(t => t.name);
+      const teamSet = new Set(teamNames);
       let draftOrder: string[];
+      
       if (draftData.data && draftData.data.length > 0) {
-        draftOrder = draftData.data.map((d) => d.player_name);
+        const dbOrder = draftData.data.map((d) => d.player_name);
+        // Keep only teams that still exist, preserving their order
+        const validOrder = dbOrder.filter(name => teamSet.has(name));
+        // Add any new teams that aren't in the draft order
+        teamNames.forEach(name => {
+          if (!validOrder.includes(name)) {
+            validOrder.push(name);
+          }
+        });
+        draftOrder = validOrder;
       } else {
         // Initialize from league teams
-        draftOrder = teamsToUse.map(t => t.name);
+        draftOrder = teamNames;
       }
       
       // Only include crying contestants for the CURRENT episode
@@ -380,16 +392,20 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     // Delete existing draft order
     await supabase.from("draft_order").delete().eq("session_id", sessionId);
 
-    // Insert new draft order
-    await Promise.all(
-      draftOrder.map((player, index) =>
-        supabase.from("draft_order").insert({
-          session_id: sessionId,
-          player_name: player,
-          position: index,
-        })
-      )
-    );
+    // Insert all draft order rows in a single atomic operation
+    if (draftOrder.length > 0) {
+      const rows = draftOrder.map((player, index) => ({
+        session_id: sessionId,
+        player_name: player,
+        position: index,
+      }));
+      
+      const { error } = await supabase.from("draft_order").insert(rows);
+      if (error) {
+        console.error("Failed to insert draft order:", error);
+        toast.error("Failed to save draft order");
+      }
+    }
   }, [sessionId]);
 
   // If league size changes, automatically expand/shrink draft order to match team slots (preserve any manual ordering)
