@@ -22,11 +22,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut, ChevronDown, RotateCcw } from "lucide-react";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut, ChevronDown, RotateCcw, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 import { QRCodeSVG } from "qrcode.react";
 import { Switch } from "@/components/ui/switch";
+import { 
+  CustomScoringAction, 
+  getCustomActions, 
+  addCustomAction, 
+  removeCustomAction, 
+  updateCustomAction 
+} from "@/lib/scoring";
 
 // Group scoring actions by category
 const SCORING_CATEGORIES = {
@@ -56,8 +63,8 @@ interface Member {
   email: string;
 }
 
-// ScoringConfig can have number (enabled) or null (disabled)
-type ScoringConfig = Record<string, number | null>;
+// ScoringConfig can have number (enabled) or null (disabled), plus custom_actions array
+type ScoringConfig = Record<string, number | null | CustomScoringAction[]>;
 
 // Build default config from SCORING_ACTIONS (all enabled)
 const getDefaultScoringConfig = (): ScoringConfig => {
@@ -72,6 +79,9 @@ const isActionEnabled = (key: string, config: ScoringConfig): boolean => {
   return config[key] !== null;
 };
 
+// Generate a unique ID for custom actions
+const generateCustomActionId = () => `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   const navigate = useNavigate();
   const [league, setLeague] = useState<LeagueData | null>(null);
@@ -83,6 +93,12 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   const [savingScoring, setSavingScoring] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  
+  // Custom actions state
+  const [customActions, setCustomActions] = useState<CustomScoringAction[]>([]);
+  const [newActionLabel, setNewActionLabel] = useState("");
+  const [newActionEmoji, setNewActionEmoji] = useState("⭐");
+  const [newActionPoints, setNewActionPoints] = useState(10);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,9 +130,12 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
       
       // Load scoring config from DB or use defaults
       if (leagueData.scoring_config) {
-        const savedConfig = leagueData.scoring_config as Record<string, number>;
+        const savedConfig = leagueData.scoring_config as ScoringConfig;
         const mergedConfig = { ...getDefaultScoringConfig(), ...savedConfig };
         setScoringConfig(mergedConfig);
+        // Load custom actions
+        const loadedCustomActions = getCustomActions(savedConfig);
+        setCustomActions(loadedCustomActions);
       }
 
       // Fetch members with their profile emails
@@ -216,9 +235,14 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
 
   const handleSaveScoringConfig = async () => {
     setSavingScoring(true);
+    // Include custom actions in the config - cast for JSON compatibility
+    const configToSave: Record<string, unknown> = {
+      ...scoringConfig,
+      custom_actions: customActions,
+    };
     const { error } = await supabase
       .from("leagues")
-      .update({ scoring_config: scoringConfig })
+      .update({ scoring_config: configToSave as Record<string, number> })
       .eq("id", leagueId);
 
     if (error) {
@@ -246,6 +270,7 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
 
   const handleResetToDefaults = () => {
     setScoringConfig(getDefaultScoringConfig());
+    setCustomActions([]);
     toast.success("Scoring rules reset to defaults (save to apply)");
   };
 
@@ -253,11 +278,60 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
     const savedConfig = league?.scoring_config || {};
     const defaults = getDefaultScoringConfig();
     
-    return Object.keys(SCORING_ACTIONS).some(key => {
+    // Check default actions
+    const defaultsChanged = Object.keys(SCORING_ACTIONS).some(key => {
       const currentValue = scoringConfig[key];
       const savedValue = (savedConfig as Record<string, number>)[key] ?? defaults[key];
       return currentValue !== savedValue;
     });
+    
+    // Check custom actions
+    const savedCustomActions = getCustomActions(savedConfig as ScoringConfig);
+    const customActionsChanged = JSON.stringify(customActions) !== JSON.stringify(savedCustomActions);
+    
+    return defaultsChanged || customActionsChanged;
+  };
+
+  // Custom action handlers
+  const handleAddCustomAction = () => {
+    if (!newActionLabel.trim()) {
+      toast.error("Please enter a label for the action");
+      return;
+    }
+    
+    // Check for duplicate labels
+    const allLabels = [
+      ...Object.values(SCORING_ACTIONS).map(a => a.label.toLowerCase()),
+      ...customActions.map(a => a.label.toLowerCase()),
+    ];
+    if (allLabels.includes(newActionLabel.trim().toLowerCase())) {
+      toast.error("An action with this label already exists");
+      return;
+    }
+    
+    const newAction: CustomScoringAction = {
+      id: generateCustomActionId(),
+      label: newActionLabel.trim(),
+      emoji: newActionEmoji,
+      points: newActionPoints,
+    };
+    
+    setCustomActions(prev => [...prev, newAction]);
+    setNewActionLabel("");
+    setNewActionEmoji("⭐");
+    setNewActionPoints(10);
+    toast.success("Custom action added (save to apply)");
+  };
+
+  const handleUpdateCustomAction = (actionId: string, updates: Partial<CustomScoringAction>) => {
+    setCustomActions(prev => prev.map(a => 
+      a.id === actionId ? { ...a, ...updates } : a
+    ));
+  };
+
+  const handleDeleteCustomAction = (actionId: string) => {
+    setCustomActions(prev => prev.filter(a => a.id !== actionId));
+    toast.success("Custom action removed (save to apply)");
   };
 
   const handleRemoveMember = async (memberId: string, memberEmail: string) => {
@@ -541,7 +615,7 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                               <>
                                 <Input
                                   type="number"
-                                  value={scoringConfig[key] ?? action.points}
+                                  value={typeof scoringConfig[key] === 'number' ? scoringConfig[key] : action.points}
                                   onChange={(e) => handleScoringChange(key, parseInt(e.target.value) || 0)}
                                   className="w-20 text-right h-8"
                                   disabled={!isOwner}
@@ -559,6 +633,103 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                 </CollapsibleContent>
               </Collapsible>
             ))}
+
+            {/* Custom Scoring Rules Section */}
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20">
+                <span className="font-semibold text-sm">✨ Custom Scoring Rules</span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">
+                <div className="space-y-3 pl-2">
+                  {customActions.length === 0 && !isOwner && (
+                    <p className="text-sm text-muted-foreground py-2">No custom scoring rules defined.</p>
+                  )}
+                  
+                  {/* Existing custom actions */}
+                  {customActions.map((action) => (
+                    <div 
+                      key={action.id} 
+                      className="flex items-center justify-between gap-4 py-2 px-2 rounded-md bg-muted/30"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <Input
+                          value={action.emoji}
+                          onChange={(e) => handleUpdateCustomAction(action.id, { emoji: e.target.value })}
+                          className="w-14 text-center h-8"
+                          disabled={!isOwner}
+                          maxLength={2}
+                        />
+                        <Input
+                          value={action.label}
+                          onChange={(e) => handleUpdateCustomAction(action.id, { label: e.target.value })}
+                          className="flex-1 h-8"
+                          disabled={!isOwner}
+                          placeholder="Action label"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={action.points}
+                          onChange={(e) => handleUpdateCustomAction(action.id, { points: parseInt(e.target.value) || 0 })}
+                          className="w-20 text-right h-8"
+                          disabled={!isOwner}
+                        />
+                        <span className="text-sm text-muted-foreground w-6">pts</span>
+                        {isOwner && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteCustomAction(action.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Add new custom action form */}
+                  {isOwner && (
+                    <div className="border-t border-border pt-3 mt-3">
+                      <p className="text-sm text-muted-foreground mb-2">Add Custom Action:</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Input
+                          value={newActionEmoji}
+                          onChange={(e) => setNewActionEmoji(e.target.value)}
+                          className="w-14 text-center h-9"
+                          placeholder="⭐"
+                          maxLength={2}
+                        />
+                        <Input
+                          value={newActionLabel}
+                          onChange={(e) => setNewActionLabel(e.target.value)}
+                          className="flex-1 min-w-[150px] h-9"
+                          placeholder="Action label (e.g., Wins Reward)"
+                        />
+                        <Input
+                          type="number"
+                          value={newActionPoints}
+                          onChange={(e) => setNewActionPoints(parseInt(e.target.value) || 0)}
+                          className="w-20 text-right h-9"
+                        />
+                        <span className="text-sm text-muted-foreground">pts</span>
+                        <Button
+                          onClick={handleAddCustomAction}
+                          size="sm"
+                          className="h-9"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
             
             {isOwner && (
               <div className="flex justify-between items-center pt-4 border-t border-border">
