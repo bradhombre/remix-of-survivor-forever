@@ -33,7 +33,9 @@ import {
   getCustomActions, 
   addCustomAction, 
   removeCustomAction, 
-  updateCustomAction 
+  updateCustomAction,
+  SCORING_TEMPLATES,
+  applyTemplate,
 } from "@/lib/scoring";
 
 // Group scoring actions by category
@@ -574,11 +576,77 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
             Scoring Rules
           </CardTitle>
           <CardDescription>
-            Enable or disable scoring categories and customize point values
+            Apply a template or customize individual point values
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Scoring Templates */}
+            {isOwner && (
+              <div className="space-y-3 pb-4 border-b border-border">
+                <p className="text-sm font-medium text-muted-foreground">Quick Apply Template</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                  {SCORING_TEMPLATES.map((template) => (
+                    <AlertDialog key={template.id}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-auto py-2 px-3 flex flex-col items-center gap-1 hover:bg-accent/50 transition-colors"
+                        >
+                          <span className="text-xl">{template.emoji}</span>
+                          <span className="text-xs font-medium">{template.name}</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <span className="text-2xl">{template.emoji}</span>
+                            Apply "{template.name}" Template
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {template.description}. This will replace your current scoring configuration. Custom actions will be preserved.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="max-h-48 overflow-y-auto space-y-1 my-4 text-sm">
+                          <p className="font-medium mb-2">Point values:</p>
+                          <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                            {Object.entries(template.config).slice(0, 10).map(([key, value]) => {
+                              const action = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS];
+                              if (!action || typeof value !== 'number') return null;
+                              return (
+                                <div key={key} className="flex justify-between">
+                                  <span>{action.emoji} {action.label.replace(` ${action.emoji}`, '').slice(0, 15)}</span>
+                                  <span className={value < 0 ? 'text-destructive' : 'text-accent'}>
+                                    {value > 0 ? '+' : ''}{value}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">...and more</p>
+                        </div>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => {
+                              const newConfig = applyTemplate(template.id, scoringConfig);
+                              setScoringConfig(newConfig);
+                              // Preserve custom actions in state
+                              const existingCustom = getCustomActions(scoringConfig);
+                              setCustomActions(existingCustom);
+                              toast.success(`Applied "${template.name}" template`);
+                            }}
+                          >
+                            Apply Template
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  ))}
+                </div>
+              </div>
+            )}
             {Object.entries(SCORING_CATEGORIES).map(([category, actionKeys]) => (
               <Collapsible key={category} defaultOpen>
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
