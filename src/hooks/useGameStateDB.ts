@@ -3,10 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { GameState, Player, Contestant, ScoringEvent, DraftType } from "@/types/survivor";
 import { toast } from "sonner";
 
-const SESSION_ID_KEY = "survivor-session-id";
 const LOCAL_MODE_KEY = "survivor-local-mode";
 
-export const useGameStateDB = () => {
+interface UseGameStateDBOptions {
+  leagueId?: string;
+}
+
+export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
+  const { leagueId } = options;
+  
   const [state, setState] = useState<GameState>({
     mode: (localStorage.getItem(LOCAL_MODE_KEY) as GameState["mode"]) || "setup",
     season: 49,
@@ -29,109 +34,52 @@ export const useGameStateDB = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize or load session - ALL USERS SHARE THE SAME SESSION
+  // Initialize or load session for the specific league
   useEffect(() => {
+    if (!leagueId) {
+      setLoading(false);
+      return;
+    }
+
     const initSession = async () => {
       try {
-        // Always get the most recent session - NEVER create duplicates
-        const { data: existingSessions, error: queryError } = await supabase
+        // Get the game session for this specific league
+        const { data: leagueSession, error: queryError } = await supabase
           .from("game_sessions")
           .select("*")
+          .eq("league_id", leagueId)
           .order("created_at", { ascending: false })
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
 
-        // CRITICAL: If query failed, don't proceed to create a new session
         if (queryError) {
-          console.error("Error querying sessions:", queryError);
+          console.error("Error querying league session:", queryError);
           toast.error("Failed to load game session. Please refresh the page.");
           setLoading(false);
           return;
         }
 
-        if (existingSessions && existingSessions.length > 0) {
-          // Always use the most recent session - data persists across republishes
-          const currentSessionId = existingSessions[0].id;
-          console.log("Loading existing session:", currentSessionId);
-          localStorage.setItem(SESSION_ID_KEY, currentSessionId);
-          setSessionId(currentSessionId);
-          await loadGameState(currentSessionId);
+        if (leagueSession) {
+          console.log("Loading league session:", leagueSession.id);
+          setSessionId(leagueSession.id);
+          await loadGameState(leagueSession.id);
           setLoading(false);
           return;
         }
 
-        // DOUBLE-CHECK: Verify database is truly empty before creating
-        const { count, error: countError } = await supabase
-          .from("game_sessions")
-          .select("*", { count: 'exact', head: true });
-
-        if (countError) {
-          console.error("Error counting sessions:", countError);
-          toast.error("Failed to verify session state. Please refresh the page.");
-          setLoading(false);
-          return;
-        }
-
-        if (count && count > 0) {
-          console.error("Race condition detected - sessions exist but weren't found in initial query");
-          toast.error("Session loading issue. Please refresh the page.");
-          setLoading(false);
-          return;
-        }
-
-        // Only create FIRST session if database is confirmed empty
-        console.log("Creating first game session (database confirmed empty)...");
-        const { data: newSession, error } = await supabase
-          .from("game_sessions")
-          .insert({
-            season: 49,
-            episode: 1,
-            mode: "setup",
-            is_post_merge: false,
-            draft_type: "snake",
-            current_draft_index: 0,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        const currentSessionId = newSession.id;
-        localStorage.setItem(SESSION_ID_KEY, currentSessionId);
-        setSessionId(currentSessionId);
-
-        // Initialize default draft order
-        const draftOrder = ["Brad", "Coco", "Kalin", "Roy"];
-        await Promise.all(
-          draftOrder.map((player, index) =>
-            supabase.from("draft_order").insert({
-              session_id: currentSessionId,
-              player_name: player,
-              position: index,
-            })
-          )
-        );
-
-        // Initialize player profiles
-        await Promise.all(
-          draftOrder.map((player) =>
-            supabase.from("player_profiles").insert({
-              session_id: currentSessionId,
-              player_name: player,
-            })
-          )
-        );
-
-        await loadGameState(currentSessionId);
+        // No session exists for this league - this shouldn't happen since create_league creates one
+        console.error("No game session found for league:", leagueId);
+        toast.error("No game session found for this league.");
+        setLoading(false);
       } catch (error) {
         console.error("Error initializing session:", error);
         toast.error("Failed to initialize game session");
-      } finally {
         setLoading(false);
       }
     };
 
     initSession();
-  }, []);
+  }, [leagueId]);
 
   // Load game state from database
   const loadGameState = async (sid: string) => {
@@ -215,7 +163,7 @@ export const useGameStateDB = () => {
     if (!sessionId) return;
 
     const channel = supabase
-      .channel("game-state-changes")
+      .channel(`game-state-${sessionId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "game_sessions", filter: `id=eq.${sessionId}` },

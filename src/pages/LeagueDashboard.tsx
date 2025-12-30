@@ -45,7 +45,7 @@ const LeagueDashboard = () => {
     clearEpisodeScores,
     clearHistory,
     resetAll,
-  } = useGameStateDB();
+  } = useGameStateDB({ leagueId });
   
   const { user, isAdmin, playerName, loading, signOut } = useAuth();
   const navigate = useNavigate();
