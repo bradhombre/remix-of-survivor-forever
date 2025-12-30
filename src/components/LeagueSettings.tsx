@@ -16,8 +16,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus } from "lucide-react";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale } from "lucide-react";
 import { toast } from "sonner";
+import { SCORING_ACTIONS } from "@/types/survivor";
 
 interface LeagueSettingsProps {
   leagueId: string;
@@ -27,6 +28,7 @@ interface LeagueData {
   name: string;
   invite_code: string;
   owner_id: string;
+  scoring_config: Record<string, number> | null;
 }
 
 interface Member {
@@ -37,12 +39,25 @@ interface Member {
   email: string;
 }
 
+type ScoringConfig = Record<string, number>;
+
+// Build default config from SCORING_ACTIONS
+const getDefaultScoringConfig = (): ScoringConfig => {
+  const config: ScoringConfig = {};
+  Object.entries(SCORING_ACTIONS).forEach(([key, value]) => {
+    config[key] = value.points;
+  });
+  return config;
+};
+
 export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   const [league, setLeague] = useState<LeagueData | null>(null);
   const [leagueName, setLeagueName] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(getDefaultScoringConfig());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingScoring, setSavingScoring] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,10 +68,10 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
         setCurrentUserId(user.id);
       }
 
-      // Fetch league details
+      // Fetch league details including scoring_config
       const { data: leagueData, error: leagueError } = await supabase
         .from("leagues")
-        .select("name, invite_code, owner_id")
+        .select("name, invite_code, owner_id, scoring_config")
         .eq("id", leagueId)
         .single();
 
@@ -65,8 +80,20 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
         return;
       }
 
-      setLeague(leagueData);
+      setLeague({
+        name: leagueData.name,
+        invite_code: leagueData.invite_code,
+        owner_id: leagueData.owner_id,
+        scoring_config: leagueData.scoring_config as Record<string, number> | null,
+      });
       setLeagueName(leagueData.name);
+      
+      // Load scoring config from DB or use defaults
+      if (leagueData.scoring_config) {
+        const savedConfig = leagueData.scoring_config as Record<string, number>;
+        const mergedConfig = { ...getDefaultScoringConfig(), ...savedConfig };
+        setScoringConfig(mergedConfig);
+      }
 
       // Fetch members with their profile emails
       const { data: memberships, error: membersError } = await supabase
@@ -154,6 +181,36 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   };
 
   const isOwner = currentUserId === league?.owner_id;
+
+  const handleSaveScoringConfig = async () => {
+    setSavingScoring(true);
+    const { error } = await supabase
+      .from("leagues")
+      .update({ scoring_config: scoringConfig })
+      .eq("id", leagueId);
+
+    if (error) {
+      toast.error("Failed to save scoring rules");
+    } else {
+      toast.success("Scoring rules saved");
+    }
+    setSavingScoring(false);
+  };
+
+  const handleScoringChange = (key: string, value: number) => {
+    setScoringConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const hasUnsavedScoringChanges = () => {
+    const savedConfig = league?.scoring_config || {};
+    const defaults = getDefaultScoringConfig();
+    
+    return Object.keys(SCORING_ACTIONS).some(key => {
+      const currentValue = scoringConfig[key];
+      const savedValue = (savedConfig as Record<string, number>)[key] ?? defaults[key];
+      return currentValue !== savedValue;
+    });
+  };
 
   const handleRemoveMember = async (memberId: string, memberEmail: string) => {
     const { error } = await supabase
@@ -347,6 +404,62 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Scoring Rules Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Scale className="h-5 w-5" />
+            Scoring Rules
+          </CardTitle>
+          <CardDescription>
+            Customize point values for each scoring action
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              {Object.entries(SCORING_ACTIONS).map(([key, action]) => (
+                <div 
+                  key={key} 
+                  className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{action.emoji}</span>
+                    <span className="text-sm font-medium">{action.label.replace(` ${action.emoji}`, '')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={scoringConfig[key] ?? action.points}
+                      onChange={(e) => handleScoringChange(key, parseInt(e.target.value) || 0)}
+                      className="w-24 text-right"
+                      disabled={!isOwner}
+                    />
+                    <span className="text-sm text-muted-foreground w-8">pts</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {isOwner && (
+              <div className="flex justify-end pt-4">
+                <Button 
+                  onClick={handleSaveScoringConfig} 
+                  disabled={savingScoring || !hasUnsavedScoringChanges()}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {savingScoring ? "Saving..." : "Save Scoring Rules"}
+                </Button>
+              </div>
+            )}
+            {!isOwner && (
+              <p className="text-sm text-muted-foreground">
+                Only the league owner can edit scoring rules.
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
