@@ -18,7 +18,7 @@ interface LeagueTeam {
 
 export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   const { leagueId } = options;
-  
+
   const [leagueTeams, setLeagueTeams] = useState<LeagueTeam[]>([]);
   const [state, setState] = useState<GameState>({
     mode: (localStorage.getItem(LOCAL_MODE_KEY) as GameState["mode"]) || "setup",
@@ -41,18 +41,18 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   // Fetch league teams
   const fetchLeagueTeams = useCallback(async () => {
     if (!leagueId) return [];
-    
+
     const { data, error } = await supabase
-      .from('league_teams')
-      .select('*')
-      .eq('league_id', leagueId)
-      .order('position', { ascending: true });
-    
+      .from("league_teams")
+      .select("*")
+      .eq("league_id", leagueId)
+      .order("position", { ascending: true });
+
     if (error) {
-      console.error('Error fetching league teams:', error);
+      console.error("Error fetching league teams:", error);
       return [];
     }
-    
+
     return data || [];
   }, [leagueId]);
 
@@ -262,6 +262,35 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     };
   }, [sessionId]);
 
+  // Keep league team slots in sync in realtime
+  useEffect(() => {
+    if (!leagueId) return;
+
+    const channel = supabase
+      .channel(`league-teams-${leagueId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "league_teams",
+          filter: `league_id=eq.${leagueId}`,
+        },
+        async () => {
+          const teams = await fetchLeagueTeams();
+          setLeagueTeams(teams);
+          if (sessionId) {
+            await loadGameState(sessionId, teams);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [leagueId, fetchLeagueTeams, sessionId]);
+
   const setMode = async (mode: GameState["mode"]) => {
     console.log(`Setting local mode to: ${mode}`);
     localStorage.setItem(LOCAL_MODE_KEY, mode);
@@ -345,12 +374,12 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     await setDraftOrder(shuffled);
   };
 
-  const setDraftOrder = async (draftOrder: Player[]) => {
+  const setDraftOrder = useCallback(async (draftOrder: Player[]) => {
     if (!sessionId) return;
-    
+
     // Delete existing draft order
     await supabase.from("draft_order").delete().eq("session_id", sessionId);
-    
+
     // Insert new draft order
     await Promise.all(
       draftOrder.map((player, index) =>
@@ -361,7 +390,30 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         })
       )
     );
-  };
+  }, [sessionId]);
+
+  // If league size changes, automatically expand/shrink draft order to match team slots (preserve any manual ordering)
+  useEffect(() => {
+    if (!sessionId) return;
+    if (leagueTeams.length === 0) return;
+
+    const teamNames = leagueTeams.map((t) => t.name);
+    const current = (state.draftOrder || []) as string[];
+
+    const hasMismatch =
+      current.length !== teamNames.length ||
+      current.some((name) => !teamNames.includes(name)) ||
+      teamNames.some((name) => !current.includes(name));
+
+    if (!hasMismatch) return;
+
+    const merged = current.filter((name) => teamNames.includes(name));
+    teamNames.forEach((name) => {
+      if (!merged.includes(name)) merged.push(name);
+    });
+
+    setDraftOrder(merged as Player[]);
+  }, [sessionId, leagueTeams, state.draftOrder, setDraftOrder]);
 
   const setDraftType = async (draftType: DraftType) => {
     if (!sessionId) return;
