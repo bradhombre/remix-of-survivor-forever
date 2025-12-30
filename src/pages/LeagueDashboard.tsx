@@ -260,6 +260,7 @@ const LeagueDashboard = () => {
           cryingThisEpisode={state.cryingThisEpisode}
           playerProfiles={state.playerProfiles}
           scoringConfig={scoringConfig}
+          draftOrder={state.draftOrder}
           isAdmin={isLeagueAdmin}
           playerName={playerName}
           sessionId={sessionId || undefined}

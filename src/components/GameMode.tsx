@@ -7,7 +7,7 @@ import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, 
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
-import { getPoints, ScoringConfig } from "@/lib/scoring";
+import { getPoints, isActionEnabled, ScoringConfig } from "@/lib/scoring";
 
 interface GameModeProps {
   season: number;
@@ -18,6 +18,7 @@ interface GameModeProps {
   cryingThisEpisode: Set<string>;
   playerProfiles: Record<Player, { avatar?: string }>;
   scoringConfig?: ScoringConfig | null;
+  draftOrder: Player[];
   isAdmin?: boolean;
   playerName?: string | null;
   sessionId?: string;
@@ -39,6 +40,7 @@ export const GameMode = ({
   cryingThisEpisode,
   playerProfiles,
   scoringConfig,
+  draftOrder,
   isAdmin = false,
   playerName = null,
   sessionId,
@@ -102,13 +104,37 @@ export const GameMode = ({
       .reduce((sum, e) => sum + e.points, 0);
   };
 
-  const leaderboard = (["Brad", "Coco", "Kalin", "Roy"] as Player[])
+  const teamCount = draftOrder.length || 4;
+  const picksPerTeam = Math.ceil(contestants.filter(c => c.owner).length / teamCount) || 4;
+
+  const leaderboard = draftOrder
     .map((player) => ({
       player,
       score: getPlayerScore(player),
       activeCount: contestants.filter((c) => c.owner === player && !c.isEliminated).length,
     }))
     .sort((a, b) => b.score - a.score);
+
+  // Generate dynamic colors for teams
+  const getTeamColor = (index: number) => {
+    const colors = [
+      "border-l-blue-500",
+      "border-l-rose-500", 
+      "border-l-amber-500",
+      "border-l-emerald-500",
+      "border-l-violet-500",
+      "border-l-cyan-500",
+      "border-l-orange-500",
+      "border-l-pink-500",
+    ];
+    return colors[index % colors.length];
+  };
+
+  const getTeamColorByName = (player: Player | undefined) => {
+    if (!player) return "";
+    const index = draftOrder.indexOf(player);
+    return index >= 0 ? getTeamColor(index) : "";
+  };
 
   const getRankEmoji = (rank: number) => {
     switch (rank) {
@@ -147,12 +173,7 @@ export const GameMode = ({
     return true;
   });
 
-  const getPlayerColor = (player: Player | undefined) => {
-    if (!player) return "";
-    return `player-${player.toLowerCase()}`;
-  };
-
-  const contestantsByOwner = (["Brad", "Coco", "Kalin", "Roy"] as Player[]).map((player) => ({
+  const contestantsByOwner = draftOrder.map((player) => ({
     player,
     contestants: filteredContestants.filter((c) => c.owner === player),
   }));
@@ -276,7 +297,7 @@ export const GameMode = ({
                 <div className="p-6 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-3xl">{getRankEmoji(index)}</span>
-                    <span className="text-sm text-muted-foreground">{entry.activeCount}/4 active</span>
+                    <span className="text-sm text-muted-foreground">{entry.activeCount}/{picksPerTeam} active</span>
                   </div>
                   
                   <div className="flex items-center gap-3">
@@ -413,10 +434,9 @@ export const GameMode = ({
             className="glass px-4 py-2 rounded-lg border-border"
           >
             <option value="all">All Teams</option>
-            <option value="Brad">Brad</option>
-            <option value="Coco">Coco</option>
-            <option value="Kalin">Kalin</option>
-            <option value="Roy">Roy</option>
+            {draftOrder.map((player) => (
+              <option key={player} value={player}>{player}</option>
+            ))}
           </select>
 
           <Button
@@ -458,7 +478,7 @@ export const GameMode = ({
         {scoringView === "team" ? (
           contestantsByOwner.map(({ player, contestants: playerContestants }) => (
             playerContestants.length > 0 && (
-            <Card key={player} className={`glass-strong border-l-4 ${getPlayerColor(player)} overflow-hidden`}>
+            <Card key={player} className={`glass-strong border-l-4 ${getTeamColorByName(player)} overflow-hidden`}>
               <div className="p-4 md:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold">{player}'s Team</h3>
@@ -520,22 +540,24 @@ export const GameMode = ({
 
                         {/* Bottom Quick Actions */}
                         <div className="grid grid-cols-3 gap-2">
-                          <Button
-                            onClick={() =>
-                              handleQuickScore(
-                                contestant,
-                                SCORING_ACTIONS.WIN_IMMUNITY.label,
-                                getPoints("WIN_IMMUNITY", scoringConfig)
-                              )
-                            }
-                            variant="accent"
-                            size="sm"
-                            className="text-xs"
-                          >
-                            🏆 Immunity
-                            <br />+{getPoints("WIN_IMMUNITY", scoringConfig)}
-                          </Button>
-                          {canCry && (
+                          {isActionEnabled("WIN_IMMUNITY", scoringConfig) && (
+                            <Button
+                              onClick={() =>
+                                handleQuickScore(
+                                  contestant,
+                                  SCORING_ACTIONS.WIN_IMMUNITY.label,
+                                  getPoints("WIN_IMMUNITY", scoringConfig)
+                                )
+                              }
+                              variant="accent"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              🏆 Immunity
+                              <br />+{getPoints("WIN_IMMUNITY", scoringConfig)}
+                            </Button>
+                          )}
+                          {canCry && isActionEnabled("CRY", scoringConfig) && (
                             <Button
                               onClick={() => handleQuickScore(contestant, SCORING_ACTIONS.CRY.label, getPoints("CRY", scoringConfig))}
                               variant="outline"
@@ -550,7 +572,7 @@ export const GameMode = ({
                             onClick={() => setExpandedContestant(isExpanded ? null : contestant.id)}
                             variant="outline"
                             size="sm"
-                            className="text-xs col-span-${canCry ? '1' : '2'}"
+                            className="text-xs"
                           >
                             More
                             <br />
@@ -563,6 +585,7 @@ export const GameMode = ({
                           <div className="glass-strong p-3 rounded-lg space-y-2 animate-in slide-in-from-top">
                             {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
                               if (key === "SURVIVE_PRE" || key === "SURVIVE_POST" || key === "VOTED_OUT" || key === "CRY") return null;
+                              if (!isActionEnabled(key, scoringConfig)) return null;
                               const points = getPoints(key, scoringConfig);
                               return (
                                 <Button
@@ -601,7 +624,7 @@ export const GameMode = ({
               return (
                 <Card
                   key={contestant.id}
-                  className={`glass p-4 space-y-3 border-l-4 ${getPlayerColor(contestant.owner!)} transition-all ${
+                  className={`glass p-4 space-y-3 border-l-4 ${getTeamColorByName(contestant.owner)} transition-all ${
                     contestant.isEliminated ? "opacity-50" : ""
                   }`}
                 >
@@ -646,22 +669,24 @@ export const GameMode = ({
 
                   {/* Bottom Quick Actions */}
                   <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      onClick={() =>
-                        handleQuickScore(
-                          contestant,
-                          SCORING_ACTIONS.WIN_IMMUNITY.label,
-                          getPoints("WIN_IMMUNITY", scoringConfig)
-                        )
-                      }
-                      variant="accent"
-                      size="sm"
-                      className="text-xs"
-                    >
-                      🏆 Immunity
-                      <br />+{getPoints("WIN_IMMUNITY", scoringConfig)}
-                    </Button>
-                    {canCry && (
+                    {isActionEnabled("WIN_IMMUNITY", scoringConfig) && (
+                      <Button
+                        onClick={() =>
+                          handleQuickScore(
+                            contestant,
+                            SCORING_ACTIONS.WIN_IMMUNITY.label,
+                            getPoints("WIN_IMMUNITY", scoringConfig)
+                          )
+                        }
+                        variant="accent"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        🏆 Immunity
+                        <br />+{getPoints("WIN_IMMUNITY", scoringConfig)}
+                      </Button>
+                    )}
+                    {canCry && isActionEnabled("CRY", scoringConfig) && (
                       <Button
                         onClick={() => handleQuickScore(contestant, SCORING_ACTIONS.CRY.label, getPoints("CRY", scoringConfig))}
                         variant="outline"
@@ -676,7 +701,7 @@ export const GameMode = ({
                       onClick={() => setExpandedContestant(isExpanded ? null : contestant.id)}
                       variant="outline"
                       size="sm"
-                      className={`text-xs ${canCry ? 'col-span-1' : 'col-span-2'}`}
+                      className="text-xs"
                     >
                       More
                       <br />
@@ -689,6 +714,7 @@ export const GameMode = ({
                     <div className="glass-strong p-3 rounded-lg space-y-2 animate-in slide-in-from-top">
                       {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
                         if (key === "SURVIVE_PRE" || key === "SURVIVE_POST" || key === "VOTED_OUT" || key === "CRY") return null;
+                        if (!isActionEnabled(key, scoringConfig)) return null;
                         const points = getPoints(key, scoringConfig);
                         return (
                           <Button
