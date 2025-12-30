@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 import { QRCodeSVG } from "qrcode.react";
 import { Switch } from "@/components/ui/switch";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { 
   CustomScoringAction, 
   getCustomActions, 
@@ -653,12 +654,10 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                       className="flex items-center justify-between gap-4 py-2 px-2 rounded-md bg-muted/30"
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        <Input
+                        <EmojiPicker
                           value={action.emoji}
-                          onChange={(e) => handleUpdateCustomAction(action.id, { emoji: e.target.value })}
-                          className="w-14 text-center h-8"
+                          onChange={(emoji) => handleUpdateCustomAction(action.id, { emoji })}
                           disabled={!isOwner}
-                          maxLength={2}
                         />
                         <Input
                           value={action.label}
@@ -696,12 +695,9 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
                     <div className="border-t border-border pt-3 mt-3">
                       <p className="text-sm text-muted-foreground mb-2">Add Custom Action:</p>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Input
+                        <EmojiPicker
                           value={newActionEmoji}
-                          onChange={(e) => setNewActionEmoji(e.target.value)}
-                          className="w-14 text-center h-9"
-                          placeholder="⭐"
-                          maxLength={2}
+                          onChange={setNewActionEmoji}
                         />
                         <Input
                           value={newActionLabel}
