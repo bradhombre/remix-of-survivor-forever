@@ -211,8 +211,9 @@ const LeagueDashboard = () => {
         <LeagueSettings leagueId={leagueId} />
       )}
 
-      {!settingsMode && state.mode === "setup" && (
+      {!settingsMode && state.mode === "setup" && leagueId && (
         <SetupMode
+          leagueId={leagueId}
           season={state.season}
           contestants={state.contestants}
           draftOrder={state.draftOrder}
