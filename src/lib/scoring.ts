@@ -15,12 +15,201 @@ export interface CustomScoringAction {
 // - custom_actions: array of custom actions created by admins
 export type ScoringConfig = Record<string, number | null | CustomScoringAction[]>;
 
+// Scoring template definition
+export interface ScoringTemplate {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  config: ScoringConfig;
+}
+
+// Predefined scoring templates
+export const SCORING_TEMPLATES: ScoringTemplate[] = [
+  {
+    id: "standard",
+    name: "Standard",
+    description: "Balanced scoring for casual and competitive play",
+    emoji: "⚖️",
+    config: {
+      FIND_IDOL: 100,
+      ACQUIRE_IDOL: 50,
+      FIND_ADVANTAGE: 50,
+      ACQUIRE_ADVANTAGE: 25,
+      VOTED_OUT_WITH_IDOL: -50,
+      WIN_IMMUNITY: 25,
+      CATCH_TOSS: 10,
+      DROP_TOSS: -10,
+      TRIBAL_VOTE_CORRECT: 10,
+      SURVIVE_PRE: 5,
+      SURVIVE_POST: 10,
+      VOTED_OUT: -25,
+      QUIT: -100,
+      MAKE_JURY: 50,
+      MAKE_FINAL: 100,
+      WIN_SURVIVOR: 200,
+      CRY: 10,
+      EPISODE_TITLE: 25,
+      MISC_25: 25,
+      MISC_50: 50,
+      MISC_NEG_10: -10,
+      MISC_NEG_25: -25,
+    },
+  },
+  {
+    id: "competitive",
+    name: "Competitive",
+    description: "Higher stakes with bigger swings and penalties",
+    emoji: "🏆",
+    config: {
+      FIND_IDOL: 150,
+      ACQUIRE_IDOL: 75,
+      FIND_ADVANTAGE: 75,
+      ACQUIRE_ADVANTAGE: 40,
+      VOTED_OUT_WITH_IDOL: -100,
+      WIN_IMMUNITY: 50,
+      CATCH_TOSS: 15,
+      DROP_TOSS: -15,
+      TRIBAL_VOTE_CORRECT: 20,
+      SURVIVE_PRE: 10,
+      SURVIVE_POST: 20,
+      VOTED_OUT: -50,
+      QUIT: -200,
+      MAKE_JURY: 75,
+      MAKE_FINAL: 150,
+      WIN_SURVIVOR: 300,
+      CRY: 15,
+      EPISODE_TITLE: 50,
+      MISC_25: 25,
+      MISC_50: 50,
+      MISC_NEG_10: -10,
+      MISC_NEG_25: -25,
+    },
+  },
+  {
+    id: "casual",
+    name: "Casual",
+    description: "Lower penalties, more forgiving for new players",
+    emoji: "🌴",
+    config: {
+      FIND_IDOL: 75,
+      ACQUIRE_IDOL: 40,
+      FIND_ADVANTAGE: 40,
+      ACQUIRE_ADVANTAGE: 20,
+      VOTED_OUT_WITH_IDOL: -25,
+      WIN_IMMUNITY: 20,
+      CATCH_TOSS: 5,
+      DROP_TOSS: -5,
+      TRIBAL_VOTE_CORRECT: 5,
+      SURVIVE_PRE: 5,
+      SURVIVE_POST: 10,
+      VOTED_OUT: -10,
+      QUIT: -50,
+      MAKE_JURY: 40,
+      MAKE_FINAL: 75,
+      WIN_SURVIVOR: 150,
+      CRY: 10,
+      EPISODE_TITLE: 20,
+      MISC_25: 25,
+      MISC_50: 50,
+      MISC_NEG_10: -10,
+      MISC_NEG_25: -25,
+    },
+  },
+  {
+    id: "survival_focused",
+    name: "Survival Focused",
+    description: "Rewards longevity and making it to the end",
+    emoji: "🔥",
+    config: {
+      FIND_IDOL: 50,
+      ACQUIRE_IDOL: 25,
+      FIND_ADVANTAGE: 25,
+      ACQUIRE_ADVANTAGE: 15,
+      VOTED_OUT_WITH_IDOL: -75,
+      WIN_IMMUNITY: 40,
+      CATCH_TOSS: 5,
+      DROP_TOSS: -5,
+      TRIBAL_VOTE_CORRECT: 15,
+      SURVIVE_PRE: 10,
+      SURVIVE_POST: 25,
+      VOTED_OUT: -40,
+      QUIT: -150,
+      MAKE_JURY: 100,
+      MAKE_FINAL: 200,
+      WIN_SURVIVOR: 400,
+      CRY: 5,
+      EPISODE_TITLE: 15,
+      MISC_25: 25,
+      MISC_50: 50,
+      MISC_NEG_10: -10,
+      MISC_NEG_25: -25,
+    },
+  },
+  {
+    id: "idol_hunter",
+    name: "Idol Hunter",
+    description: "Heavy rewards for finding idols and advantages",
+    emoji: "🗿",
+    config: {
+      FIND_IDOL: 200,
+      ACQUIRE_IDOL: 100,
+      FIND_ADVANTAGE: 150,
+      ACQUIRE_ADVANTAGE: 75,
+      VOTED_OUT_WITH_IDOL: -150,
+      WIN_IMMUNITY: 20,
+      CATCH_TOSS: 10,
+      DROP_TOSS: -10,
+      TRIBAL_VOTE_CORRECT: 10,
+      SURVIVE_PRE: 5,
+      SURVIVE_POST: 10,
+      VOTED_OUT: -25,
+      QUIT: -100,
+      MAKE_JURY: 25,
+      MAKE_FINAL: 50,
+      WIN_SURVIVOR: 150,
+      CRY: 10,
+      EPISODE_TITLE: 25,
+      MISC_25: 25,
+      MISC_50: 50,
+      MISC_NEG_10: -10,
+      MISC_NEG_25: -25,
+    },
+  },
+];
+
 export const getDefaultScoringConfig = (): ScoringConfig => {
   const config: ScoringConfig = {};
   Object.entries(SCORING_ACTIONS).forEach(([key, value]) => {
     config[key] = value.points;
   });
   return config;
+};
+
+/**
+ * Get a scoring template by ID
+ */
+export const getScoringTemplate = (templateId: string): ScoringTemplate | undefined => {
+  return SCORING_TEMPLATES.find(t => t.id === templateId);
+};
+
+/**
+ * Apply a template while preserving custom actions
+ */
+export const applyTemplate = (
+  templateId: string,
+  existingConfig?: ScoringConfig | null
+): ScoringConfig => {
+  const template = getScoringTemplate(templateId);
+  if (!template) return getDefaultScoringConfig();
+  
+  // Preserve existing custom actions if any
+  const customActions = existingConfig ? getCustomActions(existingConfig) : [];
+  
+  return {
+    ...template.config,
+    ...(customActions.length > 0 ? { custom_actions: customActions as unknown as CustomScoringAction[] } : {}),
+  };
 };
 
 /**
