@@ -1,10 +1,19 @@
 import { SCORING_ACTIONS } from "@/types/survivor";
 
+// Custom scoring action created by league admins
+export interface CustomScoringAction {
+  id: string;
+  label: string;
+  emoji: string;
+  points: number;
+}
+
 // ScoringConfig can have:
 // - number: enabled with custom points
 // - null: disabled (action not available)
 // - undefined/missing: use default points from SCORING_ACTIONS
-export type ScoringConfig = Record<string, number | null>;
+// - custom_actions: array of custom actions created by admins
+export type ScoringConfig = Record<string, number | null | CustomScoringAction[]>;
 
 export const getDefaultScoringConfig = (): ScoringConfig => {
   const config: ScoringConfig = {};
@@ -80,4 +89,63 @@ export const getEnabledActions = (
   });
   
   return enabled;
+};
+
+/**
+ * Get custom actions from scoring config
+ */
+export const getCustomActions = (
+  scoringConfig: ScoringConfig | null | undefined
+): CustomScoringAction[] => {
+  if (!scoringConfig) return [];
+  const customActions = scoringConfig.custom_actions;
+  if (Array.isArray(customActions)) {
+    return customActions as CustomScoringAction[];
+  }
+  return [];
+};
+
+/**
+ * Add a custom action to the scoring config
+ */
+export const addCustomAction = (
+  scoringConfig: ScoringConfig,
+  action: CustomScoringAction
+): ScoringConfig => {
+  const existing = getCustomActions(scoringConfig);
+  return {
+    ...scoringConfig,
+    custom_actions: [...existing, action] as unknown as CustomScoringAction[],
+  };
+};
+
+/**
+ * Remove a custom action from the scoring config
+ */
+export const removeCustomAction = (
+  scoringConfig: ScoringConfig,
+  actionId: string
+): ScoringConfig => {
+  const existing = getCustomActions(scoringConfig);
+  return {
+    ...scoringConfig,
+    custom_actions: existing.filter(a => a.id !== actionId) as unknown as CustomScoringAction[],
+  };
+};
+
+/**
+ * Update a custom action in the scoring config
+ */
+export const updateCustomAction = (
+  scoringConfig: ScoringConfig,
+  actionId: string,
+  updates: Partial<CustomScoringAction>
+): ScoringConfig => {
+  const existing = getCustomActions(scoringConfig);
+  return {
+    ...scoringConfig,
+    custom_actions: existing.map(a => 
+      a.id === actionId ? { ...a, ...updates } : a
+    ) as unknown as CustomScoringAction[],
+  };
 };

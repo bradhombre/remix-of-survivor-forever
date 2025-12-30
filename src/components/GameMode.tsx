@@ -7,7 +7,7 @@ import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, 
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
-import { getPoints, isActionEnabled, ScoringConfig } from "@/lib/scoring";
+import { getPoints, isActionEnabled, getCustomActions, CustomScoringAction, ScoringConfig } from "@/lib/scoring";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,6 +72,9 @@ export const GameMode = ({
   const [showJuryDialog, setShowJuryDialog] = useState(false);
   const [showSurvivorsDialog, setShowSurvivorsDialog] = useState(false);
   const { toast } = useToast();
+  
+  // Get custom actions from scoring config
+  const customActions = getCustomActions(scoringConfig);
 
   const handleAvatarUpload = (player: Player, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -766,6 +769,31 @@ export const GameMode = ({
                                 </Button>
                               );
                             })}
+                            {/* Custom Actions */}
+                            {customActions.length > 0 && (
+                              <>
+                                <div className="border-t border-border pt-2 mt-2">
+                                  <span className="text-xs text-muted-foreground">✨ Custom</span>
+                                </div>
+                                {customActions.map((action) => (
+                                  <Button
+                                    key={action.id}
+                                    onClick={() =>
+                                      handleQuickScore(contestant, `${action.label} ${action.emoji}`, action.points)
+                                    }
+                                    variant={action.points > 0 ? "success" : "destructive"}
+                                    size="sm"
+                                    className="w-full justify-between text-xs"
+                                  >
+                                    <span>{action.emoji} {action.label}</span>
+                                    <span className="font-bold">
+                                      {action.points > 0 ? "+" : ""}
+                                      {action.points}
+                                    </span>
+                                  </Button>
+                                ))}
+                              </>
+                            )}
                           </div>
                         )}
                       </Card>
@@ -895,6 +923,31 @@ export const GameMode = ({
                           </Button>
                         );
                       })}
+                      {/* Custom Actions */}
+                      {customActions.length > 0 && (
+                        <>
+                          <div className="border-t border-border pt-2 mt-2">
+                            <span className="text-xs text-muted-foreground">✨ Custom</span>
+                          </div>
+                          {customActions.map((action) => (
+                            <Button
+                              key={action.id}
+                              onClick={() =>
+                                handleQuickScore(contestant, `${action.label} ${action.emoji}`, action.points)
+                              }
+                              variant={action.points > 0 ? "success" : "destructive"}
+                              size="sm"
+                              className="w-full justify-between text-xs"
+                            >
+                              <span>{action.emoji} {action.label}</span>
+                              <span className="font-bold">
+                                {action.points > 0 ? "+" : ""}
+                                {action.points}
+                              </span>
+                            </Button>
+                          ))}
+                        </>
+                      )}
                     </div>
                   )}
                 </Card>
