@@ -23,7 +23,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/leagues');
     }
   }, [user, navigate]);
 

@@ -460,6 +460,22 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      join_league: {
+        Args: { invite_code_input: string }
+        Returns: {
+          id: string
+          joined_at: string | null
+          league_id: string
+          role: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "league_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       make_super_admin: {
         Args: { user_uuid: string }
         Returns: {
