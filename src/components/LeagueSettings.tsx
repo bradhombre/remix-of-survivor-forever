@@ -21,6 +21,7 @@ import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLi
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 import { QRCodeSVG } from "qrcode.react";
+import { Switch } from "@/components/ui/switch";
 
 interface LeagueSettingsProps {
   leagueId: string;
@@ -41,15 +42,20 @@ interface Member {
   email: string;
 }
 
-type ScoringConfig = Record<string, number>;
+// ScoringConfig can have number (enabled) or null (disabled)
+type ScoringConfig = Record<string, number | null>;
 
-// Build default config from SCORING_ACTIONS
+// Build default config from SCORING_ACTIONS (all enabled)
 const getDefaultScoringConfig = (): ScoringConfig => {
   const config: ScoringConfig = {};
   Object.entries(SCORING_ACTIONS).forEach(([key, value]) => {
     config[key] = value.points;
   });
   return config;
+};
+
+const isActionEnabled = (key: string, config: ScoringConfig): boolean => {
+  return config[key] !== null;
 };
 
 export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
@@ -211,6 +217,17 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
 
   const handleScoringChange = (key: string, value: number) => {
     setScoringConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleScoringToggle = (key: string, enabled: boolean) => {
+    if (enabled) {
+      // Re-enable with default points
+      const defaultPoints = SCORING_ACTIONS[key as keyof typeof SCORING_ACTIONS]?.points ?? 0;
+      setScoringConfig(prev => ({ ...prev, [key]: defaultPoints }));
+    } else {
+      // Disable by setting to null
+      setScoringConfig(prev => ({ ...prev, [key]: null }));
+    }
   };
 
   const hasUnsavedScoringChanges = () => {
@@ -463,33 +480,52 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
             Scoring Rules
           </CardTitle>
           <CardDescription>
-            Customize point values for each scoring action
+            Enable or disable scoring categories and customize point values
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="grid gap-3">
-              {Object.entries(SCORING_ACTIONS).map(([key, action]) => (
-                <div 
-                  key={key} 
-                  className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{action.emoji}</span>
-                    <span className="text-sm font-medium">{action.label.replace(` ${action.emoji}`, '')}</span>
+              {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
+                const enabled = isActionEnabled(key, scoringConfig);
+                return (
+                  <div 
+                    key={key} 
+                    className={`flex items-center justify-between gap-4 py-2 border-b border-border last:border-0 transition-opacity ${
+                      !enabled ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {isOwner && (
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={(checked) => handleScoringToggle(key, checked)}
+                        />
+                      )}
+                      <span className="text-lg">{action.emoji}</span>
+                      <span className={`text-sm font-medium ${!enabled ? 'line-through text-muted-foreground' : ''}`}>
+                        {action.label.replace(` ${action.emoji}`, '')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {enabled ? (
+                        <>
+                          <Input
+                            type="number"
+                            value={scoringConfig[key] ?? action.points}
+                            onChange={(e) => handleScoringChange(key, parseInt(e.target.value) || 0)}
+                            className="w-24 text-right"
+                            disabled={!isOwner}
+                          />
+                          <span className="text-sm text-muted-foreground w-8">pts</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Disabled</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={scoringConfig[key] ?? action.points}
-                      onChange={(e) => handleScoringChange(key, parseInt(e.target.value) || 0)}
-                      className="w-24 text-right"
-                      disabled={!isOwner}
-                    />
-                    <span className="text-sm text-muted-foreground w-8">pts</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {isOwner && (
               <div className="flex justify-end pt-4">
