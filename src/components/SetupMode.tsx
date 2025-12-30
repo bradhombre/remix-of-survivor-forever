@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Shuffle, Upload, Download, Trash2, Play, List, GripVertical, Pencil, Check, X, Plus, UserPlus } from "lucide-react";
+import { Shuffle, Upload, Download, Trash2, Play, List, GripVertical, Pencil, Check, X, Plus, Minus, Users, Copy } from "lucide-react";
 import { Player, Contestant, DraftType } from "@/types/survivor";
 import { useToast } from "@/hooks/use-toast";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SetupModeProps {
   leagueId: string;
@@ -60,61 +61,51 @@ export const SetupMode = ({
   const { toast } = useToast();
 
   // Team management state
-  const { teams, loading: teamsLoading, addTeam, removeTeam, renameTeam } = useLeagueTeams({ leagueId });
-  const [newTeamName, setNewTeamName] = useState("");
+  const { teams, loading: teamsLoading, resizeLeague, renameTeam, getFilledCount, getTeamNames } = useLeagueTeams({ leagueId });
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editTeamName, setEditTeamName] = useState("");
+  const [isResizing, setIsResizing] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
-  const handleAddTeam = async () => {
-    const trimmedName = newTeamName.trim();
-    if (!trimmedName) return;
-    
-    if (trimmedName.length < 2) {
-      toast({ title: "Team name must be at least 2 characters", variant: "destructive" });
-      return;
-    }
-    
-    if (teams.some(t => t.name.toLowerCase() === trimmedName.toLowerCase())) {
-      toast({ title: "Team name already exists", variant: "destructive" });
-      return;
-    }
-    
-    if (teams.length >= 10) {
-      toast({ title: "Maximum 10 teams allowed", variant: "destructive" });
+  // Fetch invite code
+  useState(() => {
+    const fetchInviteCode = async () => {
+      const { data } = await supabase
+        .from('leagues')
+        .select('invite_code')
+        .eq('id', leagueId)
+        .maybeSingle();
+      if (data) setInviteCode(data.invite_code);
+    };
+    fetchInviteCode();
+  });
+
+  const filledCount = getFilledCount();
+  const leagueSize = teams.length;
+
+  const handleResizeLeague = async (delta: number) => {
+    const newSize = leagueSize + delta;
+    if (newSize < 2 || newSize > 20) return;
+    if (newSize < filledCount) {
+      toast({ 
+        title: "Cannot shrink league", 
+        description: `${filledCount} slots are already filled.`, 
+        variant: "destructive" 
+      });
       return;
     }
 
+    setIsResizing(true);
     try {
-      await addTeam(trimmedName);
-      setNewTeamName("");
-      // Add to draft order
-      onSetDraftOrder([...draftOrder, trimmedName]);
-      toast({ title: "Team added!", description: `${trimmedName} has been added.` });
-    } catch (err) {
-      toast({ title: "Failed to add team", variant: "destructive" });
-    }
-  };
-
-  const handleRemoveTeam = async (teamId: string, teamName: string, isClaimed: boolean) => {
-    if (isClaimed) {
-      toast({ title: "Cannot remove claimed team", description: "This team is already claimed by a user.", variant: "destructive" });
-      return;
-    }
-    
-    if (teams.length <= 2) {
-      toast({ title: "Minimum 2 teams required", variant: "destructive" });
-      return;
-    }
-
-    if (!confirm(`Remove "${teamName}"? This cannot be undone.`)) return;
-
-    try {
-      await removeTeam(teamId);
-      // Remove from draft order
-      onSetDraftOrder(draftOrder.filter(p => p !== teamName));
-      toast({ title: "Team removed!", description: `${teamName} has been removed.` });
-    } catch (err) {
-      toast({ title: "Failed to remove team", variant: "destructive" });
+      await resizeLeague(newSize);
+      // Update draft order with new team names
+      const newTeamNames = getTeamNames();
+      onSetDraftOrder(newTeamNames);
+      toast({ title: `League size updated to ${newSize}` });
+    } catch (err: any) {
+      toast({ title: "Failed to resize league", description: err.message, variant: "destructive" });
+    } finally {
+      setIsResizing(false);
     }
   };
 
@@ -146,6 +137,13 @@ export const SetupMode = ({
     }
   };
 
+  const copyInviteLink = () => {
+    if (!inviteCode) return;
+    const link = `${window.location.origin}/join/${inviteCode}`;
+    navigator.clipboard.writeText(link);
+    toast({ title: "Invite link copied!" });
+  };
+
   const handleAddContestant = () => {
     if (!name.trim()) return;
     onAddContestant(
@@ -167,7 +165,6 @@ export const SetupMode = ({
     let addedCount = 0;
 
     lines.forEach((line) => {
-      // Support CSV format: Name, Age, Location, Tribe
       const parts = line.split(',').map(p => p.trim());
       const contestantName = parts[0];
       const contestantAge = parts[1] ? Number(parts[1]) : undefined;
@@ -198,7 +195,6 @@ export const SetupMode = ({
         const csvData = event.target?.result as string;
         const lines = csvData.split('\n').filter(line => line.trim());
         
-        // Skip header if present
         const startIndex = lines[0].toLowerCase().includes('name') ? 1 : 0;
         let addedCount = 0;
 
@@ -228,7 +224,7 @@ export const SetupMode = ({
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,6 +252,30 @@ export const SetupMode = ({
   };
 
   const canStartDraft = contestants.length >= 16 && !contestants.some((c) => c.owner);
+
+  // Editing contestant handlers
+  const startEditing = (contestant: Contestant) => {
+    setEditingId(contestant.id);
+    setEditName(contestant.name);
+    setEditTribe(contestant.tribe || "");
+    setEditAge(contestant.age?.toString() || "");
+    setEditLocation(contestant.location || "");
+  };
+
+  const saveEdit = (id: string) => {
+    if (!editName.trim()) return;
+    onUpdateContestant(id, {
+      name: editName.trim(),
+      tribe: editTribe.trim() || undefined,
+      age: editAge ? Number(editAge) : undefined,
+      location: editLocation.trim() || undefined,
+    });
+    setEditingId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
 
   return (
     <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
@@ -303,6 +323,125 @@ export const SetupMode = ({
               </Button>
             </div>
           </div>
+        </Card>
+
+        {/* League Size & Members */}
+        <Card className="glass p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-foreground">👥 League Size</h2>
+            <span className="text-sm text-muted-foreground">
+              {filledCount}/{leagueSize} filled
+            </span>
+          </div>
+
+          {teamsLoading ? (
+            <p className="text-muted-foreground">Loading...</p>
+          ) : (
+            <>
+              {/* Size controls */}
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  onClick={() => handleResizeLeague(-1)}
+                  variant="outline"
+                  size="icon"
+                  disabled={isResizing || leagueSize <= 2 || leagueSize <= filledCount}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-4xl font-bold text-primary min-w-[60px] text-center">
+                  {leagueSize}
+                </span>
+                <Button
+                  onClick={() => handleResizeLeague(1)}
+                  variant="outline"
+                  size="icon"
+                  disabled={isResizing || leagueSize >= 20}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Team slots */}
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {teams.map((team) => {
+                  const isEditing = editingTeamId === team.id;
+                  const isFilled = !!team.user_id;
+
+                  return (
+                    <div key={team.id} className="glass p-3 rounded-lg flex items-center gap-3">
+                      <span className="font-bold text-accent w-6">{team.position}.</span>
+                      
+                      {isEditing ? (
+                        <div className="flex-1 flex items-center gap-2">
+                          <Input
+                            value={editTeamName}
+                            onChange={(e) => setEditTeamName(e.target.value)}
+                            className="h-8 flex-1"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleRenameTeam(team.id, team.name);
+                              if (e.key === "Escape") setEditingTeamId(null);
+                            }}
+                          />
+                          <Button onClick={() => handleRenameTeam(team.id, team.name)} size="sm" variant="default">
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button onClick={() => setEditingTeamId(null)} size="sm" variant="ghost">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex-1">
+                            <span className="font-medium">{team.name}</span>
+                            {isFilled ? (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                — {team.user_email || 'Assigned'}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/60 ml-2 italic">
+                                (open slot)
+                              </span>
+                            )}
+                          </div>
+                          {!isFilled && (
+                            <Button
+                              onClick={() => {
+                                setEditingTeamId(team.id);
+                                setEditTeamName(team.name);
+                              }}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Invite code */}
+              {inviteCode && (
+                <div className="pt-2 border-t border-border">
+                  <Label className="text-xs text-muted-foreground">Invite Code</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="bg-muted px-3 py-2 rounded-md font-mono text-lg tracking-widest flex-1 text-center">
+                      {inviteCode}
+                    </code>
+                    <Button onClick={copyInviteLink} variant="outline" size="sm">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Share this code. Users are auto-assigned to the next open slot when they join.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </Card>
 
         {/* Draft Settings */}
@@ -374,372 +513,219 @@ export const SetupMode = ({
             </div>
           </div>
         </Card>
-
-        {/* Teams Management */}
-        <Card className="glass p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-foreground">👥 Teams ({teams.length})</h2>
-          </div>
-
-          {teamsLoading ? (
-            <p className="text-muted-foreground">Loading teams...</p>
-          ) : (
-            <div className="space-y-2">
-              {teams.map((team, index) => {
-                const isEditing = editingTeamId === team.id;
-                const isClaimed = !!team.user_id;
-
-                return (
-                  <div key={team.id} className="glass p-3 rounded-lg flex items-center gap-3">
-                    <span className="font-bold text-accent w-6">{index + 1}.</span>
-                    
-                    {isEditing ? (
-                      <div className="flex-1 flex items-center gap-2">
-                        <Input
-                          value={editTeamName}
-                          onChange={(e) => setEditTeamName(e.target.value)}
-                          className="h-8 flex-1"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleRenameTeam(team.id, team.name);
-                            if (e.key === "Escape") setEditingTeamId(null);
-                          }}
-                        />
-                        <Button
-                          onClick={() => handleRenameTeam(team.id, team.name)}
-                          size="sm"
-                          variant="success"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          onClick={() => setEditingTeamId(null)}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex-1">
-                          <span className="font-medium">{team.name}</span>
-                          {isClaimed && (
-                            <span className="text-xs text-muted-foreground ml-2">(Claimed)</span>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            onClick={() => {
-                              setEditingTeamId(team.id);
-                              setEditTeamName(team.name);
-                            }}
-                            size="sm"
-                            variant="ghost"
-                            disabled={isClaimed}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            onClick={() => handleRemoveTeam(team.id, team.name, isClaimed)}
-                            size="sm"
-                            variant="ghost"
-                            disabled={isClaimed || teams.length <= 2}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Add new team */}
-              <div className="flex gap-2 pt-2">
-                <Input
-                  placeholder="New team name"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddTeam()}
-                  className="glass flex-1"
-                  disabled={teams.length >= 10}
-                />
-                <Button
-                  onClick={handleAddTeam}
-                  variant="outline"
-                  disabled={!newTeamName.trim() || teams.length >= 10}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Team
-                </Button>
-              </div>
-
-              {teams.length >= 10 && (
-                <p className="text-xs text-muted-foreground">Maximum 10 teams reached</p>
-              )}
-            </div>
-          )}
-        </Card>
       </div>
 
       {/* Add Contestants */}
       <Card className="glass p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">➕ Add Contestants</h2>
-          <Button
-            onClick={() => setShowBulkImport(!showBulkImport)}
-            variant="outline"
-            size="sm"
-          >
-            <List className="mr-2 h-4 w-4" />
-            {showBulkImport ? "Single Add" : "Bulk Import"}
-          </Button>
+          <h2 className="text-2xl font-bold text-foreground">🏝️ Add Contestants</h2>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowBulkImport(!showBulkImport)}
+              variant="outline"
+              size="sm"
+            >
+              <List className="mr-2 h-4 w-4" />
+              Bulk Import
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <label htmlFor="csv-import" className="cursor-pointer">
+                <Upload className="mr-2 h-4 w-4" />
+                CSV Import
+                <input
+                  id="csv-import"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVFileImport}
+                  className="hidden"
+                />
+              </label>
+            </Button>
+          </div>
         </div>
 
         {showBulkImport ? (
           <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Paste contestant data (one per line). Format: Name, Age, Location, Tribe
+            </p>
+            <Textarea
+              placeholder="John Doe, 32, California, Ulong&#10;Jane Smith, 28, Texas, Koror"
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              className="glass min-h-[120px]"
+            />
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" asChild>
-                <label htmlFor="csv-upload" className="cursor-pointer">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload CSV
-                  <input
-                    id="csv-upload"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVFileImport}
-                    className="hidden"
-                  />
-                </label>
+              <Button onClick={handleBulkImport} className="flex-1">
+                Import All
               </Button>
-              <div className="flex-1" />
+              <Button onClick={() => setShowBulkImport(false)} variant="outline">
+                Cancel
+              </Button>
             </div>
-            <div>
-              <Label htmlFor="bulk-import">Paste contestant list (CSV format)</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Format: Name, Age, Location, Tribe (one per line)
-              </p>
-              <Textarea
-                id="bulk-import"
-                placeholder="Example:&#10;Stephanie Berger, 35, Miami FL, Vula&#10;Kyle Fraser, 28, Austin TX, Civa&#10;Eva Erickson, 42, Seattle WA"
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                className="glass min-h-[200px] font-mono text-sm"
-              />
-            </div>
-            <Button onClick={handleBulkImport} variant="success" className="w-full">
-              Import All Contestants
-            </Button>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="contestant-name">Name *</Label>
+          <div className="grid md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                placeholder="Enter name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
+                className="glass mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="age">Age</Label>
+              <Input
+                id="age"
+                type="number"
+                placeholder="Age"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
+                className="glass mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                placeholder="City, State"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
+                className="glass mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="tribe">Tribe</Label>
+              <div className="flex gap-2 mt-2">
                 <Input
-                  id="contestant-name"
-                  placeholder="Contestant Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
-                  className="glass mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="contestant-age">Age</Label>
-                <Input
-                  id="contestant-age"
-                  type="number"
-                  placeholder="Age"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
-                  className="glass mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="contestant-location">Location</Label>
-                <Input
-                  id="contestant-location"
-                  placeholder="City, State"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
-                  className="glass mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="contestant-tribe">Tribe</Label>
-                <Input
-                  id="contestant-tribe"
-                  placeholder="Tribe Name"
+                  id="tribe"
+                  placeholder="Tribe name"
                   value={tribe}
                   onChange={(e) => setTribe(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddContestant()}
-                  className="glass mt-1"
+                  className="glass flex-1"
                 />
+                <Button onClick={handleAddContestant} disabled={!name.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-            <Button onClick={handleAddContestant} variant="success" className="w-full">
-              Add Contestant
-            </Button>
-          </>
+          </div>
         )}
-
-        <div className="text-sm text-muted-foreground">
-          {contestants.length} contestants added (minimum 16 required)
-        </div>
       </Card>
 
       {/* Contestants List */}
       {contestants.length > 0 && (
         <Card className="glass p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-foreground">👥 Contestants</h2>
-            <Button
-              onClick={() => {
-                if (confirm(`Clear all ${contestants.length} contestants? This cannot be undone.`)) {
-                  onSetContestants([]);
-                  toast({
-                    title: "Contestants Cleared! 🗑️",
-                    description: "All contestants have been removed.",
-                  });
-                }
-              }}
-              variant="destructive"
-              size="sm"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Clear All
-            </Button>
-          </div>
-          
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {contestants.map((contestant) => {
-              const isEditing = editingId === contestant.id;
-              
-              return (
-                <div
-                  key={contestant.id}
-                  className="glass-strong p-4 rounded-lg"
-                >
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Name"
-                        className="h-8"
-                      />
-                      <Input
-                        value={editTribe}
-                        onChange={(e) => setEditTribe(e.target.value)}
-                        placeholder="Tribe (optional)"
-                        className="h-8"
-                      />
+          <h2 className="text-2xl font-bold text-foreground">
+            📋 Contestants ({contestants.length})
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {contestants.map((contestant) => (
+              <div
+                key={contestant.id}
+                className="glass p-3 rounded-lg flex items-center gap-3"
+              >
+                {editingId === contestant.id ? (
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                      className="h-8"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
                       <Input
                         value={editAge}
                         onChange={(e) => setEditAge(e.target.value)}
-                        placeholder="Age (optional)"
+                        placeholder="Age"
                         type="number"
-                        className="h-8"
+                        className="h-8 w-16"
                       />
                       <Input
                         value={editLocation}
                         onChange={(e) => setEditLocation(e.target.value)}
-                        placeholder="Location (optional)"
-                        className="h-8"
+                        placeholder="Location"
+                        className="h-8 flex-1"
                       />
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => {
-                            if (editName.trim()) {
-                              onUpdateContestant(contestant.id, {
-                                name: editName.trim(),
-                                tribe: editTribe.trim() || undefined,
-                                age: editAge ? parseInt(editAge) : undefined,
-                                location: editLocation.trim() || undefined,
-                              });
-                              setEditingId(null);
-                              toast({
-                                title: "Contestant Updated! ✏️",
-                                description: `${editName} has been updated.`,
-                              });
-                            }
-                          }}
-                          size="sm"
-                          variant="success"
-                          className="flex-1"
-                        >
-                          <Check className="h-4 w-4 mr-1" />
-                          Save
-                        </Button>
-                        <Button
-                          onClick={() => setEditingId(null)}
-                          size="sm"
-                          variant="ghost"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                      <Input
+                        value={editTribe}
+                        onChange={(e) => setEditTribe(e.target.value)}
+                        placeholder="Tribe"
+                        className="h-8 flex-1"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={() => saveEdit(contestant.id)} size="sm" className="flex-1">
+                        <Check className="h-4 w-4 mr-1" /> Save
+                      </Button>
+                      <Button onClick={cancelEdit} size="sm" variant="outline" className="flex-1">
+                        <X className="h-4 w-4 mr-1" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1">
+                      <div className="font-medium">{contestant.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {[
+                          contestant.age && `${contestant.age}`,
+                          contestant.location,
+                          contestant.tribe,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")}
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{contestant.name}</p>
-                        <div className="text-sm text-muted-foreground space-y-0.5">
-                          {contestant.age && <p>Age: {contestant.age}</p>}
-                          {contestant.location && <p className="truncate">{contestant.location}</p>}
-                          {contestant.tribe && <p>Tribe: {contestant.tribe}</p>}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          onClick={() => {
-                            setEditingId(contestant.id);
-                            setEditName(contestant.name);
-                            setEditTribe(contestant.tribe || "");
-                            setEditAge(contestant.age?.toString() || "");
-                            setEditLocation(contestant.location || "");
-                          }}
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          onClick={() => onDeleteContestant(contestant.id)}
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <div className="flex gap-1">
+                      <Button
+                        onClick={() => startEditing(contestant)}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={() => onDeleteContestant(contestant.id)}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </>
+                )}
+              </div>
+            ))}
           </div>
         </Card>
       )}
 
-      {/* Start Draft Button */}
-      <div className="flex justify-center">
+      {/* Start Draft */}
+      <Card className="glass p-6">
         <Button
           onClick={onStartDraft}
           disabled={!canStartDraft}
+          className="w-full py-6 text-xl font-bold"
           size="lg"
-          variant="accent"
-          className="text-xl px-12 py-6"
         >
           <Play className="mr-2 h-6 w-6" />
-          Start Draft
+          Start Draft ({contestants.length}/16 contestants)
         </Button>
-      </div>
+        {!canStartDraft && (
+          <p className="text-center text-muted-foreground mt-2">
+            Need at least 16 contestants to start the draft
+          </p>
+        )}
+      </Card>
     </div>
   );
 };
