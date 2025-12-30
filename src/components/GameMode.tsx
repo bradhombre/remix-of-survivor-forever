@@ -3,11 +3,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Player, Contestant, ScoringEvent, SCORING_ACTIONS } from "@/types/survivor";
-import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, Grid3x3, List, Upload, User, Trophy, Scale, Flame, TreePalm } from "lucide-react";
+import { ChevronUp, ChevronDown, Undo, Save, Plus, Minus, Search, ChevronRight, Grid3x3, List, Upload, User, Trophy, Scale, Flame, TreePalm, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
 import { getPoints, isActionEnabled, getCustomActions, CustomScoringAction, ScoringConfig } from "@/lib/scoring";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,6 +86,7 @@ export const GameMode = ({
   const [showJuryDialog, setShowJuryDialog] = useState(false);
   const [showSurvivorsDialog, setShowSurvivorsDialog] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   // Get custom actions from scoring config
   const customActions = getCustomActions(scoringConfig);
@@ -289,6 +304,7 @@ export const GameMode = ({
   };
 
   return (
+    <TooltipProvider>
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
       {/* Header */}
       <div className="glass-strong p-6 rounded-2xl space-y-4">
@@ -300,137 +316,346 @@ export const GameMode = ({
             <p className="text-muted-foreground">Episode {episode}</p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <div className="flex items-center glass rounded-lg">
-              <Button
-                onClick={() => isAdmin && onEpisodeChange(Math.max(1, episode - 1))}
-                size="icon"
-                variant="ghost"
-                disabled={!isAdmin}
-                className={!isAdmin ? "cursor-not-allowed" : ""}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="px-4 font-bold">Ep {episode}</span>
-              <Button
-                onClick={() => isAdmin && onEpisodeChange(episode + 1)}
-                size="icon"
-                variant="ghost"
-                disabled={!isAdmin}
-                className={!isAdmin ? "cursor-not-allowed" : ""}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          {/* Mobile Layout */}
+          {isMobile ? (
+            <div className="flex flex-col gap-2 w-full mt-2">
+              {/* Row 1: Episode controls + Pre/Post Merge */}
+              <div className="flex items-center gap-2 w-full">
+                <div className="flex items-center glass rounded-lg">
+                  <Button
+                    onClick={() => isAdmin && onEpisodeChange(Math.max(1, episode - 1))}
+                    size="sm"
+                    variant="ghost"
+                    disabled={!isAdmin}
+                    className={!isAdmin ? "cursor-not-allowed" : ""}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="px-2 font-bold text-sm">Ep {episode}</span>
+                  <Button
+                    onClick={() => isAdmin && onEpisodeChange(episode + 1)}
+                    size="sm"
+                    variant="ghost"
+                    disabled={!isAdmin}
+                    className={!isAdmin ? "cursor-not-allowed" : ""}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => isAdmin && onTogglePostMerge()}
+                      variant={isPostMerge ? "accent" : "outline"}
+                      size="sm"
+                      disabled={!isAdmin}
+                      className={!isAdmin ? "cursor-not-allowed" : ""}
+                    >
+                      {isPostMerge ? "🔥 Post" : "🌴 Pre"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle between pre-merge (+5) and post-merge (+10) survival points</TooltipContent>
+                </Tooltip>
+              </div>
+
+              {/* Row 2: Tribal + Actions dropdown (admin) or icon buttons (non-admin) */}
+              <div className="flex items-center gap-2 w-full">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowPredictionDialog(true)}
+                      className="flex-1 gap-1"
+                    >
+                      <Trophy className="h-4 w-4" />
+                      Tribal
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Submit predictions and vote out contestants at tribal council</TooltipContent>
+                </Tooltip>
+
+                {isAdmin && (
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>Admin actions menu</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="end" className="bg-popover border shadow-lg z-50">
+                      <DropdownMenuItem onClick={() => setShowSurvivorsDialog(true)}>
+                        {isPostMerge ? "🔥" : "🌴"} Mark All Survived
+                      </DropdownMenuItem>
+                      {isPostMerge && isActionEnabled("MAKE_JURY", scoringConfig) && (
+                        <DropdownMenuItem onClick={() => setShowJuryDialog(true)}>
+                          ⚖️ Award Jury Points
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={onUndo}>
+                        Undo Last Action
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={onExport}>
+                        Export Game Data
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {!isAdmin && (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" variant="outline" onClick={onUndo}>
+                          <Undo className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Undo last scoring action</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" variant="outline" onClick={onExport}>
+                          <Save className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Export game data</TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
             </div>
+          ) : (
+            /* Desktop Layout */
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center glass rounded-lg">
+                <Button
+                  onClick={() => isAdmin && onEpisodeChange(Math.max(1, episode - 1))}
+                  size="icon"
+                  variant="ghost"
+                  disabled={!isAdmin}
+                  className={!isAdmin ? "cursor-not-allowed" : ""}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="px-4 font-bold">Ep {episode}</span>
+                <Button
+                  onClick={() => isAdmin && onEpisodeChange(episode + 1)}
+                  size="icon"
+                  variant="ghost"
+                  disabled={!isAdmin}
+                  className={!isAdmin ? "cursor-not-allowed" : ""}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
 
-            <Button
-              onClick={() => isAdmin && onTogglePostMerge()}
-              variant={isPostMerge ? "accent" : "outline"}
-              disabled={!isAdmin}
-              className={!isAdmin ? "cursor-not-allowed" : ""}
-            >
-              {isPostMerge ? "Post-Merge 🔥" : "Pre-Merge 🌴"}
-            </Button>
-
-            <Button 
-              onClick={() => setShowPredictionDialog(true)} 
-              variant="default"
-              className="gap-2"
-            >
-              <Trophy className="h-4 w-4" />
-              Tribal Prediction
-            </Button>
-
-            {/* Bulk Survival Points Button - Admin only */}
-            {isAdmin && (
-              <AlertDialog open={showSurvivorsDialog} onOpenChange={setShowSurvivorsDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    {isPostMerge ? <Flame className="h-4 w-4" /> : <TreePalm className="h-4 w-4" />}
-                    {isPostMerge ? "🔥" : "🌴"} Mark Survivors
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => isAdmin && onTogglePostMerge()}
+                    variant={isPostMerge ? "accent" : "outline"}
+                    disabled={!isAdmin}
+                    className={!isAdmin ? "cursor-not-allowed" : ""}
+                  >
+                    {isPostMerge ? "Post-Merge 🔥" : "Pre-Merge 🌴"}
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Award Survival Points</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Award {survivePoints} points ({isPostMerge ? "Post-Merge" : "Pre-Merge"}) to all surviving, owned contestants for Episode {episode}.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="max-h-48 overflow-y-auto space-y-1 my-4">
-                    {getContestantsForSurvivalPoints().map(c => (
-                      <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
-                        <span>{c.name}</span>
-                        <span className="text-muted-foreground">{c.owner}</span>
-                      </div>
-                    ))}
-                    {getContestantsForSurvivalPoints().length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">All contestants already awarded this episode</p>
-                    )}
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleAwardAllSurvivalPoints}
-                      disabled={getContestantsForSurvivalPoints().length === 0}
-                    >
-                      Award {getContestantsForSurvivalPoints().length} Contestant(s)
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+                </TooltipTrigger>
+                <TooltipContent>Toggle between pre-merge (+5) and post-merge (+10) survival points</TooltipContent>
+              </Tooltip>
 
-            {/* Bulk Jury Points Button - Admin only, post-merge only */}
-            {isAdmin && isPostMerge && isActionEnabled("MAKE_JURY", scoringConfig) && (
-              <AlertDialog open={showJuryDialog} onOpenChange={setShowJuryDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Scale className="h-4 w-4" />
-                    ⚖️ Award Jury
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setShowPredictionDialog(true)}
+                    variant="default"
+                    className="gap-2"
+                  >
+                    <Trophy className="h-4 w-4" />
+                    Tribal Prediction
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Award Jury Points</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Award {getPoints("MAKE_JURY", scoringConfig)} points to all surviving, owned contestants who haven't already received jury points.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="max-h-48 overflow-y-auto space-y-1 my-4">
-                    {getContestantsForJuryPoints().map(c => (
-                      <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
-                        <span>{c.name}</span>
-                        <span className="text-muted-foreground">{c.owner}</span>
-                      </div>
-                    ))}
-                    {getContestantsForJuryPoints().length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No eligible contestants</p>
-                    )}
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleAwardAllJuryPoints}
-                      disabled={getContestantsForJuryPoints().length === 0}
-                    >
-                      Award {getContestantsForJuryPoints().length} Contestant(s)
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+                </TooltipTrigger>
+                <TooltipContent>Submit predictions and vote out contestants at tribal council</TooltipContent>
+              </Tooltip>
 
-            <Button onClick={onUndo} variant="outline" size="icon">
-              <Undo className="h-4 w-4" />
-            </Button>
+              {/* Bulk Survival Points Button - Admin only */}
+              {isAdmin && (
+                <AlertDialog open={showSurvivorsDialog} onOpenChange={setShowSurvivorsDialog}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" className="gap-2">
+                          {isPostMerge ? <Flame className="h-4 w-4" /> : <TreePalm className="h-4 w-4" />}
+                          {isPostMerge ? "🔥" : "🌴"} Mark Survivors
+                        </Button>
+                      </AlertDialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Award survival points to all remaining contestants this episode</TooltipContent>
+                  </Tooltip>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Award Survival Points</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Award {survivePoints} points ({isPostMerge ? "Post-Merge" : "Pre-Merge"}) to all surviving, owned contestants for Episode {episode}.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="max-h-48 overflow-y-auto space-y-1 my-4">
+                      {getContestantsForSurvivalPoints().map(c => (
+                        <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
+                          <span>{c.name}</span>
+                          <span className="text-muted-foreground">{c.owner}</span>
+                        </div>
+                      ))}
+                      {getContestantsForSurvivalPoints().length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">All contestants already awarded this episode</p>
+                      )}
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleAwardAllSurvivalPoints}
+                        disabled={getContestantsForSurvivalPoints().length === 0}
+                      >
+                        Award {getContestantsForSurvivalPoints().length} Contestant(s)
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
 
-            <Button onClick={onExport} variant="outline" size="icon">
-              <Save className="h-4 w-4" />
-            </Button>
-          </div>
+              {/* Bulk Jury Points Button - Admin only, post-merge only */}
+              {isAdmin && isPostMerge && isActionEnabled("MAKE_JURY", scoringConfig) && (
+                <AlertDialog open={showJuryDialog} onOpenChange={setShowJuryDialog}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" className="gap-2">
+                          <Scale className="h-4 w-4" />
+                          ⚖️ Award Jury
+                        </Button>
+                      </AlertDialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Award +50 jury points to all surviving contestants</TooltipContent>
+                  </Tooltip>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Award Jury Points</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Award {getPoints("MAKE_JURY", scoringConfig)} points to all surviving, owned contestants who haven't already received jury points.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="max-h-48 overflow-y-auto space-y-1 my-4">
+                      {getContestantsForJuryPoints().map(c => (
+                        <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
+                          <span>{c.name}</span>
+                          <span className="text-muted-foreground">{c.owner}</span>
+                        </div>
+                      ))}
+                      {getContestantsForJuryPoints().length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">No eligible contestants</p>
+                      )}
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleAwardAllJuryPoints}
+                        disabled={getContestantsForJuryPoints().length === 0}
+                      >
+                        Award {getContestantsForJuryPoints().length} Contestant(s)
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={onUndo} variant="outline" size="icon">
+                    <Undo className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Undo last scoring action</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={onExport} variant="outline" size="icon">
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Export game data</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* AlertDialogs for Mobile - need to be outside dropdown */}
+      <AlertDialog open={showSurvivorsDialog} onOpenChange={setShowSurvivorsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Award Survival Points</AlertDialogTitle>
+            <AlertDialogDescription>
+              Award {survivePoints} points ({isPostMerge ? "Post-Merge" : "Pre-Merge"}) to all surviving, owned contestants for Episode {episode}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-48 overflow-y-auto space-y-1 my-4">
+            {getContestantsForSurvivalPoints().map(c => (
+              <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
+                <span>{c.name}</span>
+                <span className="text-muted-foreground">{c.owner}</span>
+              </div>
+            ))}
+            {getContestantsForSurvivalPoints().length === 0 && (
+              <p className="text-muted-foreground text-center py-4">All contestants already awarded this episode</p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleAwardAllSurvivalPoints}
+              disabled={getContestantsForSurvivalPoints().length === 0}
+            >
+              Award {getContestantsForSurvivalPoints().length} Contestant(s)
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showJuryDialog} onOpenChange={setShowJuryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Award Jury Points</AlertDialogTitle>
+            <AlertDialogDescription>
+              Award {getPoints("MAKE_JURY", scoringConfig)} points to all surviving, owned contestants who haven't already received jury points.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-48 overflow-y-auto space-y-1 my-4">
+            {getContestantsForJuryPoints().map(c => (
+              <div key={c.id} className="text-sm flex justify-between p-2 glass rounded">
+                <span>{c.name}</span>
+                <span className="text-muted-foreground">{c.owner}</span>
+              </div>
+            ))}
+            {getContestantsForJuryPoints().length === 0 && (
+              <p className="text-muted-foreground text-center py-4">No eligible contestants</p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleAwardAllJuryPoints}
+              disabled={getContestantsForJuryPoints().length === 0}
+            >
+              Award {getContestantsForJuryPoints().length} Contestant(s)
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Final Prediction Dialog */}
       {sessionId && (
@@ -1009,5 +1234,6 @@ export const GameMode = ({
         )}
       </Card>
     </div>
+    </TooltipProvider>
   );
 };
