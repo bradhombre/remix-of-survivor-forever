@@ -19,6 +19,7 @@ import {
 import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
+import { QRCodeSVG } from "qrcode.react";
 
 interface LeagueSettingsProps {
   leagueId: string;
@@ -314,8 +315,8 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
             Share this code with others to let them join your league
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-3 items-center">
+        <CardContent className="space-y-4">
+          <div className="flex gap-3 items-center flex-wrap">
             <Input
               value={league?.invite_code || ""}
               readOnly
@@ -330,6 +331,19 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
               Copy Link
             </Button>
           </div>
+          
+          {league?.invite_code && (
+            <div className="flex flex-col items-center sm:items-start gap-2 pt-2">
+              <p className="text-sm text-muted-foreground">Scan to join:</p>
+              <div className="bg-white p-3 rounded-lg">
+                <QRCodeSVG 
+                  value={`${window.location.origin}/join/${league.invite_code}`}
+                  size={128}
+                  level="M"
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
