@@ -426,6 +426,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_league: {
+        Args: { league_name: string }
+        Returns: {
+          created_at: string | null
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+          scoring_config: Json | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leagues"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      generate_invite_code: { Args: never; Returns: string }
       has_league_role: {
         Args: { _league_id: string; _roles: string[]; _user_id: string }
         Returns: boolean
@@ -442,6 +460,22 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      make_super_admin: {
+        Args: { user_uuid: string }
+        Returns: {
+          id: string
+          joined_at: string | null
+          league_id: string
+          role: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "league_memberships"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "user"
