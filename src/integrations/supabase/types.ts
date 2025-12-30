@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           final_standings: Json
           id: string
+          league_id: string | null
           scoring_events: Json
           season: number
         }
@@ -30,6 +31,7 @@ export type Database = {
           created_at?: string
           final_standings: Json
           id?: string
+          league_id?: string | null
           scoring_events: Json
           season: number
         }
@@ -39,10 +41,19 @@ export type Database = {
           created_at?: string
           final_standings?: Json
           id?: string
+          league_id?: string | null
           scoring_events?: Json
           season?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "archived_seasons_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contestants: {
         Row: {
@@ -264,6 +275,41 @@ export type Database = {
           },
         ]
       }
+      league_teams: {
+        Row: {
+          created_at: string | null
+          id: string
+          league_id: string
+          name: string
+          position: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          league_id: string
+          name: string
+          position: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          league_id?: string
+          name?: string
+          position?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_teams_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leagues: {
         Row: {
           created_at: string | null
@@ -272,6 +318,7 @@ export type Database = {
           name: string
           owner_id: string
           scoring_config: Json | null
+          team_count: number | null
         }
         Insert: {
           created_at?: string | null
@@ -280,6 +327,7 @@ export type Database = {
           name: string
           owner_id: string
           scoring_config?: Json | null
+          team_count?: number | null
         }
         Update: {
           created_at?: string | null
@@ -288,6 +336,7 @@ export type Database = {
           name?: string
           owner_id?: string
           scoring_config?: Json | null
+          team_count?: number | null
         }
         Relationships: []
       }
@@ -426,6 +475,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_team: {
+        Args: { team_id: string }
+        Returns: {
+          created_at: string | null
+          id: string
+          league_id: string
+          name: string
+          position: number
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "league_teams"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_league: {
         Args: { league_name: string }
         Returns: {
@@ -435,6 +501,7 @@ export type Database = {
           name: string
           owner_id: string
           scoring_config: Json | null
+          team_count: number | null
         }
         SetofOptions: {
           from: "*"
@@ -444,6 +511,23 @@ export type Database = {
         }
       }
       generate_invite_code: { Args: never; Returns: string }
+      get_available_teams: {
+        Args: { league_uuid: string }
+        Returns: {
+          created_at: string | null
+          id: string
+          league_id: string
+          name: string
+          position: number
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "league_teams"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_league_role: {
         Args: { _league_id: string; _roles: string[]; _user_id: string }
         Returns: boolean

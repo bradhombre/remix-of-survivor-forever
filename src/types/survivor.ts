@@ -1,4 +1,5 @@
-export type Player = "Brad" | "Coco" | "Kalin" | "Roy";
+// Player is now dynamic per league - it's a string representing the team name
+export type Player = string;
 
 export interface Contestant {
   id: string;
@@ -46,7 +47,9 @@ export interface GameState {
   archivedSeasons: ArchivedSeason[];
 }
 
-export const PLAYERS: Player[] = ["Brad", "Coco", "Kalin", "Roy"];
+// Default players are no longer hardcoded - they come from league_teams table
+// This is kept for backward compatibility but should not be used for new code
+export const PLAYERS: Player[] = [];
 
 export const SCORING_ACTIONS = {
   FIND_IDOL: { label: "Find Idol 🗿", points: 20, emoji: "🗿" },

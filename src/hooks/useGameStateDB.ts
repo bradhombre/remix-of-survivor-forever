@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GameState, Player, Contestant, ScoringEvent, DraftType } from "@/types/survivor";
 import { toast } from "sonner";
@@ -9,31 +9,52 @@ interface UseGameStateDBOptions {
   leagueId?: string;
 }
 
+interface LeagueTeam {
+  id: string;
+  name: string;
+  position: number;
+  user_id: string | null;
+}
+
 export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   const { leagueId } = options;
   
+  const [leagueTeams, setLeagueTeams] = useState<LeagueTeam[]>([]);
   const [state, setState] = useState<GameState>({
     mode: (localStorage.getItem(LOCAL_MODE_KEY) as GameState["mode"]) || "setup",
     season: 49,
     episode: 1,
     isPostMerge: false,
     contestants: [],
-    draftOrder: ["Brad", "Coco", "Kalin", "Roy"],
+    draftOrder: [],
     draftType: "snake",
     currentDraftIndex: 0,
     scoringEvents: [],
     cryingThisEpisode: new Set(),
-    playerProfiles: {
-      Brad: {},
-      Coco: {},
-      Kalin: {},
-      Roy: {},
-    },
+    playerProfiles: {},
     archivedSeasons: [],
   });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [scoringConfig, setScoringConfig] = useState<Record<string, number> | null>(null);
+
+  // Fetch league teams
+  const fetchLeagueTeams = useCallback(async () => {
+    if (!leagueId) return [];
+    
+    const { data, error } = await supabase
+      .from('league_teams')
+      .select('*')
+      .eq('league_id', leagueId)
+      .order('position', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching league teams:', error);
+      return [];
+    }
+    
+    return data || [];
+  }, [leagueId]);
 
   // Initialize or load session for the specific league
   useEffect(() => {
@@ -44,6 +65,10 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
 
     const initSession = async () => {
       try {
+        // Get league teams first
+        const teams = await fetchLeagueTeams();
+        setLeagueTeams(teams);
+
         // Get the game session for this specific league
         const { data: leagueSession, error: queryError } = await supabase
           .from("game_sessions")
@@ -63,7 +88,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         if (leagueSession) {
           console.log("Loading league session:", leagueSession.id);
           setSessionId(leagueSession.id);
-          await loadGameState(leagueSession.id);
+          await loadGameState(leagueSession.id, teams);
           
           // Fetch league's scoring config
           const { data: leagueData } = await supabase
@@ -92,11 +117,13 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     };
 
     initSession();
-  }, [leagueId]);
+  }, [leagueId, fetchLeagueTeams]);
 
   // Load game state from database
-  const loadGameState = async (sid: string) => {
+  const loadGameState = async (sid: string, teams?: LeagueTeam[]) => {
     try {
+      const teamsToUse = teams || leagueTeams;
+      
       const [sessionData, contestantsData, scoringData, draftData, cryingData, profilesData, archivedData] = await Promise.all([
         supabase.from("game_sessions").select("*").eq("id", sid).single(),
         supabase.from("contestants").select("*").eq("session_id", sid),
@@ -104,14 +131,25 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         supabase.from("draft_order").select("*").eq("session_id", sid).order("position", { ascending: true }),
         supabase.from("crying_contestants").select("*").eq("session_id", sid),
         supabase.from("player_profiles").select("*").eq("session_id", sid),
-        supabase.from("archived_seasons").select("*").order("created_at", { ascending: false }),
+        leagueId 
+          ? supabase.from("archived_seasons").select("*").eq("league_id", leagueId).order("created_at", { ascending: false })
+          : supabase.from("archived_seasons").select("*").order("created_at", { ascending: false }),
       ]);
 
       const session = sessionData.data;
       const contestants = contestantsData.data || [];
       console.log('Loaded contestants from DB:', contestants.length, contestants.map(c => ({ name: c.name, owner: c.owner, pick: c.pick_number })));
       const scoringEvents = scoringData.data || [];
-      const draftOrder = (draftData.data || []).map((d) => d.player_name);
+      
+      // Use draft_order table if populated, otherwise use league teams
+      let draftOrder: string[];
+      if (draftData.data && draftData.data.length > 0) {
+        draftOrder = draftData.data.map((d) => d.player_name);
+      } else {
+        // Initialize from league teams
+        draftOrder = teamsToUse.map(t => t.name);
+      }
+      
       // Only include crying contestants for the CURRENT episode
       const currentEpisode = session?.episode || 1;
       const crying = new Set(
@@ -119,10 +157,20 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
           .filter((c) => c.episode === currentEpisode)
           .map((c) => c.contestant_id)
       );
+      
+      // Build player profiles from both DB and league teams
       const profiles = (profilesData.data || []).reduce((acc, p) => {
         acc[p.player_name] = { avatar: p.avatar };
         return acc;
       }, {} as Record<Player, { avatar?: string }>);
+      
+      // Ensure all teams have a profile entry
+      teamsToUse.forEach(team => {
+        if (!profiles[team.name]) {
+          profiles[team.name] = {};
+        }
+      });
+      
       const archived = (archivedData.data || []).map((a) => ({
         season: a.season,
         contestants: (a.contestants as any) as Contestant[],
@@ -324,19 +372,21 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     if (!sessionId) return;
     
     const { draftOrder, currentDraftIndex, draftType } = state;
-    const totalPicks = 16;
+    const teamCount = draftOrder.length;
+    const picksPerTeam = 4; // Could be made configurable
+    const totalPicks = teamCount * picksPerTeam;
 
-    if (currentDraftIndex >= totalPicks) return;
+    if (currentDraftIndex >= totalPicks || teamCount === 0) return;
 
     // Determine owner using snake draft logic
     let owner: Player;
     if (draftType === "snake") {
-      const round = Math.floor(currentDraftIndex / 4);
-      const posInRound = currentDraftIndex % 4;
-      owner = round % 2 === 0 ? draftOrder[posInRound] : draftOrder[3 - posInRound];
+      const round = Math.floor(currentDraftIndex / teamCount);
+      const posInRound = currentDraftIndex % teamCount;
+      owner = round % 2 === 0 ? draftOrder[posInRound] : draftOrder[teamCount - 1 - posInRound];
       console.log(`Snake draft - Pick ${currentDraftIndex + 1}: Round ${round}, Pos ${posInRound}, Owner: ${owner}`);
     } else {
-      owner = draftOrder[currentDraftIndex % 4];
+      owner = draftOrder[currentDraftIndex % teamCount];
     }
 
     const pickNumber = currentDraftIndex + 1;
@@ -560,7 +610,8 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
 
     // Archive current season if there's data
     if (state.contestants.length > 0 && state.contestants.some((c) => c.owner)) {
-      const leaderboard = (["Brad", "Coco", "Kalin", "Roy"] as Player[])
+      // Use dynamic teams from draftOrder
+      const leaderboard = state.draftOrder
         .map((player) => {
           const playerContestants = state.contestants.filter((c) => c.owner === player);
           const contestantIds = playerContestants.map((c) => c.id);
@@ -581,6 +632,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         scoring_events: state.scoringEvents as any,
         final_standings: leaderboard as any,
         archived_at: Date.now(),
+        league_id: leagueId,
       });
     }
 
