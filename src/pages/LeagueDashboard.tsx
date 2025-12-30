@@ -23,6 +23,7 @@ const LeagueDashboard = () => {
     state,
     loading: gameLoading,
     sessionId,
+    scoringConfig,
     setMode,
     setSeason,
     setEpisode,
@@ -258,6 +259,7 @@ const LeagueDashboard = () => {
           scoringEvents={state.scoringEvents}
           cryingThisEpisode={state.cryingThisEpisode}
           playerProfiles={state.playerProfiles}
+          scoringConfig={scoringConfig}
           isAdmin={isAdmin}
           playerName={playerName}
           sessionId={sessionId || undefined}

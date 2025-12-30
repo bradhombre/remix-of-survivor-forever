@@ -33,6 +33,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [scoringConfig, setScoringConfig] = useState<Record<string, number> | null>(null);
 
   // Initialize or load session for the specific league
   useEffect(() => {
@@ -63,6 +64,18 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
           console.log("Loading league session:", leagueSession.id);
           setSessionId(leagueSession.id);
           await loadGameState(leagueSession.id);
+          
+          // Fetch league's scoring config
+          const { data: leagueData } = await supabase
+            .from("leagues")
+            .select("scoring_config")
+            .eq("id", leagueId)
+            .maybeSingle();
+          
+          if (leagueData?.scoring_config) {
+            setScoringConfig(leagueData.scoring_config as Record<string, number>);
+          }
+          
           setLoading(false);
           return;
         }
@@ -591,6 +604,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     state,
     loading,
     sessionId,
+    scoringConfig,
     setState,
     resetState,
     setMode,
