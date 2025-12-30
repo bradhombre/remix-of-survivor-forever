@@ -142,24 +142,58 @@ export default function Leagues() {
         </div>
 
         {memberships.length === 0 ? (
-          <Card className="max-w-md mx-auto mt-16">
-            <CardContent className="pt-6 text-center">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-xl font-semibold mb-2">No Leagues Yet</h2>
-              <p className="text-muted-foreground mb-6">
-                Create a new league to start playing with friends, or join an existing one with an invite code.
+          <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-foreground mb-3">Welcome to Survivor Fantasy!</h2>
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                Draft contestants, earn points, and compete with friends to see who has the best Survivor instincts.
               </p>
-              <div className="flex gap-3 justify-center">
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create League
-                </Button>
-                <Button variant="outline" onClick={() => setJoinOpen(true)}>
-                  Join League
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            
+            <div className="grid gap-6 sm:grid-cols-2 max-w-2xl w-full">
+              <Card 
+                className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg group"
+                onClick={() => setCreateOpen(true)}
+              >
+                <CardHeader className="text-center pb-2">
+                  <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Crown className="h-7 w-7 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl">Create a League</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Start your own fantasy league and invite friends. You'll be the league admin with full control over settings and gameplay.
+                  </p>
+                  <Button className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create League
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg group"
+                onClick={() => setJoinOpen(true)}
+              >
+                <CardHeader className="text-center pb-2">
+                  <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-secondary/50 flex items-center justify-center group-hover:bg-secondary transition-colors">
+                    <Users className="h-7 w-7 text-secondary-foreground" />
+                  </div>
+                  <CardTitle className="text-xl">Join a League</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Have an invite code? Join an existing league and start competing with your group right away.
+                  </p>
+                  <Button variant="outline" className="w-full">
+                    <Users className="h-4 w-4 mr-2" />
+                    Join League
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {memberships.map((membership) => (
