@@ -459,6 +459,10 @@ export type Database = {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
       }
+      is_session_league_member: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       join_league: {
         Args: { invite_code_input: string }
