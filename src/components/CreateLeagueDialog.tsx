@@ -20,7 +20,7 @@ const leagueSchema = z.object({
 interface CreateLeagueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (leagueId: string) => void;
 }
 
 export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeagueDialogProps) {
@@ -44,11 +44,12 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
 
     if (error) {
       toast.error(error.message || 'Failed to create league');
-    } else {
+      setLoading(false);
+    } else if (data?.id) {
       toast.success('League created!');
       setName('');
       onOpenChange(false);
-      onSuccess();
+      onSuccess(data.id);
     }
     setLoading(false);
   };

@@ -195,12 +195,12 @@ export default function Leagues() {
       <CreateLeagueDialog 
         open={createOpen} 
         onOpenChange={setCreateOpen}
-        onSuccess={fetchMemberships}
+        onSuccess={(leagueId) => navigate(`/league/${leagueId}`)}
       />
       <JoinLeagueDialog 
         open={joinOpen} 
         onOpenChange={setJoinOpen}
-        onSuccess={fetchMemberships}
+        onSuccess={(leagueId) => navigate(`/league/${leagueId}`)}
       />
     </div>
   );
