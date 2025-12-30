@@ -7,6 +7,7 @@ export interface LeagueTeam {
   name: string;
   position: number;
   user_id: string | null;
+  user_email?: string | null;
   created_at: string;
 }
 
@@ -29,7 +30,7 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     try {
       const { data, error: fetchError } = await supabase
         .from('league_teams')
-        .select('*')
+        .select('*, profiles:user_id(email)')
         .eq('league_id', leagueId)
         .order('position', { ascending: true });
 
@@ -37,7 +38,18 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
         throw fetchError;
       }
 
-      setTeams(data || []);
+      // Flatten the profile email into user_email
+      const teamsWithEmail = (data || []).map((team: any) => ({
+        id: team.id,
+        league_id: team.league_id,
+        name: team.name,
+        position: team.position,
+        user_id: team.user_id,
+        user_email: team.profiles?.email || null,
+        created_at: team.created_at,
+      }));
+
+      setTeams(teamsWithEmail);
       setError(null);
     } catch (err) {
       console.error('Error fetching teams:', err);
@@ -76,41 +88,18 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     };
   }, [leagueId, fetchTeams]);
 
-  const addTeam = async (name: string) => {
-    if (!leagueId) return null;
-
-    const maxPosition = teams.length > 0 
-      ? Math.max(...teams.map(t => t.position)) 
-      : 0;
-
-    const { data, error: insertError } = await supabase
-      .from('league_teams')
-      .insert({
-        league_id: leagueId,
-        name,
-        position: maxPosition + 1,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    return data;
-  };
-
-  const removeTeam = async (teamId: string) => {
+  const resizeLeague = async (newSize: number) => {
     if (!leagueId) return;
 
-    const { error: deleteError } = await supabase
-      .from('league_teams')
-      .delete()
-      .eq('id', teamId);
+    const { error: resizeError } = await supabase
+      .rpc('resize_league', { league_uuid: leagueId, new_size: newSize });
 
-    if (deleteError) {
-      throw deleteError;
+    if (resizeError) {
+      throw resizeError;
     }
+
+    // Refetch to get updated teams
+    await fetchTeams();
   };
 
   const renameTeam = async (teamId: string, newName: string) => {
@@ -126,23 +115,8 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     }
   };
 
-  const claimTeam = async (teamId: string) => {
-    const { data, error: claimError } = await supabase
-      .rpc('claim_team', { team_id: teamId });
-
-    if (claimError) {
-      throw claimError;
-    }
-
-    return data;
-  };
-
-  const getAvailableTeams = () => {
-    return teams.filter(t => t.user_id === null);
-  };
-
-  const getUserTeam = (userId: string) => {
-    return teams.find(t => t.user_id === userId);
+  const getFilledCount = () => {
+    return teams.filter(t => t.user_id !== null).length;
   };
 
   const getTeamNames = () => {
@@ -153,12 +127,9 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     teams,
     loading,
     error,
-    addTeam,
-    removeTeam,
+    resizeLeague,
     renameTeam,
-    claimTeam,
-    getAvailableTeams,
-    getUserTeam,
+    getFilledCount,
     getTeamNames,
     refetch: fetchTeams,
   };

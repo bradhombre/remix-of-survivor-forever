@@ -580,6 +580,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resize_league: {
+        Args: { league_uuid: string; new_size: number }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
