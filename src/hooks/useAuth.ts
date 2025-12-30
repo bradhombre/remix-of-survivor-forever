@@ -12,30 +12,37 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
+    // Helper to fetch user data
+    const fetchUserData = async (userId: string) => {
+      const [roleResult, mappingResult] = await Promise.all([
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('user_player_mapping')
+          .select('player_name')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
+      
+      setUserRole(roleResult.data?.role ?? 'user');
+      setPlayerName(mappingResult.data?.player_name ?? null);
+      setLoading(false);
+    };
+
+    // Set up auth state listener - MUST be synchronous callback
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        // Only synchronous state updates here
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Fetch user role and player mapping after auth state changes
+        // Defer async operations with setTimeout to prevent React queue issues
         if (session?.user) {
-          setTimeout(async () => {
-            const { data: roleData } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            
-            const { data: mappingData } = await supabase
-              .from('user_player_mapping')
-              .select('player_name')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            
-            setUserRole(roleData?.role ?? 'user');
-            setPlayerName(mappingData?.player_name ?? null);
-            setLoading(false);
+          setTimeout(() => {
+            fetchUserData(session.user.id);
           }, 0);
         } else {
           setUserRole(null);
