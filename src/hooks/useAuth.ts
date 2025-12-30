@@ -25,13 +25,13 @@ export function useAuth() {
               .from('user_roles')
               .select('role')
               .eq('user_id', session.user.id)
-              .single();
+              .maybeSingle();
             
             const { data: mappingData } = await supabase
               .from('user_player_mapping')
               .select('player_name')
               .eq('user_id', session.user.id)
-              .single();
+              .maybeSingle();
             
             setUserRole(roleData?.role ?? 'user');
             setPlayerName(mappingData?.player_name ?? null);
@@ -56,12 +56,12 @@ export function useAuth() {
             .from('user_roles')
             .select('role')
             .eq('user_id', session.user.id)
-            .single(),
+            .maybeSingle(),
           supabase
             .from('user_player_mapping')
             .select('player_name')
             .eq('user_id', session.user.id)
-            .single()
+            .maybeSingle()
         ]).then(([roleResult, mappingResult]) => {
           setUserRole(roleResult.data?.role ?? 'user');
           setPlayerName(mappingResult.data?.player_name ?? null);
