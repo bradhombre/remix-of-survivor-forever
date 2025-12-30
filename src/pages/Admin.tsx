@@ -1,0 +1,170 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ArrowLeft, Users } from "lucide-react";
+import { format } from "date-fns";
+
+interface LeagueWithDetails {
+  id: string;
+  name: string;
+  created_at: string;
+  owner_email: string;
+  member_count: number;
+}
+
+export default function Admin() {
+  const { isSuperAdmin, loading: roleLoading } = useIsSuperAdmin();
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [leagues, setLeagues] = useState<LeagueWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+      return;
+    }
+    if (!roleLoading && !isSuperAdmin) {
+      navigate("/leagues");
+    }
+  }, [isSuperAdmin, roleLoading, authLoading, user, navigate]);
+
+  useEffect(() => {
+    if (!isSuperAdmin || roleLoading) return;
+
+    const fetchLeagues = async () => {
+      // Fetch all leagues with owner profiles
+      const { data: leaguesData, error: leaguesError } = await supabase
+        .from("leagues")
+        .select(`
+          id,
+          name,
+          created_at,
+          owner_id
+        `)
+        .order("created_at", { ascending: false });
+
+      if (leaguesError || !leaguesData) {
+        console.error("Error fetching leagues:", leaguesError);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch owner emails
+      const ownerIds = [...new Set(leaguesData.map((l) => l.owner_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .in("id", ownerIds);
+
+      const profileMap = new Map(
+        profilesData?.map((p) => [p.id, p.email]) || []
+      );
+
+      // Fetch member counts
+      const { data: membershipsData } = await supabase
+        .from("league_memberships")
+        .select("league_id");
+
+      const memberCounts = new Map<string, number>();
+      membershipsData?.forEach((m) => {
+        if (m.league_id) {
+          memberCounts.set(m.league_id, (memberCounts.get(m.league_id) || 0) + 1);
+        }
+      });
+
+      const leaguesWithDetails: LeagueWithDetails[] = leaguesData.map((league) => ({
+        id: league.id,
+        name: league.name,
+        created_at: league.created_at,
+        owner_email: profileMap.get(league.owner_id) || "Unknown",
+        member_count: memberCounts.get(league.id) || 0,
+      }));
+
+      setLeagues(leaguesWithDetails);
+      setLoading(false);
+    };
+
+    fetchLeagues();
+  }, [isSuperAdmin, roleLoading]);
+
+  if (authLoading || roleLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/leagues")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold text-foreground">Platform Admin</h1>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              All Leagues ({leagues.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {leagues.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No leagues created yet.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Owner Email</TableHead>
+                    <TableHead className="text-center">Members</TableHead>
+                    <TableHead>Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leagues.map((league) => (
+                    <TableRow key={league.id}>
+                      <TableCell className="font-medium">{league.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {league.owner_email}
+                      </TableCell>
+                      <TableCell className="text-center">{league.member_count}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(league.created_at), "MMM d, yyyy")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
