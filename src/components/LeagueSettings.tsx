@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink } from "lucide-react";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, Scale, ExternalLink, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { SCORING_ACTIONS } from "@/types/survivor";
 import { QRCodeSVG } from "qrcode.react";
@@ -52,6 +53,7 @@ const getDefaultScoringConfig = (): ScoringConfig => {
 };
 
 export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
+  const navigate = useNavigate();
   const [league, setLeague] = useState<LeagueData | null>(null);
   const [leagueName, setLeagueName] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
@@ -60,6 +62,7 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
   const [saving, setSaving] = useState(false);
   const [savingScoring, setSavingScoring] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -257,6 +260,25 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
     // Can't manage other league_admins or super_admins
     if (member.role === "league_admin" || member.role === "super_admin") return false;
     return true;
+  };
+
+  const handleLeaveLeague = async () => {
+    if (!currentUserId) return;
+    
+    setIsLeaving(true);
+    const { error } = await supabase
+      .from("league_memberships")
+      .delete()
+      .eq("league_id", leagueId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      toast.error("Failed to leave league");
+      setIsLeaving(false);
+    } else {
+      toast.success("You have left the league");
+      navigate("/leagues");
+    }
   };
 
   if (loading) {
@@ -488,6 +510,45 @@ export function LeagueSettings({ leagueId }: LeagueSettingsProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Leave League Section - Only for non-owners */}
+      {!isOwner && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <LogOut className="h-5 w-5" />
+              Leave League
+            </CardTitle>
+            <CardDescription>
+              Leave this league and remove yourself from all associated data
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isLeaving}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {isLeaving ? "Leaving..." : "Leave League"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leave League</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to leave "{league?.name}"? You will need a new invite code to rejoin.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLeaveLeague}>
+                    Leave
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
