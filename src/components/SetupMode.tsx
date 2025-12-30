@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,11 +61,17 @@ export const SetupMode = ({
   const { toast } = useToast();
 
   // Team management state
-  const { teams, loading: teamsLoading, resizeLeague, renameTeam, getFilledCount, getTeamNames } = useLeagueTeams({ leagueId });
+  const { teams, loading: teamsLoading, resizeLeague, renameTeam, getFilledCount } = useLeagueTeams({ leagueId });
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editTeamName, setEditTeamName] = useState("");
   const [isResizing, setIsResizing] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  const teamByName = useMemo(() => {
+    const map = new Map<string, (typeof teams)[number]>();
+    teams.forEach((t) => map.set(t.name, t));
+    return map;
+  }, [teams]);
 
   // Fetch invite code
   useState(() => {
@@ -106,11 +112,27 @@ export const SetupMode = ({
     }
   };
 
-  // Sync draft order when teams change
-  const teamNames = teams.map(t => t.name);
-  if (teams.length > 0 && draftOrder.length !== teams.length) {
-    onSetDraftOrder(teamNames);
-  }
+  // Keep draft order aligned with team slots when league size changes (preserve any manual reordering)
+  useEffect(() => {
+    if (teams.length === 0) return;
+
+    const teamNames = teams.map((t) => t.name);
+    const current = draftOrder as string[];
+
+    const hasMismatch =
+      current.length !== teamNames.length ||
+      current.some((name) => !teamNames.includes(name)) ||
+      teamNames.some((name) => !current.includes(name));
+
+    if (!hasMismatch) return;
+
+    const merged = current.filter((name) => teamNames.includes(name));
+    teamNames.forEach((name) => {
+      if (!merged.includes(name)) merged.push(name);
+    });
+
+    onSetDraftOrder(merged as Player[]);
+  }, [teams, draftOrder, onSetDraftOrder]);
 
   const handleRenameTeam = async (teamId: string, oldName: string) => {
     const trimmedName = editTeamName.trim();
@@ -403,7 +425,7 @@ export const SetupMode = ({
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground/60 ml-2 italic">
-                                (open slot)
+                                (unassigned)
                               </span>
                             )}
                           </div>
@@ -450,50 +472,68 @@ export const SetupMode = ({
         {/* Draft Settings */}
         <Card className="glass p-6 space-y-4">
           <h2 className="text-2xl font-bold text-foreground">🎲 Draft Settings</h2>
-          
+
           <div>
             <Label>Draft Order (drag to reorder)</Label>
             <div className="space-y-2 mt-2">
-              {draftOrder.map((player, index) => (
-                <div key={player} className="glass p-3 rounded-lg flex items-center gap-3">
-                  <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                  <span className="font-bold text-accent">{index + 1}</span>
-                  <span className="flex-1 font-medium">{player}</span>
-                  <div className="flex gap-1">
-                    {index > 0 && (
-                      <Button
-                        onClick={() => {
-                          const newOrder = [...draftOrder];
-                          [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-                          onSetDraftOrder(newOrder);
-                        }}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        ↑
-                      </Button>
-                    )}
-                    {index < draftOrder.length - 1 && (
-                      <Button
-                        onClick={() => {
-                          const newOrder = [...draftOrder];
-                          [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-                          onSetDraftOrder(newOrder);
-                        }}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        ↓
-                      </Button>
-                    )}
+              {draftOrder.map((player, index) => {
+                const team = teamByName.get(String(player));
+                const isFilled = !!team?.user_id;
+
+                return (
+                  <div key={String(player)} className="glass p-3 rounded-lg flex items-center gap-3">
+                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                    <span className="font-bold text-accent">{index + 1}</span>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium truncate">{String(player)}</span>
+                        {team && !isFilled && (
+                          <span className="text-xs text-muted-foreground italic whitespace-nowrap">(unassigned)</span>
+                        )}
+                      </div>
+                      {team && isFilled && (
+                        <p className="text-xs text-muted-foreground truncate">{team.user_email || "Assigned"}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1">
+                      {index > 0 && (
+                        <Button
+                          onClick={() => {
+                            const newOrder = [...draftOrder];
+                            [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+                            onSetDraftOrder(newOrder);
+                          }}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          ↑
+                        </Button>
+                      )}
+                      {index < draftOrder.length - 1 && (
+                        <Button
+                          onClick={() => {
+                            const newOrder = [...draftOrder];
+                            [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+                            onSetDraftOrder(newOrder);
+                          }}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          ↓
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              <Button onClick={onRandomizeDraftOrder} variant="outline" className="w-full">
-                <Shuffle className="mr-2 h-4 w-4" />
-                Randomize Order
-              </Button>
+                );
+              })}
             </div>
+
+            <Button onClick={onRandomizeDraftOrder} variant="outline" className="w-full">
+              <Shuffle className="mr-2 h-4 w-4" />
+              Randomize Order
+            </Button>
           </div>
 
           <div>
