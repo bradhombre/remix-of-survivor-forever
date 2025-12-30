@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,12 +22,14 @@ export default function Auth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
 
   useEffect(() => {
     if (user) {
-      navigate('/leagues');
+      navigate(returnTo || '/leagues');
     }
-  }, [user, navigate]);
+  }, [user, navigate, returnTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +69,11 @@ export default function Auth() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const { error } = await signInWithGoogle();
+    // Pass returnTo to be included in the OAuth redirect
+    const redirectUrl = returnTo 
+      ? `${window.location.origin}${returnTo}`
+      : `${window.location.origin}/leagues`;
+    const { error } = await signInWithGoogle(redirectUrl);
     if (error) {
       toast.error(error.message);
     }
