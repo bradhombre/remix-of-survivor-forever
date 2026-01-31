@@ -387,6 +387,39 @@ export type Database = {
         }
         Relationships: []
       }
+      master_contestants: {
+        Row: {
+          age: number | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          name: string
+          occupation: string | null
+          season_number: number
+          tribe: string | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          occupation?: string | null
+          season_number: number
+          tribe?: string | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          occupation?: string | null
+          season_number?: number
+          tribe?: string | null
+        }
+        Relationships: []
+      }
       news_posts: {
         Row: {
           author_id: string | null
