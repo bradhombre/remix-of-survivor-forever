@@ -43,35 +43,41 @@ export function useChatMessages({ leagueId, userId }: UseChatMessagesOptions) {
       if (error) {
         console.error("Error fetching messages:", error);
       } else {
-        // Fetch user profiles for messages
+        // Fetch team names for users in this league
         const userIds = [...new Set((data || []).filter(m => !m.is_bot).map(m => m.user_id))];
+        const { data: teams } = await supabase
+          .from("league_teams")
+          .select("user_id, name")
+          .eq("league_id", leagueId)
+          .in("user_id", userIds);
+
+        // Also fetch emails for fallback
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, email, display_name")
+          .select("id, email")
           .in("id", userIds);
 
-        const profileMap = new Map(profiles?.map(p => [p.id, { email: p.email, display_name: p.display_name }]) || []);
+        const teamMap = new Map(teams?.map(t => [t.user_id, t.name]) || []);
+        const emailMap = new Map(profiles?.map(p => [p.id, p.email]) || []);
         
-        const messagesWithEmails = (data || []).map(msg => {
-          const profile = profileMap.get(msg.user_id);
+        const messagesWithDisplayNames = (data || []).map(msg => {
+          if (msg.is_bot) {
+            return {
+              ...msg,
+              reactions: (msg.reactions as Record<string, string[]>) || {},
+              user_email: "JeffBot",
+              user_display_name: "JeffBot 🏝️",
+            };
+          }
+          
+          const teamName = teamMap.get(msg.user_id);
+          const email = emailMap.get(msg.user_id) || "Unknown";
+          
           return {
             ...msg,
             reactions: (msg.reactions as Record<string, string[]>) || {},
-            user_email: msg.is_bot ? "JeffBot" : profile?.email || "Unknown",
-            user_display_name: msg.is_bot ? "JeffBot 🏝️" : undefined,
-          };
-        });
-        
-        // Calculate display name using helper function
-        const messagesWithDisplayNames = messagesWithEmails.map(msg => {
-          if (msg.is_bot) {
-            return { ...msg, user_display_name: "JeffBot 🏝️" };
-          }
-          const profile = profileMap.get(msg.user_id);
-          const displayName = profile?.display_name?.trim();
-          return {
-            ...msg,
-            user_display_name: displayName || msg.user_email?.split("@")[0] || "Unknown",
+            user_email: email,
+            user_display_name: teamName || email.split("@")[0],
           };
         });
         
@@ -103,17 +109,26 @@ export function useChatMessages({ leagueId, userId }: UseChatMessagesOptions) {
         async (payload) => {
           const newMessage = payload.new as ChatMessage;
           
-          // Fetch user profile for the new message
+          // Fetch team name and email for the new message
           let displayName = "JeffBot 🏝️";
           let userEmail = "JeffBot";
           if (!newMessage.is_bot) {
+            // Try to get team name first
+            const { data: team } = await supabase
+              .from("league_teams")
+              .select("name")
+              .eq("league_id", leagueId)
+              .eq("user_id", newMessage.user_id)
+              .single();
+            
             const { data: profile } = await supabase
               .from("profiles")
-              .select("email, display_name")
+              .select("email")
               .eq("id", newMessage.user_id)
               .single();
+            
             userEmail = profile?.email || "Unknown";
-            displayName = profile?.display_name?.trim() || userEmail.split("@")[0];
+            displayName = team?.name || userEmail.split("@")[0];
           }
 
           setMessages((prev) => {

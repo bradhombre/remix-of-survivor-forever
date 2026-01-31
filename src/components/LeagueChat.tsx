@@ -18,13 +18,13 @@ interface LeagueChatProps {
   leagueId: string | undefined;
   userId: string | undefined;
   userEmail: string | undefined;
-  userDisplayName: string | null | undefined;
+  userTeamName: string | undefined;
 }
 
 const STORAGE_KEY = "league-chat-expanded";
 const RATE_LIMIT_MS = 2000;
 
-export function LeagueChat({ leagueId, userId, userEmail, userDisplayName }: LeagueChatProps) {
+export function LeagueChat({ leagueId, userId, userEmail, userTeamName }: LeagueChatProps) {
   const [isExpanded, setIsExpanded] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) === "true";
@@ -35,8 +35,8 @@ export function LeagueChat({ leagueId, userId, userEmail, userDisplayName }: Lea
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
-  // Calculate user's display name with fallback
-  const currentUserDisplayName = userEmail ? getDisplayName(userDisplayName, userEmail) : undefined;
+  // Use team name, fall back to email username
+  const currentUserDisplayName = userTeamName || (userEmail ? getDisplayName(null, userEmail) : undefined);
 
   const {
     messages,
