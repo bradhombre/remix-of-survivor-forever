@@ -25,16 +25,19 @@ export default function Leagues() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Wait for auth to finish loading before making decisions
+    if (authLoading) return;
+    
     if (!user) {
       navigate('/auth');
       return;
     }
     fetchMemberships();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const fetchMemberships = async () => {
     if (!user) return;
@@ -107,7 +110,7 @@ export default function Leagues() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading leagues...</div>
