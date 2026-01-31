@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Player, Contestant, DraftType } from "@/types/survivor";
 import { ArrowRight, Undo2 } from "lucide-react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { TeamAvatar } from "./TeamAvatar";
 
 interface DraftModeProps {
   leagueId?: string;
@@ -135,20 +135,12 @@ export const DraftMode = ({
               } border-l-4 ${getPlayerColor(index)}`}
             >
               <div className="flex items-center gap-3">
-                {teamAvatarMap[player] ? (
-                  <Avatar className="w-10 h-10 border-2 border-border shrink-0">
-                    <AvatarImage src={teamAvatarMap[player]!} alt={player} />
-                    <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
-                      {String(player).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <Avatar className="w-10 h-10 border-2 border-border shrink-0">
-                    <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
-                      {String(player).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                <TeamAvatar 
+                  teamName={String(player)} 
+                  avatarUrl={teamAvatarMap[player]} 
+                  size="md"
+                  className="border-2 border-border shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xl font-bold truncate">{player}</h3>
                 </div>

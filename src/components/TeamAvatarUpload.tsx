@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Camera, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { TeamAvatar } from './TeamAvatar';
 
 interface TeamAvatarUploadProps {
   teamId: string;
@@ -25,10 +25,11 @@ export function TeamAvatarUpload({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sizeClasses = {
-    sm: 'h-12 w-12',
-    md: 'h-20 w-20',
-    lg: 'h-28 w-28',
+  // Map prop sizes to TeamAvatar sizes
+  const avatarSizeMap = {
+    sm: 'lg' as const,
+    md: 'xl' as const,
+    lg: 'xl' as const,
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,23 +91,14 @@ export function TeamAvatarUpload({
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <div className="relative inline-block">
-      <Avatar className={sizeClasses[size]}>
-        <AvatarImage src={currentAvatarUrl || undefined} alt={teamName} />
-        <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
-          {getInitials(teamName)}
-        </AvatarFallback>
-      </Avatar>
+      <TeamAvatar 
+        teamName={teamName} 
+        avatarUrl={currentAvatarUrl} 
+        size={avatarSizeMap[size]}
+        className={size === 'lg' ? 'h-28 w-28' : undefined}
+      />
       
       <input
         ref={fileInputRef}
