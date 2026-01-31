@@ -7,7 +7,7 @@ interface ChatMessageProps {
   id: string;
   content: string;
   isBot: boolean;
-  userEmail: string;
+  displayName: string;
   createdAt: string;
   reactions: Record<string, string[]>;
   currentUserId: string | undefined;
@@ -25,7 +25,7 @@ export function ChatMessage({
   id,
   content,
   isBot,
-  userEmail,
+  displayName,
   createdAt,
   reactions,
   currentUserId,
@@ -40,8 +40,6 @@ export function ChatMessage({
     if (isYesterday(date)) return "Yesterday";
     return format(date, "MMMM d, yyyy");
   };
-
-  const displayName = isBot ? "JeffBot 🏝️" : userEmail.split("@")[0];
 
   return (
     <>

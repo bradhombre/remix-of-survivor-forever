@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ChatMessage } from "@/components/ChatMessage";
+import { OnlineUsersPopover } from "@/components/OnlineUsersPopover";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useChatPresence } from "@/hooks/useChatPresence";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getDisplayName } from "@/lib/displayNameUtils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { isToday, isSameDay } from "date-fns";
@@ -16,12 +18,13 @@ interface LeagueChatProps {
   leagueId: string | undefined;
   userId: string | undefined;
   userEmail: string | undefined;
+  userDisplayName: string | null | undefined;
 }
 
 const STORAGE_KEY = "league-chat-expanded";
 const RATE_LIMIT_MS = 2000;
 
-export function LeagueChat({ leagueId, userId, userEmail }: LeagueChatProps) {
+export function LeagueChat({ leagueId, userId, userEmail, userDisplayName }: LeagueChatProps) {
   const [isExpanded, setIsExpanded] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) === "true";
@@ -31,6 +34,9 @@ export function LeagueChat({ leagueId, userId, userEmail }: LeagueChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+
+  // Calculate user's display name with fallback
+  const currentUserDisplayName = userEmail ? getDisplayName(userDisplayName, userEmail) : undefined;
 
   const {
     messages,
@@ -43,7 +49,11 @@ export function LeagueChat({ leagueId, userId, userEmail }: LeagueChatProps) {
     markAllRead,
   } = useChatMessages({ leagueId, userId });
 
-  const { othersOnline } = useChatPresence({ leagueId, userId, userEmail });
+  const { onlineUsers, othersOnline } = useChatPresence({ 
+    leagueId, 
+    userId, 
+    userDisplayName: currentUserDisplayName 
+  });
 
   // Persist expanded state
   useEffect(() => {
@@ -145,13 +155,15 @@ export function LeagueChat({ leagueId, userId, userEmail }: LeagueChatProps) {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50 rounded-t-lg">
             <div className="flex items-center gap-2">
               <span className="font-semibold">League Chat</span>
-              {othersOnline > 0 && (
-                <div className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs text-muted-foreground">
-                    {othersOnline} online
-                  </span>
-                </div>
+              {onlineUsers.length > 0 && (
+                <OnlineUsersPopover onlineUsers={onlineUsers} currentUserId={userId}>
+                  <div className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs text-muted-foreground">
+                      {onlineUsers.length} online
+                    </span>
+                  </div>
+                </OnlineUsersPopover>
               )}
             </div>
             <Button
@@ -186,7 +198,7 @@ export function LeagueChat({ leagueId, userId, userEmail }: LeagueChatProps) {
                     id={msg.id}
                     content={msg.content}
                     isBot={msg.is_bot}
-                    userEmail={msg.user_email || "Unknown"}
+                    displayName={msg.user_display_name || msg.user_email?.split("@")[0] || "Unknown"}
                     createdAt={msg.created_at}
                     reactions={msg.reactions}
                     currentUserId={userId}

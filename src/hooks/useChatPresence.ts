@@ -4,21 +4,21 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface PresenceUser {
   user_id: string;
-  email: string;
+  display_name: string;
 }
 
 interface UseChatPresenceOptions {
   leagueId: string | undefined;
   userId: string | undefined;
-  userEmail: string | undefined;
+  userDisplayName: string | undefined;
 }
 
-export function useChatPresence({ leagueId, userId, userEmail }: UseChatPresenceOptions) {
+export function useChatPresence({ leagueId, userId, userDisplayName }: UseChatPresenceOptions) {
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!leagueId || !userId || !userEmail) return;
+    if (!leagueId || !userId || !userDisplayName) return;
 
     channelRef.current = supabase.channel(`presence-${leagueId}`)
       .on("presence", { event: "sync" }, () => {
@@ -30,7 +30,7 @@ export function useChatPresence({ leagueId, userId, userEmail }: UseChatPresence
             if (!users.some(u => u.user_id === presence.user_id)) {
               users.push({
                 user_id: presence.user_id,
-                email: presence.email,
+                display_name: presence.display_name,
               });
             }
           });
@@ -42,7 +42,7 @@ export function useChatPresence({ leagueId, userId, userEmail }: UseChatPresence
         if (status === "SUBSCRIBED") {
           await channelRef.current?.track({
             user_id: userId,
-            email: userEmail,
+            display_name: userDisplayName,
           });
         }
       });
@@ -52,7 +52,7 @@ export function useChatPresence({ leagueId, userId, userEmail }: UseChatPresence
       if (document.visibilityState === "visible" && channelRef.current) {
         channelRef.current.track({
           user_id: userId,
-          email: userEmail,
+          display_name: userDisplayName,
         });
       }
     };
@@ -65,7 +65,7 @@ export function useChatPresence({ leagueId, userId, userEmail }: UseChatPresence
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [leagueId, userId, userEmail]);
+  }, [leagueId, userId, userDisplayName]);
 
   const onlineCount = onlineUsers.length;
   const othersOnline = onlineUsers.filter(u => u.user_id !== userId).length;
