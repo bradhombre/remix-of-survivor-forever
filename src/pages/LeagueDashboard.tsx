@@ -218,6 +218,7 @@ const LeagueDashboard = () => {
             />
           ) : (
             <DraftMode
+              leagueId={leagueId}
               contestants={state.contestants}
               draftOrder={state.draftOrder}
               draftType={state.draftType}

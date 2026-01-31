@@ -1,10 +1,14 @@
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Player, Contestant, DraftType } from "@/types/survivor";
 import { ArrowRight, Undo2 } from "lucide-react";
+import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 
 interface DraftModeProps {
+  leagueId?: string;
   contestants: Contestant[];
   draftOrder: Player[];
   draftType: DraftType;
@@ -15,6 +19,7 @@ interface DraftModeProps {
 }
 
 export const DraftMode = ({
+  leagueId,
   contestants,
   draftOrder,
   draftType,
@@ -23,6 +28,17 @@ export const DraftMode = ({
   onUndoPick,
   onStartGame,
 }: DraftModeProps) => {
+  // Get league teams for avatars
+  const { teams } = useLeagueTeams({ leagueId });
+  
+  // Map team names to their avatar URLs
+  const teamAvatarMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    teams.forEach(team => {
+      map[team.name] = team.avatar_url || null;
+    });
+    return map;
+  }, [teams]);
   const teamCount = draftOrder.length;
   const picksPerTeam = 4;
   const totalPicks = teamCount * picksPerTeam;
@@ -118,9 +134,25 @@ export const DraftMode = ({
                 isCurrentDrafter ? "ring-4 ring-accent scale-105" : ""
               } border-l-4 ${getPlayerColor(index)}`}
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold">{player}</h3>
-                <span className="text-sm glass-strong px-2 py-1 rounded-full">
+              <div className="flex items-center gap-3">
+                {teamAvatarMap[player] ? (
+                  <Avatar className="w-10 h-10 border-2 border-border shrink-0">
+                    <AvatarImage src={teamAvatarMap[player]!} alt={player} />
+                    <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
+                      {String(player).slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <Avatar className="w-10 h-10 border-2 border-border shrink-0">
+                    <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
+                      {String(player).slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold truncate">{player}</h3>
+                </div>
+                <span className="text-sm glass-strong px-2 py-1 rounded-full shrink-0">
                   {playerTeam.length}/{picksPerTeam}
                 </span>
               </div>
