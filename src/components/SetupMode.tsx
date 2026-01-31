@@ -387,7 +387,7 @@ export const SetupMode = ({
               </div>
 
               {/* Team slots */}
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              <div className="space-y-2">
                 {teams.map((team) => {
                   const isEditing = editingTeamId === team.id;
                   const isFilled = !!team.user_id;
