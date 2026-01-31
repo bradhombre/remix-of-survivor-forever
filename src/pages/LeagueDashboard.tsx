@@ -23,6 +23,7 @@ const LeagueDashboard = () => {
   const [leagueName, setLeagueName] = useState<string>("");
   const [leagueLoading, setLeagueLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("play");
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
 
   const {
     state,
@@ -88,6 +89,23 @@ const LeagueDashboard = () => {
 
     fetchLeague();
   }, [leagueId, navigate]);
+
+  // Fetch user's display name
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+      
+      setUserDisplayName(data?.display_name || null);
+    };
+
+    fetchUserProfile();
+  }, [user?.id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -320,6 +338,7 @@ const LeagueDashboard = () => {
         leagueId={leagueId}
         userId={user?.id}
         userEmail={user?.email}
+        userDisplayName={userDisplayName}
       />
     </div>
   );
