@@ -1,1 +1,4 @@
 project_id = "tcdlhmojircjhwqmvila"
+
+[functions.fetch-survivor-news]
+verify_jwt = false
