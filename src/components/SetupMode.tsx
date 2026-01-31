@@ -153,8 +153,8 @@ export const SetupMode = ({
     }
 
     try {
-      await renameTeam(teamId, trimmedName);
-      // Update draft order
+      await renameTeam(teamId, trimmedName, oldName);
+      // Update local draft order state (DB is updated by renameTeam)
       onSetDraftOrder(draftOrder.map(p => p === oldName ? trimmedName : p));
       setEditingTeamId(null);
       toast({ title: "Team renamed!", description: `Renamed to ${trimmedName}.` });
