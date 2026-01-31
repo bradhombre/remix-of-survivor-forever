@@ -250,21 +250,21 @@ export type Database = {
         Row: {
           id: string
           joined_at: string | null
-          league_id: string
+          league_id: string | null
           role: string
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
-          league_id: string
+          league_id?: string | null
           role: string
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
-          league_id?: string
+          league_id?: string | null
           role?: string
           user_id?: string
         }
@@ -636,7 +636,7 @@ export type Database = {
         Returns: {
           id: string
           joined_at: string | null
-          league_id: string
+          league_id: string | null
           role: string
           user_id: string
         }
@@ -652,7 +652,7 @@ export type Database = {
         Returns: {
           id: string
           joined_at: string | null
-          league_id: string
+          league_id: string | null
           role: string
           user_id: string
         }
