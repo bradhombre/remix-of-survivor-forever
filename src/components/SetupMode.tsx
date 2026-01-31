@@ -67,6 +67,7 @@ export const SetupMode = ({
   const [editTeamName, setEditTeamName] = useState("");
   const [isResizing, setIsResizing] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [isImportingCast, setIsImportingCast] = useState(false);
 
   const teamByName = useMemo(() => {
     const map = new Map<string, (typeof teams)[number]>();
@@ -278,6 +279,66 @@ export const SetupMode = ({
   };
 
   const canStartDraft = contestants.length >= 16 && !contestants.some((c) => c.owner);
+
+  // Import official cast from master_contestants table
+  const handleImportOfficialCast = async () => {
+    setIsImportingCast(true);
+    try {
+      // Fetch master cast for this season
+      const { data: masterCast, error } = await supabase
+        .from("master_contestants")
+        .select("name, tribe, age, occupation")
+        .eq("season_number", season);
+
+      if (error) throw error;
+
+      if (!masterCast || masterCast.length === 0) {
+        toast({
+          title: `Official cast not available yet for Season ${season}`,
+          description: "Try adding contestants manually or check back later.",
+          variant: "destructive",
+        });
+        setIsImportingCast(false);
+        return;
+      }
+
+      // Check for duplicates
+      const existingNames = new Set(contestants.map((c) => c.name.toLowerCase()));
+      const toImport = masterCast.filter(
+        (mc) => !existingNames.has(mc.name.toLowerCase())
+      );
+
+      if (toImport.length === 0) {
+        toast({
+          title: "All contestants already exist",
+          description: `${masterCast.length} contestants from Season ${season} are already in your list.`,
+        });
+        setIsImportingCast(false);
+        return;
+      }
+
+      // Add each contestant
+      for (const mc of toImport) {
+        onAddContestant(mc.name, mc.tribe || undefined, mc.age || undefined, mc.occupation || undefined);
+      }
+
+      toast({
+        title: `Imported ${toImport.length} contestants for Season ${season}`,
+        description:
+          toImport.length < masterCast.length
+            ? `${masterCast.length - toImport.length} duplicates were skipped.`
+            : undefined,
+      });
+    } catch (err) {
+      console.error("Error importing cast:", err);
+      toast({
+        title: "Import failed",
+        description: "Could not import official cast. Try again later.",
+        variant: "destructive",
+      });
+    }
+    setIsImportingCast(false);
+  };
 
   // Editing contestant handlers
   const startEditing = (contestant: Contestant) => {
@@ -561,9 +622,18 @@ export const SetupMode = ({
 
       {/* Add Contestants */}
       <Card className="glass p-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-2xl font-bold text-foreground">🏝️ Add Contestants</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={handleImportOfficialCast}
+              variant="secondary"
+              size="sm"
+              disabled={isImportingCast}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              {isImportingCast ? "Importing..." : "Import Official Cast"}
+            </Button>
             <Button
               onClick={() => setShowBulkImport(!showBulkImport)}
               variant="outline"

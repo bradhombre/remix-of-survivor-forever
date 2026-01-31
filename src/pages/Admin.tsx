@@ -26,7 +26,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NewsManager } from "@/components/admin/NewsManager";
-import { ArrowLeft, Users, Eye, Trash2, Newspaper } from "lucide-react";
+import { CastManager } from "@/components/admin/CastManager";
+import { ArrowLeft, Users, Eye, Trash2, Newspaper, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -172,6 +173,10 @@ export default function Admin() {
               <Users className="h-4 w-4" />
               Leagues
             </TabsTrigger>
+            <TabsTrigger value="cast" className="gap-2">
+              <UserCircle className="h-4 w-4" />
+              Cast
+            </TabsTrigger>
             <TabsTrigger value="news" className="gap-2">
               <Newspaper className="h-4 w-4" />
               News
@@ -262,6 +267,10 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="cast">
+            <CastManager />
           </TabsContent>
 
           <TabsContent value="news">
