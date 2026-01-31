@@ -1,221 +1,146 @@
 
-# Phase 9: Season Renewal & Phase 10: News Feed Implementation
+
+# Automatic Survivor News Feed Integration
 
 ## Overview
-This plan implements two major feature phases:
-1. **Season Renewal (Phase 9)**: Adds season status tracking, a completion banner, and a season selector in the History tab
-2. **News Feed (Phase 10)**: Creates a platform-wide news system with spoiler protection and expiration dates
 
----
+This plan adds automatic fetching of Survivor news from external RSS feeds, specifically using Inside Survivor's spoiler-free news category feed. The system will periodically sync news from the RSS feed into the database, filtering out any content marked as spoilers.
 
-## Phase 9: Season Renewal
+## How It Works
 
-### 9.1: Season Status Tracking
+The current news system stores posts in the `news_posts` table with fields for `title`, `content`, `is_spoiler`, `published_at`, and `expires_at`. We will:
 
-**Database Changes**
+1. Create a backend function that fetches RSS feeds from spoiler-free sources
+2. Parse the XML feed and extract news articles
+3. Store new articles in the database (avoiding duplicates)
+4. Run this automatically on a schedule (e.g., every 6 hours)
+5. Keep the existing manual posting system for platform-specific announcements
 
-| Table | Column | Type | Default |
-|-------|--------|------|---------|
-| `game_sessions` | `status` | text | `'active'` |
-| `leagues` | `auto_renew` | boolean | `true` |
+## Data Source
 
-**Migration SQL:**
-```sql
--- Add status column to game_sessions
-ALTER TABLE public.game_sessions 
-ADD COLUMN status text NOT NULL DEFAULT 'active';
+**Inside Survivor** provides category-specific RSS feeds:
+- `https://insidesurvivor.com/category/news/feed` - Official announcements, casting news, premiere dates (spoiler-free)
+- `https://insidesurvivor.com/category/features/feed` - Features, reviews, retrospectives (spoiler-free)
 
--- Add auto_renew column to leagues
-ALTER TABLE public.leagues 
-ADD COLUMN auto_renew boolean NOT NULL DEFAULT true;
-```
+We will specifically avoid:
+- `https://insidesurvivor.com/category/spoilers/feed` - Contains boot orders, elimination leaks
 
-**Code Changes:**
-- Update `src/hooks/useGameStateDB.ts`: 
-  - Modify `resetState()` function to set `status = 'completed'` on the current session when archiving
-  - Load and expose `status` field from game_sessions
+## Implementation Details
 
----
+### 1. Database Changes
 
-### 9.2: New Season Banner
+Add columns to track external news sources:
 
-**New Component:** `src/components/SeasonCompleteBanner.tsx`
+| Column | Type | Purpose |
+|--------|------|---------|
+| `source` | text | Origin of the post ('manual', 'rss_insidesurvivor') |
+| `external_id` | text | Unique identifier from source (URL) to prevent duplicates |
+| `source_url` | text | Link back to original article |
 
-A banner that appears when the current game_session has `status = 'completed'`:
-- Shows message: "Season Complete! Ready for the next one?"
-- "Start New Season" button (only visible/clickable for league admins)
-- Clicking creates a NEW `game_session` in 'setup' mode for the same league
-- Preserves league members and `scoring_config`
-- Resets contestants, draft order, scores (fresh session)
-- Banner hides automatically once a new active session exists
+### 2. New Backend Function: `fetch-survivor-news`
 
-**Integration Points:**
-- Add banner to `src/pages/LeagueDashboard.tsx` above main content
-- Use `isLeagueAdmin` to control button visibility
-- Modify `useGameStateDB` to expose session status and add `startNewSeason()` function
+Creates a new edge function that:
+- Fetches RSS XML from Inside Survivor's news feed
+- Parses the XML to extract title, content (description), link, and publish date
+- Checks for existing posts by `external_id` to avoid duplicates
+- Inserts new articles with `is_spoiler = false` (since we use spoiler-free feeds)
+- Sets expiration to 30 days (configurable) so old news auto-hides
 
 ```text
-Visual Layout:
-+------------------------------------------------------------+
-|  Season 49 Complete! Ready for the next one?  [Start New]  |
-+------------------------------------------------------------+
-|                      Main Dashboard                         |
+Flow:
+[Cron/Manual Trigger] --> [fetch-survivor-news edge function]
+                                    |
+                                    v
+                      [Fetch RSS from insidesurvivor.com/category/news/feed]
+                                    |
+                                    v
+                      [Parse XML, extract articles]
+                                    |
+                                    v
+                      [Check for duplicates by external_id]
+                                    |
+                                    v
+                      [Insert new posts into news_posts table]
 ```
 
----
+### 3. Scheduled Sync (Cron Job)
 
-### 9.3: Season Selector in History Tab
-
-**Changes to:** `src/components/HistoryMode.tsx`
-
-| Current Behavior | New Behavior |
-|------------------|--------------|
-| Shows archived_seasons from JSONB | Query all completed game_sessions for this league |
-| List view of seasons | Dropdown selector at top |
-| Fixed data structure | Each shows season number, completion date, winner |
-
-**Implementation:**
-- Add new prop: `leagueId` to HistoryMode
-- Query `game_sessions` where `league_id = leagueId AND status = 'completed'`
-- Join with `archived_seasons` for final standings data
-- Add `Select` dropdown to choose which season to view
-- Default to most recently completed season
-
----
-
-## Phase 10: News Feed
-
-### 10.1: News Table
-
-**Database Migration:**
+Set up a PostgreSQL cron job to call the edge function every 6 hours:
 
 ```sql
-CREATE TABLE public.news_posts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL,
-  content text NOT NULL,
-  author_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  is_spoiler boolean NOT NULL DEFAULT false,
-  published_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz NULL
+select cron.schedule(
+  'fetch-survivor-news-every-6h',
+  '0 */6 * * *',
+  -- HTTP POST to edge function
 );
-
--- Enable RLS
-ALTER TABLE public.news_posts ENABLE ROW LEVEL SECURITY;
-
--- All authenticated users can read non-spoiler, non-expired posts
-CREATE POLICY "Users can read non-spoiler active posts"
-ON public.news_posts
-FOR SELECT
-TO authenticated
-USING (
-  is_spoiler = false 
-  AND (expires_at IS NULL OR expires_at > now())
-);
-
--- Super admins can do everything
-CREATE POLICY "Super admins have full access"
-ON public.news_posts
-FOR ALL
-TO authenticated
-USING (is_super_admin(auth.uid()))
-WITH CHECK (is_super_admin(auth.uid()));
 ```
 
----
+### 4. Admin Panel Enhancements
 
-### 10.2: News Display on League Dashboard
+Add to the NewsManager component:
+- "Sync Now" button to manually trigger RSS fetch
+- Visual indicator showing which posts are from RSS vs manual
+- Filter toggle to show only manual or only RSS posts
+- Last sync timestamp display
 
-**New Component:** `src/components/NewsFeed.tsx`
+### 5. Frontend Updates
 
-Collapsible section above main dashboard content:
-- Query 3 most recent non-expired, non-spoiler posts
-- Shows title and published date in collapsed view
-- Click to expand and show full content (inline accordion or modal)
-- Hides entirely if no posts exist
+Update NewsFeed component:
+- Add source link icon that opens the original article
+- Show source attribution (e.g., "via Inside Survivor")
+- Increase post limit from 3 to 5 for more content
 
-**Integration:**
-- Add to `src/pages/LeagueDashboard.tsx` above mode tabs
-- Use Radix Collapsible or Accordion component
-- Graceful loading state
+## Spoiler Protection Strategy
 
-```text
-+------------------------------------------------------------+
-|  v News (3 updates)                              [Collapse] |
-|    - Season 50 Casting Announced! - Jan 28                  |
-|    - Merge Episode Reminder - Jan 25                        |
-|    - Rule Update: Idol Points Changed - Jan 20              |
-+------------------------------------------------------------+
-|                      Main Dashboard                         |
-```
+| Layer | Protection |
+|-------|------------|
+| **Source Selection** | Only fetch from `/category/news/feed` and `/category/features/feed` - explicitly exclude `/category/spoilers/feed` |
+| **Keyword Filtering** | Scan titles for spoiler keywords (elimination, voted out, boot) and skip those articles |
+| **Auto-Expiration** | RSS posts expire after 30 days, reducing stale/risky content |
+| **Manual Override** | Admins can still mark any post as spoiler, hiding it from users |
 
----
-
-### 10.3: News Admin Panel
-
-**Changes to:** `src/pages/Admin.tsx`
-
-Add a "News" tab to the platform admin panel:
-
-| Feature | Description |
-|---------|-------------|
-| Posts Table | Title, published date, spoiler flag, expiration date |
-| New Post Button | Opens form dialog |
-| Form Fields | Title (required), Content (textarea), Is Spoiler (checkbox), Expires At (date picker) |
-| Edit/Delete | Inline actions for each post |
-
-**Implementation:**
-- Add `Tabs` component with "Leagues" and "News" tabs
-- Create `src/components/admin/NewsManager.tsx` component
-- Form uses existing Dialog, Input, Textarea, Checkbox, and date picker components
-- All operations restricted to super_admin via RLS
-
----
-
-## File Changes Summary
+## Files to Create/Modify
 
 | File | Action | Description |
 |------|--------|-------------|
-| **Database Migration** | Create | Add status to game_sessions, auto_renew to leagues, create news_posts table |
-| `src/integrations/supabase/types.ts` | Auto-update | Will reflect new columns and table |
-| `src/hooks/useGameStateDB.ts` | Modify | Add status field, startNewSeason function |
-| `src/components/SeasonCompleteBanner.tsx` | Create | New season banner component |
-| `src/components/NewsFeed.tsx` | Create | Collapsible news section |
-| `src/components/admin/NewsManager.tsx` | Create | News CRUD management |
-| `src/pages/LeagueDashboard.tsx` | Modify | Add SeasonCompleteBanner and NewsFeed |
-| `src/components/HistoryMode.tsx` | Modify | Add season selector dropdown, accept leagueId prop |
-| `src/pages/Admin.tsx` | Modify | Add News tab with NewsManager |
+| `supabase/migrations/[timestamp].sql` | Create | Add `source`, `external_id`, `source_url` columns to `news_posts` |
+| `supabase/functions/fetch-survivor-news/index.ts` | Create | Edge function to fetch and parse RSS feed |
+| `src/components/admin/NewsManager.tsx` | Modify | Add sync button, source indicators, filters |
+| `src/components/NewsFeed.tsx` | Modify | Show source attribution and link to original |
+| `supabase/config.toml` | Modify | Register new edge function |
 
----
+## Technical Notes
 
-## Technical Details
+### RSS Parsing in Deno
 
-### Season Transition Flow
+The edge function will use the `deno.land/x/rss` module:
 
-```text
-1. Admin clicks "Start New Season" in banner
-2. System archives current session data to archived_seasons
-3. Current session status updated to 'completed'
-4. New game_session created with:
-   - league_id: same league
-   - mode: 'setup'
-   - season: current + 1
-   - status: 'active'
-5. League scoring_config preserved
-6. Members preserved (no changes to league_teams)
-7. Banner disappears, UI shows new session in setup mode
+```typescript
+import { parseFeed } from "https://deno.land/x/rss/mod.ts";
+
+const response = await fetch("https://insidesurvivor.com/category/news/feed");
+const xml = await response.text();
+const feed = await parseFeed(xml);
+
+for (const entry of feed.entries) {
+  // entry.title, entry.description, entry.links[0].href, entry.published
+}
 ```
 
-### News Post Security
+### Duplicate Prevention
 
-- `author_id` references auth.users for audit trail
-- RLS ensures only super_admins can create/edit/delete
-- Spoiler posts hidden from regular users (separate admin view)
-- Expired posts automatically hidden via RLS using `expires_at > now()`
+Each RSS entry has a unique URL. We'll store this as `external_id` and use an upsert:
 
-### Backward Compatibility
+```sql
+INSERT INTO news_posts (title, content, source, external_id, source_url, ...)
+ON CONFLICT (external_id) DO NOTHING;
+```
 
-- Existing game_sessions default to status='active'
-- Existing leagues default to auto_renew=true
-- Current archive flow continues to work
-- History tab gracefully handles both old archived_seasons data and new completed sessions
+This requires adding a unique constraint on `external_id`.
+
+### Security
+
+- The edge function uses `SUPABASE_SERVICE_ROLE_KEY` to insert posts (bypassing RLS)
+- No user authentication needed for the cron trigger
+- Rate limiting: Only sync every 6 hours to respect the source site
+
