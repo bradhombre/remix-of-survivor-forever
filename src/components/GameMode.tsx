@@ -10,7 +10,7 @@ import { FinalPredictionDialog } from "./FinalPredictionDialog";
 import { getPoints, isActionEnabled, getCustomActions, CustomScoringAction, ScoringConfig } from "@/lib/scoring";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { TeamAvatar } from "./TeamAvatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -707,29 +707,20 @@ export const GameMode = ({
                   
                   <div className="flex items-center gap-3">
                     <div className="relative group">
-                      {/* Priority: team avatar from league_teams, then playerProfiles, then fallback */}
-                      {teamAvatarMap[entry.player] ? (
-                        <Avatar className="w-16 h-16 border-2 border-border">
-                          <AvatarImage 
-                            src={teamAvatarMap[entry.player]!} 
-                            alt={entry.player}
-                          />
-                          <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
-                            {String(entry.player).slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : playerProfiles?.[entry.player]?.avatar ? (
+                      {/* Priority: team avatar from league_teams, then playerProfiles, then themed fallback */}
+                      {teamAvatarMap[entry.player] || !playerProfiles?.[entry.player]?.avatar ? (
+                        <TeamAvatar 
+                          teamName={String(entry.player)} 
+                          avatarUrl={teamAvatarMap[entry.player]} 
+                          size="lg"
+                          className="border-2 border-border"
+                        />
+                      ) : (
                         <img 
                           src={playerProfiles[entry.player].avatar} 
                           alt={entry.player}
                           className="w-16 h-16 rounded-full object-cover border-2 border-border"
                         />
-                      ) : (
-                        <Avatar className="w-16 h-16 border-2 border-border">
-                          <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
-                            {String(entry.player).slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
                       )}
                       {/* Only show upload overlay if no team avatar (allows legacy override) */}
                       {!teamAvatarMap[entry.player] && (
