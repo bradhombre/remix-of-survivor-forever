@@ -35,6 +35,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     archivedSeasons: [],
   });
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<string>("active");
   const [loading, setLoading] = useState(true);
   const [scoringConfig, setScoringConfig] = useState<Record<string, number> | null>(null);
 
@@ -88,6 +89,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         if (leagueSession) {
           console.log("Loading league session:", leagueSession.id);
           setSessionId(leagueSession.id);
+          setSessionStatus((leagueSession as any).status || "active");
           await loadGameState(leagueSession.id, teams);
           
           // Fetch league's scoring config
@@ -706,7 +708,11 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       });
     }
 
-    // Clear current season data
+    // Mark current session as completed
+    await supabase.from("game_sessions").update({ status: "completed" } as any).eq("id", sessionId);
+    setSessionStatus("completed");
+
+    // Clear current season data and reset for new season
     await Promise.all([
       supabase.from("contestants").delete().eq("session_id", sessionId),
       supabase.from("scoring_events").delete().eq("session_id", sessionId),
@@ -722,13 +728,47 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     ]);
   };
 
+  const startNewSeason = async () => {
+    if (!leagueId) return;
+
+    // Create a new game session for this league
+    const { data: newSession, error } = await supabase
+      .from("game_sessions")
+      .insert({
+        league_id: leagueId,
+        mode: "setup",
+        season: state.season + 1,
+        episode: 1,
+        is_post_merge: false,
+        draft_type: "snake",
+        current_draft_index: 0,
+        status: "active",
+      } as any)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating new season:", error);
+      toast.error("Failed to start new season");
+      return;
+    }
+
+    // Switch to the new session
+    setSessionId(newSession.id);
+    setSessionStatus("active");
+    await loadGameState(newSession.id);
+    toast.success(`Season ${state.season + 1} started!`);
+  };
+
   return {
     state,
     loading,
     sessionId,
+    sessionStatus,
     scoringConfig,
     setState,
     resetState,
+    startNewSeason,
     setMode,
     setSeason,
     setEpisode,
