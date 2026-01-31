@@ -87,11 +87,11 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName, teams }:
     userDisplayName: currentUserDisplayName 
   });
 
-  // Build mentionable users list
+  // Build mentionable users list - include all claimed teams (including self)
   const mentionableUsers: MentionableUser[] = [
     { id: "jeffbot", name: "JeffBot 🏝️", isBot: true, isOnline: true },
     ...teams
-      .filter(t => t.user_id && t.user_id !== userId) // Exclude self and unclaimed teams
+      .filter(t => t.user_id) // Include all claimed teams
       .map(t => ({
         id: t.user_id!,
         name: t.name,
