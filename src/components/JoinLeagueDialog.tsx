@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { TeamAvatarUpload } from './TeamAvatarUpload';
+import { CheckCircle2 } from 'lucide-react';
 
 const inviteCodeSchema = z.object({
   code: z.string().trim().length(6, 'Invite code must be 6 characters'),
@@ -24,10 +26,32 @@ interface JoinLeagueDialogProps {
 }
 
 export function JoinLeagueDialog({ open, onOpenChange, onSuccess }: JoinLeagueDialogProps) {
+  const [step, setStep] = useState<1 | 2>(1);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Step 2 state
+  const [leagueId, setLeagueId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState('');
+  const [teamAvatarUrl, setTeamAvatarUrl] = useState<string | null>(null);
+  const [originalTeamName, setOriginalTeamName] = useState('');
+  const [savingTeam, setSavingTeam] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setStep(1);
+      setCode('');
+      setLeagueId(null);
+      setTeamId(null);
+      setTeamName('');
+      setTeamAvatarUrl(null);
+      setOriginalTeamName('');
+    }
+  }, [open]);
+
+  const handleJoinLeague = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -53,47 +77,148 @@ export function JoinLeagueDialog({ open, onOpenChange, onSuccess }: JoinLeagueDi
         toast.error(error.message || 'Failed to join league');
       }
       setLoading(false);
-    } else if (data?.league_id) {
-      // Successfully joined - auto-assigned to team slot
+      return;
+    }
+
+    if (data?.league_id) {
+      setLeagueId(data.league_id);
+      
+      // Fetch the user's team
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: teamData } = await supabase
+          .from('league_teams')
+          .select('id, name, avatar_url')
+          .eq('league_id', data.league_id)
+          .eq('user_id', user.id)
+          .single();
+        
+        if (teamData) {
+          setTeamId(teamData.id);
+          setTeamName(teamData.name);
+          setOriginalTeamName(teamData.name);
+          setTeamAvatarUrl((teamData as any).avatar_url || null);
+        }
+      }
+      
+      setStep(2);
       toast.success('Successfully joined the league!');
-      setCode('');
-      onOpenChange(false);
-      onSuccess(data.league_id);
-      setLoading(false);
+    }
+    setLoading(false);
+  };
+
+  const handleSaveTeam = async () => {
+    if (!teamId || !teamName.trim()) return;
+    
+    setSavingTeam(true);
+    const { error } = await supabase
+      .from('league_teams')
+      .update({ name: teamName.trim() })
+      .eq('id', teamId);
+
+    if (error) {
+      toast.error('Failed to update team name');
+      setSavingTeam(false);
+      return;
+    }
+
+    toast.success('Team customized!');
+    setSavingTeam(false);
+    onOpenChange(false);
+    if (leagueId) {
+      onSuccess(leagueId);
+    }
+  };
+
+  const handleSkip = () => {
+    onOpenChange(false);
+    if (leagueId) {
+      onSuccess(leagueId);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Join a League</DialogTitle>
-          <DialogDescription>
-            Enter the 6-character invite code shared by the league admin.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="invite-code">Invite Code</Label>
-            <Input
-              id="invite-code"
-              placeholder="e.g., ABC123"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              maxLength={6}
-              className="font-mono text-center text-lg tracking-widest"
-              required
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Joining...' : 'Join League'}
-            </Button>
-          </div>
-        </form>
+        {step === 1 ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Join a League</DialogTitle>
+              <DialogDescription>
+                Enter the 6-character invite code shared by the league admin.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleJoinLeague} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-code">Invite Code</Label>
+                <Input
+                  id="invite-code"
+                  placeholder="e.g., ABC123"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  className="font-mono text-center text-lg tracking-widest"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Joining...' : 'Join League'}
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-success" />
+                Welcome! Customize Your Team
+              </DialogTitle>
+              <DialogDescription>
+                You've been assigned to "{originalTeamName}". Personalize your team with a name and photo!
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              {/* Avatar upload */}
+              <div className="flex justify-center">
+                {teamId && leagueId && (
+                  <TeamAvatarUpload
+                    teamId={teamId}
+                    leagueId={leagueId}
+                    currentAvatarUrl={teamAvatarUrl}
+                    teamName={teamName}
+                    onUploadComplete={setTeamAvatarUrl}
+                    size="lg"
+                  />
+                )}
+              </div>
+
+              {/* Team name */}
+              <div className="space-y-2">
+                <Label htmlFor="team-name">Team Name</Label>
+                <Input
+                  id="team-name"
+                  placeholder="e.g., The Tribal Council"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  maxLength={50}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={handleSkip}>
+                Skip for now
+              </Button>
+              <Button onClick={handleSaveTeam} disabled={savingTeam || !teamName.trim()}>
+                {savingTeam ? 'Saving...' : 'Done'}
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -277,6 +277,7 @@ export type Database = {
       }
       league_teams: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           id: string
           league_id: string
@@ -285,6 +286,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           id?: string
           league_id: string
@@ -293,6 +295,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           id?: string
           league_id?: string
@@ -519,6 +522,7 @@ export type Database = {
       claim_team: {
         Args: { team_id: string }
         Returns: {
+          avatar_url: string | null
           created_at: string | null
           id: string
           league_id: string
@@ -555,6 +559,7 @@ export type Database = {
       get_available_teams: {
         Args: { league_uuid: string }
         Returns: {
+          avatar_url: string | null
           created_at: string | null
           id: string
           league_id: string

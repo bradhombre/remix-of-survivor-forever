@@ -17,9 +17,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, ExternalLink, LogOut } from "lucide-react";
+import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, ExternalLink, LogOut, UserCircle, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { TeamAvatarUpload } from "./TeamAvatarUpload";
 
 interface LeagueInfoProps {
   leagueId: string;
@@ -48,6 +50,13 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
   const [saving, setSaving] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+
+  // My Team state
+  const { teams, getMyTeam, updateTeam } = useLeagueTeams({ leagueId });
+  const myTeam = getMyTeam(currentUserId);
+  const [editingMyTeam, setEditingMyTeam] = useState(false);
+  const [myTeamName, setMyTeamName] = useState("");
+  const [savingMyTeam, setSavingMyTeam] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,6 +117,27 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
 
     fetchData();
   }, [leagueId]);
+
+  // Sync myTeamName when myTeam changes
+  useEffect(() => {
+    if (myTeam && !editingMyTeam) {
+      setMyTeamName(myTeam.name);
+    }
+  }, [myTeam, editingMyTeam]);
+
+  const handleSaveMyTeamName = async () => {
+    if (!myTeam || !myTeamName.trim()) return;
+    
+    setSavingMyTeam(true);
+    try {
+      await updateTeam(myTeam.id, { name: myTeamName.trim() });
+      toast.success("Team name updated!");
+      setEditingMyTeam(false);
+    } catch (err) {
+      toast.error("Failed to update team name");
+    }
+    setSavingMyTeam(false);
+  };
 
   const handleSaveName = async () => {
     if (!leagueName.trim()) {
@@ -232,6 +262,74 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
 
   return (
     <div className="container max-w-4xl mx-auto p-4 space-y-6">
+      {/* My Team Section */}
+      {myTeam && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCircle className="h-5 w-5" />
+              My Team
+            </CardTitle>
+            <CardDescription>
+              Customize your team name and photo
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* Avatar */}
+              <TeamAvatarUpload
+                teamId={myTeam.id}
+                leagueId={leagueId}
+                currentAvatarUrl={myTeam.avatar_url}
+                teamName={myTeam.name}
+                onUploadComplete={() => {}}
+                size="lg"
+              />
+
+              {/* Team info */}
+              <div className="flex-1 space-y-3 w-full">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Badge variant="outline">Position #{myTeam.position}</Badge>
+                </div>
+                
+                {editingMyTeam ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={myTeamName}
+                      onChange={(e) => setMyTeamName(e.target.value)}
+                      placeholder="Enter team name"
+                      className="flex-1"
+                      maxLength={50}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveMyTeamName();
+                        if (e.key === "Escape") {
+                          setEditingMyTeam(false);
+                          setMyTeamName(myTeam.name);
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button onClick={handleSaveMyTeamName} size="icon" disabled={savingMyTeam || !myTeamName.trim()}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={() => { setEditingMyTeam(false); setMyTeamName(myTeam.name); }} size="icon" variant="ghost">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-semibold">{myTeam.name}</h3>
+                    <Button onClick={() => setEditingMyTeam(true)} size="icon" variant="ghost">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* League Name Section */}
       <Card>
         <CardHeader>
