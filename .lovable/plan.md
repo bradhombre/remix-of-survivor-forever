@@ -1,77 +1,33 @@
 
+# Fix League Size Box to Auto-Expand
 
-# Fix Google OAuth for Lovable Cloud
-
-## Problem Identified
-
-The "Continue with Google" button is failing because the current implementation uses the Supabase auth client directly (`supabase.auth.signInWithOAuth`), but this project runs on **Lovable Cloud**, which requires the managed OAuth solution.
-
-The auth logs show:
-- The redirect to Google happens (status 302)
-- But after returning from Google, the session is not found (`session_not_found` error)
-
-This is because Lovable Cloud handles OAuth differently and requires using the `lovable.auth.signInWithOAuth()` function from the managed integration.
-
----
+## Problem
+The "League Size" section in the Admin Setup tab has a fixed maximum height of 200px on the team slots container. When there are more than 3-4 teams, users must scroll to see all team slots, which is not intuitive.
 
 ## Solution
+Remove the fixed `max-h-[200px]` constraint from the team slots container so it automatically expands to show all teams. This provides a better user experience by making all team slots visible without requiring scrolling.
 
-### Step 1: Configure Social Auth
-
-Run the `supabase--configure-social-auth` tool to generate the Lovable Cloud auth module. This will:
-- Create `src/integrations/lovable/index.ts` 
-- Install the `@lovable.dev/cloud-auth-js` package
-- Set up the managed Google OAuth flow
-
-### Step 2: Update useAuth.ts
-
-Modify the `signInWithGoogle` function to use the Lovable managed auth:
-
-```typescript
-// Before (broken):
-import { supabase } from '@/integrations/supabase/client';
-
-const signInWithGoogle = async (redirectUrl?: string) => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: redirectUrl || `${window.location.origin}/leagues`
-    }
-  });
-  return { error };
-};
-
-// After (working):
-import { lovable } from '@/integrations/lovable/index';
-
-const signInWithGoogle = async (redirectUrl?: string) => {
-  const { error } = await lovable.auth.signInWithOAuth('google', {
-    redirect_uri: redirectUrl || `${window.location.origin}/leagues`
-  });
-  return { error };
-};
-```
-
----
-
-## Files to Modify
+## Change Summary
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAuth.ts` | Update `signInWithGoogle` to use `lovable.auth.signInWithOAuth` |
+| `src/components/SetupMode.tsx` | Remove `max-h-[200px] overflow-y-auto` from team slots container |
 
-## New Files Created (by tool)
+## Technical Details
 
-| File | Purpose |
-|------|---------|
-| `src/integrations/lovable/index.ts` | Lovable Cloud auth module (auto-generated) |
+**Current code (line 390):**
+```tsx
+<div className="space-y-2 max-h-[200px] overflow-y-auto">
+```
 
----
+**Updated code:**
+```tsx
+<div className="space-y-2">
+```
 
-## Technical Notes
+This simple change removes the height constraint and scrolling behavior, allowing the container to naturally expand based on the number of teams in the league (2-20 teams).
 
-- The Lovable Cloud managed OAuth handles all the token exchange and session management automatically
-- No API keys or secrets are required from the user - it's fully managed
-- The redirect URL pattern remains the same: `window.location.origin` + desired path
-- The `returnTo` parameter logic in `Auth.tsx` will continue to work unchanged
-
+## Considerations
+- With up to 20 teams, the card will grow taller, but this is acceptable since it provides better visibility
+- The page itself is scrollable, so users can still navigate if the league is large
+- This matches the UX expectation that all team slots should be immediately visible
