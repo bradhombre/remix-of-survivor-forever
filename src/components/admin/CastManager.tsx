@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Upload, Trash2, Pencil, Check, X, Users } from "lucide-react";
+import { Plus, Upload, Trash2, Pencil, Check, X, Users, FileUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface MasterContestant {
@@ -240,6 +240,76 @@ export function CastManager() {
     setIsSaving(false);
   };
 
+  const handleCSVFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const csvData = event.target?.result as string;
+        const lines = csvData.split("\n").filter((line) => line.trim());
+
+        // Check for header row
+        const startIndex = lines[0]?.toLowerCase().includes("name") ? 1 : 0;
+        
+        const toInsert: Array<{
+          season_number: number;
+          name: string;
+          tribe: string | null;
+          age: number | null;
+          occupation: string | null;
+          image_url: string | null;
+        }> = [];
+
+        for (let i = startIndex; i < lines.length; i++) {
+          const parts = lines[i].split(",").map((p) => p.trim());
+          const name = parts[0];
+          if (!name) continue;
+
+          toInsert.push({
+            season_number: season,
+            name,
+            tribe: parts[1] || null,
+            age: parts[2] ? parseInt(parts[2]) : null,
+            occupation: parts[3] || null,
+            image_url: parts[4] || null,
+          });
+        }
+
+        if (toInsert.length === 0) {
+          toast.error("No valid contestants found in CSV");
+          return;
+        }
+
+        setIsSaving(true);
+        const { error, data } = await supabase
+          .from("master_contestants")
+          .insert(toInsert)
+          .select();
+
+        if (error) {
+          if (error.code === "23505") {
+            toast.error("Some contestants already exist. Remove duplicates from CSV.");
+          } else {
+            toast.error("Failed to import CSV");
+          }
+        } else {
+          toast.success(`Imported ${data?.length || 0} contestants from CSV`);
+          fetchContestants();
+          if (!existingSeasons.includes(season)) {
+            setExistingSeasons([season, ...existingSeasons].sort((a, b) => b - a));
+          }
+        }
+        setIsSaving(false);
+      } catch (error) {
+        toast.error("Invalid CSV format");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const startEditing = (contestant: MasterContestant) => {
     setEditingId(contestant.id);
     setFormData({
@@ -295,7 +365,7 @@ export function CastManager() {
             </div>
           )}
 
-          <div className="flex gap-2 ml-auto">
+          <div className="flex gap-2 ml-auto flex-wrap">
             <Button onClick={() => setShowAddDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Contestant
@@ -303,6 +373,19 @@ export function CastManager() {
             <Button onClick={() => setShowBulkDialog(true)} variant="outline" size="sm">
               <Upload className="h-4 w-4 mr-1" />
               Bulk Import
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <label htmlFor="csv-file-import" className="cursor-pointer">
+                <FileUp className="h-4 w-4 mr-1" />
+                CSV Import
+                <input
+                  id="csv-file-import"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVFileImport}
+                  className="hidden"
+                />
+              </label>
             </Button>
           </div>
         </div>
