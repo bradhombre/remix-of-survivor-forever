@@ -1,104 +1,165 @@
 
 
-# Default Chat Display Name to Team Name
+# Push Notifications + @Mention Autocomplete for Chat
 
 ## Overview
-Update the chat system to use the user's **team name** (from `league_teams`) as their display name in chat, instead of requiring a separate "Chat Display Name" field.
+Add two features to the chat system:
+1. **Toast notifications** for new messages when the chat widget is minimized
+2. **@mention autocomplete** to easily tag JeffBot or other league members
 
-## Current Behavior
-- Chat display name comes from `profiles.display_name` (global across all leagues)
-- If not set, falls back to email username
-- Requires users to manually set a separate "Chat Display Name"
+## Feature 1: Chat Notifications
 
-## New Behavior
-- Chat display name will automatically use the user's **team name** for that league
-- If no team is claimed, fall back to email username
-- No need for a separate "Chat Display Name" field
+When the chat widget is minimized and a new message arrives, show a toast notification with the sender's name and a preview of the message. Clicking the notification opens the chat.
 
-## Changes Summary
+### Implementation
+- Add a callback prop `onNewMessage` to `useChatMessages` hook
+- In `LeagueChat`, trigger a toast notification when:
+  - Chat is collapsed (`!isExpanded`)
+  - New message arrives from someone else (not from current user)
+- Toast will show sender name and truncated message content
+- Clicking toast expands the chat
 
-### 1. Update `useChatMessages.ts`
-- When fetching messages, also query `league_teams` to get team names for users
-- Join user_id to league_teams.user_id where league_id matches
-- Use team name as display name, falling back to email username
+### Files to Modify
+| File | Changes |
+|------|---------|
+| `src/hooks/useChatMessages.ts` | Add callback for new messages, pass to realtime handler |
+| `src/components/LeagueChat.tsx` | Subscribe to new messages, show toast when collapsed |
 
-### 2. Update `useChatPresence.ts`
-- Accept `userTeamName` prop instead of relying on display_name from profiles
-- Track team name in presence state
+---
 
-### 3. Update `LeagueChat.tsx`
-- Pass user's team name (from `useLeagueTeams` hook) instead of profile display_name
+## Feature 2: @Mention Autocomplete
 
-### 4. Update `LeagueDashboard.tsx`
-- Remove the profile display_name fetch (no longer needed for chat)
-- Pass the user's team name to `LeagueChat`
+When user types `@` in the chat input, show a dropdown with mentionable options:
+- **JeffBot** (always available)
+- **Online league members** (team names from presence)
 
-### 5. Update `LeagueInfo.tsx`
-- Remove the "Chat Display Name" section since it's now automatic
+Selecting an option inserts `@name ` into the input.
+
+### UI Design
+- Popover appears above the input when typing `@`
+- Filters as user continues typing (e.g., `@bra` filters to "Brad")
+- Up/Down arrow keys navigate, Enter/Tab selects
+- Clicking an option selects it
+- Escape or clicking outside dismisses without selection
+
+### Implementation Approach
+1. Track cursor position and detect `@` trigger
+2. Extract the partial mention text after `@`
+3. Filter mentionable users based on partial text
+4. Render a popover with filtered options
+5. Handle keyboard navigation and selection
+6. Insert mention and close popover on selection
+
+### Mentionable List
+- Always include: `jeffbot` (displays as "JeffBot 🏝️")
+- Include all team members from the league (from `useLeagueTeams`)
+- Prioritize online users at top
+
+### Files to Modify/Create
+| File | Changes |
+|------|---------|
+| `src/components/ChatMentionInput.tsx` | **NEW** - Input with mention autocomplete functionality |
+| `src/components/LeagueChat.tsx` | Replace plain `Input` with `ChatMentionInput`, pass league teams |
+| `src/pages/LeagueDashboard.tsx` | Pass full teams list to `LeagueChat` |
 
 ---
 
 ## Technical Details
 
-### Display Name Priority (Updated)
-1. User's team name for the current league (from `league_teams`)
-2. Email username (fallback if no team claimed)
-
-### Updated Data Flow
-
-| Component | Change |
-|-----------|--------|
-| `useChatMessages.ts` | Fetch team names from `league_teams` instead of `profiles.display_name` |
-| `useChatPresence.ts` | Rename prop from `userDisplayName` to `userTeamName` for clarity |
-| `LeagueChat.tsx` | Get team name from `useLeagueTeams().getMyTeam()` |
-| `LeagueDashboard.tsx` | Remove profile fetch, use team name from existing state |
-| `LeagueInfo.tsx` | Remove "Chat Display Name" editor section |
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/hooks/useChatMessages.ts` | Query `league_teams` for user team names instead of profiles.display_name |
-| `src/hooks/useChatPresence.ts` | Update prop name for clarity |
-| `src/components/LeagueChat.tsx` | Use `useLeagueTeams` to get current user's team name |
-| `src/pages/LeagueDashboard.tsx` | Simplify - no need to fetch profile display_name |
-| `src/components/LeagueInfo.tsx` | Remove "Chat Display Name" section |
-| `src/lib/displayNameUtils.ts` | Update helper to accept teamName parameter |
-
-### Example Query Change
-
-**Before (profiles.display_name):**
+### ChatMentionInput Component Props
 ```typescript
-const { data: profiles } = await supabase
-  .from("profiles")
-  .select("id, email, display_name")
-  .in("id", userIds);
-```
+interface ChatMentionInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  onSend: () => void;
+  placeholder?: string;
+  maxLength?: number;
+  disabled?: boolean;
+  mentionableUsers: MentionableUser[];
+  inputRef?: React.RefObject<HTMLInputElement>;
+}
 
-**After (league_teams.name):**
-```typescript
-const { data: teams } = await supabase
-  .from("league_teams")
-  .select("user_id, name")
-  .eq("league_id", leagueId)
-  .in("user_id", userIds);
-```
-
-### Display Name Helper Update
-
-```typescript
-// Updated to use team name
-export function getDisplayName(teamName: string | null | undefined, email: string): string {
-  const trimmed = teamName?.trim();
-  if (trimmed && trimmed.length > 0) {
-    return trimmed;
-  }
-  return email.split("@")[0];
+interface MentionableUser {
+  id: string;
+  name: string;
+  isBot?: boolean;
+  isOnline?: boolean;
 }
 ```
 
-## Benefits
-- Simpler UX: No need to set a separate display name
-- Consistent identity: Users are identified by their team name across the league
-- Automatic: When users update their team name, chat reflects it immediately
+### Mention Detection Logic
+```typescript
+// Find the last @ before cursor
+const lastAtIndex = value.lastIndexOf('@', cursorPosition - 1);
+if (lastAtIndex >= 0) {
+  // Check no space between @ and cursor
+  const textAfterAt = value.slice(lastAtIndex + 1, cursorPosition);
+  if (!textAfterAt.includes(' ')) {
+    // Show popover with filtered users
+    const query = textAfterAt.toLowerCase();
+    const filtered = mentionableUsers.filter(u => 
+      u.name.toLowerCase().includes(query)
+    );
+  }
+}
+```
+
+### Notification Toast
+```typescript
+// When new message arrives while collapsed
+toast(
+  <div 
+    className="cursor-pointer" 
+    onClick={() => setIsExpanded(true)}
+  >
+    <div className="font-medium">{senderName}</div>
+    <div className="text-sm text-muted-foreground truncate">
+      {messageContent.slice(0, 50)}...
+    </div>
+  </div>,
+  { duration: 5000 }
+);
+```
+
+### Data Flow
+
+```text
+LeagueDashboard
+    |
+    +-- useLeagueTeams() -> teams[]
+    |
+    +-- LeagueChat
+            |-- teams (for mention suggestions)
+            |-- onlineUsers (from useChatPresence)
+            |
+            +-- ChatMentionInput
+                    |-- mentionableUsers = [
+                    |       { id: 'jeffbot', name: 'JeffBot 🏝️', isBot: true },
+                    |       ...teams.map(t => ({ id: t.user_id, name: t.name, isOnline: ... }))
+                    |   ]
+                    |
+                    +-- Popover (shows on @ trigger)
+                            |-- filtered options
+                            |-- keyboard navigation
+```
+
+---
+
+## Expected Behavior
+
+### Notifications
+1. User has chat minimized (collapsed FAB button)
+2. Another user or JeffBot sends a message
+3. Toast appears: "**TeamName** sent a message..."
+4. Clicking toast opens chat and scrolls to bottom
+5. No notification for user's own messages
+
+### @Mentions
+1. User types `@` in input
+2. Popover appears with JeffBot + all team members
+3. User types more (`@jef`) -> filters to "JeffBot"
+4. User presses Enter or clicks -> `@jeffbot ` inserted
+5. Popover closes, cursor is after the inserted mention
+6. User can continue typing their message
 
