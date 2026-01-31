@@ -18,9 +18,17 @@ Deno.serve(async (req) => {
     )
 
     // Get the user from the request
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    
     const token = authHeader.replace('Bearer ', '')
     
+    // CRITICAL: Must pass token explicitly for Lovable Cloud ES256 compatibility
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
     if (userError || !user) {
       console.error('User auth error:', userError)
