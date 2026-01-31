@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { useGameStateDB } from "@/hooks/useGameStateDB";
 import { useAuth } from "@/hooks/useAuth";
 import { useLeagueRole } from "@/hooks/useLeagueRole";
+import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { supabase } from "@/integrations/supabase/client";
 import { DraftMode } from "@/components/DraftMode";
 import { GameMode } from "@/components/GameMode";
@@ -23,7 +24,6 @@ const LeagueDashboard = () => {
   const [leagueName, setLeagueName] = useState<string>("");
   const [leagueLoading, setLeagueLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("play");
-  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
 
   const {
     state,
@@ -60,7 +60,12 @@ const LeagueDashboard = () => {
   
   const { user, isAdmin, playerName, loading, signOut } = useAuth();
   const { isLeagueAdmin, loading: roleLoading } = useLeagueRole(leagueId);
+  const { getMyTeam } = useLeagueTeams({ leagueId });
   const navigate = useNavigate();
+  
+  // Get current user's team name for chat
+  const myTeam = getMyTeam(user?.id);
+  const userTeamName = myTeam?.name;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -90,22 +95,6 @@ const LeagueDashboard = () => {
     fetchLeague();
   }, [leagueId, navigate]);
 
-  // Fetch user's display name
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user?.id) return;
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', user.id)
-        .single();
-      
-      setUserDisplayName(data?.display_name || null);
-    };
-
-    fetchUserProfile();
-  }, [user?.id]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -338,7 +327,7 @@ const LeagueDashboard = () => {
         leagueId={leagueId}
         userId={user?.id}
         userEmail={user?.email}
-        userDisplayName={userDisplayName}
+        userTeamName={userTeamName}
       />
     </div>
   );

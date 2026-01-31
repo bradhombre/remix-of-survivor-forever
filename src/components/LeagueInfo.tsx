@@ -58,27 +58,12 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
   const [myTeamName, setMyTeamName] = useState("");
   const [savingMyTeam, setSavingMyTeam] = useState(false);
 
-  // Display name state
-  const [displayName, setDisplayName] = useState("");
-  const [editingDisplayName, setEditingDisplayName] = useState(false);
-  const [savingDisplayName, setSavingDisplayName] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
-        
-        // Fetch user's display name
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", user.id)
-          .single();
-        
-        if (profile?.display_name) {
-          setDisplayName(profile.display_name);
-        }
       }
 
       const { data: leagueData, error: leagueError } = await supabase
@@ -155,25 +140,6 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
     setSavingMyTeam(false);
   };
 
-  const handleSaveDisplayName = async () => {
-    if (!currentUserId) return;
-    
-    setSavingDisplayName(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ display_name: displayName.trim() || null })
-        .eq("id", currentUserId);
-
-      if (error) throw error;
-      
-      toast.success("Display name updated!");
-      setEditingDisplayName(false);
-    } catch (err) {
-      toast.error("Failed to update display name");
-    }
-    setSavingDisplayName(false);
-  };
 
   const handleSaveName = async () => {
     if (!leagueName.trim()) {
@@ -360,42 +326,6 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
                     </Button>
                   </div>
                 )}
-                
-                {/* Display Name */}
-                <div className="pt-3 border-t border-border/50">
-                  <div className="text-xs text-muted-foreground mb-1">Chat Display Name</div>
-                  {editingDisplayName ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="Enter display name (optional)"
-                        className="flex-1"
-                        maxLength={50}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveDisplayName();
-                          if (e.key === "Escape") {
-                            setEditingDisplayName(false);
-                          }
-                        }}
-                        autoFocus
-                      />
-                      <Button onClick={handleSaveDisplayName} size="icon" disabled={savingDisplayName}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button onClick={() => setEditingDisplayName(false)} size="icon" variant="ghost">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{displayName || "(Not set - using email)"}</span>
-                      <Button onClick={() => setEditingDisplayName(true)} size="icon" variant="ghost">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </CardContent>
