@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { Newspaper, ChevronDown, ChevronUp } from "lucide-react";
+import { Newspaper, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -20,6 +20,8 @@ interface NewsPost {
   title: string;
   content: string;
   published_at: string;
+  source: string;
+  source_url: string | null;
 }
 
 export const NewsFeed = () => {
@@ -32,9 +34,9 @@ export const NewsFeed = () => {
     const fetchNews = async () => {
       const { data, error } = await supabase
         .from("news_posts")
-        .select("id, title, content, published_at")
+        .select("id, title, content, published_at, source, source_url")
         .order("published_at", { ascending: false })
-        .limit(3);
+        .limit(5);
 
       if (!error && data) {
         setPosts(data);
@@ -49,6 +51,11 @@ export const NewsFeed = () => {
   if (loading || posts.length === 0) {
     return null;
   }
+
+  const getSourceLabel = (source: string) => {
+    if (source === "rss_insidesurvivor") return "Inside Survivor";
+    return null;
+  };
 
   return (
     <>
@@ -83,7 +90,12 @@ export const NewsFeed = () => {
                   className="w-full text-left px-4 py-2 rounded-md hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center justify-between gap-4">
-                    <p className="font-medium text-sm truncate">{post.title}</p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-medium text-sm truncate">{post.title}</p>
+                      {post.source_url && (
+                        <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {format(new Date(post.published_at), "MMM d")}
                     </span>
@@ -102,13 +114,31 @@ export const NewsFeed = () => {
             <DialogTitle>{selectedPost?.title}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              {selectedPost &&
-                format(new Date(selectedPost.published_at), "MMMM d, yyyy")}
-            </p>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {selectedPost &&
+                  format(new Date(selectedPost.published_at), "MMMM d, yyyy")}
+              </span>
+              {selectedPost && getSourceLabel(selectedPost.source) && (
+                <span className="text-primary">
+                  via {getSourceLabel(selectedPost.source)}
+                </span>
+              )}
+            </div>
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <p className="whitespace-pre-wrap">{selectedPost?.content}</p>
             </div>
+            {selectedPost?.source_url && (
+              <a
+                href={selectedPost.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                Read full article
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
           </div>
         </DialogContent>
       </Dialog>

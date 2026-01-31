@@ -354,27 +354,36 @@ export type Database = {
           author_id: string | null
           content: string
           expires_at: string | null
+          external_id: string | null
           id: string
           is_spoiler: boolean
           published_at: string
+          source: string
+          source_url: string | null
           title: string
         }
         Insert: {
           author_id?: string | null
           content: string
           expires_at?: string | null
+          external_id?: string | null
           id?: string
           is_spoiler?: boolean
           published_at?: string
+          source?: string
+          source_url?: string | null
           title: string
         }
         Update: {
           author_id?: string | null
           content?: string
           expires_at?: string | null
+          external_id?: string | null
           id?: string
           is_spoiler?: boolean
           published_at?: string
+          source?: string
+          source_url?: string | null
           title?: string
         }
         Relationships: []

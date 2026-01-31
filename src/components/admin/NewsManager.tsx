@@ -34,7 +34,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Newspaper, AlertTriangle, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Pencil, Trash2, Newspaper, AlertTriangle, Clock, RefreshCw, Rss, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface NewsPost {
@@ -44,14 +46,18 @@ interface NewsPost {
   is_spoiler: boolean;
   published_at: string;
   expires_at: string | null;
+  source: string;
+  source_url: string | null;
 }
 
 export const NewsManager = () => {
   const { user } = useAuth();
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<NewsPost | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
   
   // Form state
   const [title, setTitle] = useState("");
@@ -77,6 +83,30 @@ export const NewsManager = () => {
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  const handleSyncNews = async () => {
+    setSyncing(true);
+    try {
+      const response = await supabase.functions.invoke("fetch-survivor-news");
+      
+      if (response.error) {
+        toast.error("Failed to sync news: " + response.error.message);
+      } else {
+        const data = response.data;
+        if (data.inserted > 0) {
+          toast.success(`Synced ${data.inserted} new articles`);
+        } else {
+          toast.info("No new articles to sync");
+        }
+        fetchPosts();
+      }
+    } catch (error) {
+      toast.error("Failed to sync news");
+      console.error(error);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const resetForm = () => {
     setTitle("");
@@ -160,30 +190,72 @@ export const NewsManager = () => {
     return <p className="text-muted-foreground">Loading news posts...</p>;
   }
 
+  const filteredPosts = posts.filter((post) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "manual") return post.source === "manual";
+    if (activeTab === "rss") return post.source.startsWith("rss_");
+    return true;
+  });
+
+  const manualCount = posts.filter((p) => p.source === "manual").length;
+  const rssCount = posts.filter((p) => p.source.startsWith("rss_")).length;
+
+  const getSourceBadge = (source: string) => {
+    if (source === "manual") {
+      return <Badge variant="outline">Manual</Badge>;
+    }
+    if (source === "rss_insidesurvivor") {
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <Rss className="h-3 w-3" />
+          Inside Survivor
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2">
             <Newspaper className="h-5 w-5" />
             News Posts ({posts.length})
           </CardTitle>
-          <Button onClick={openNewDialog} size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            New Post
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleSyncNews} size="sm" variant="outline" disabled={syncing}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing..." : "Sync RSS"}
+            </Button>
+            <Button onClick={openNewDialog} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              New Post
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        {posts.length === 0 ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="all">All ({posts.length})</TabsTrigger>
+            <TabsTrigger value="manual">Manual ({manualCount})</TabsTrigger>
+            <TabsTrigger value="rss">RSS ({rssCount})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {filteredPosts.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            No news posts yet. Create one to get started.
+            {activeTab === "all"
+              ? "No news posts yet. Create one or sync from RSS."
+              : `No ${activeTab} posts found.`}
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Published</TableHead>
                 <TableHead className="text-center">Spoiler</TableHead>
                 <TableHead>Expires</TableHead>
@@ -191,11 +263,25 @@ export const NewsManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <TableRow key={post.id}>
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    {post.title}
+                  <TableCell className="font-medium max-w-[200px]">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate">{post.title}</span>
+                      {post.source_url && (
+                        <a
+                          href={post.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                   </TableCell>
+                  <TableCell>{getSourceBadge(post.source)}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {format(new Date(post.published_at), "MMM d, yyyy")}
                   </TableCell>
