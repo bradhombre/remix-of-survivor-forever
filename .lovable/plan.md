@@ -1,70 +1,109 @@
 
-# Fix Authentication Race Condition on Leagues Page
+# Let Users Name Their Team and Upload Photo When Creating/Joining
 
 ## Problem
-When navigating to the `/leagues` page, users are incorrectly redirected to `/auth` even when they are logged in. This happens because:
+Currently, when users create or join a league:
+- They're auto-assigned to a generic team slot like "Team 1"
+- Only admins can rename teams
+- There's no way to upload a team photo
 
-1. The `Leagues.tsx` page checks `if (!user)` and redirects to `/auth`
-2. But it doesn't wait for the authentication state to finish loading
-3. When `useAuth` initializes, `user` is `null` and `loading` is `true`
-4. The page sees `!user` and redirects before the session is retrieved
+Users should be able to personalize their team right from the start.
 
-## Solution
-Update `Leagues.tsx` to:
-1. Destructure the `loading` state from `useAuth` (rename it to avoid conflict with local state)
-2. Wait for auth loading to complete before making redirect decisions
-3. Only redirect to `/auth` if auth has finished loading AND there's no user
+## Solution Overview
+Add a two-step flow when creating/joining a league:
+1. First: Enter league name (create) or invite code (join)
+2. Second: Customize your team (name + optional photo)
 
-## Change Summary
+Also add a "My Team" section in the League tab where users can update their team name and photo anytime.
+
+## Database Changes
+
+### Add `avatar_url` column to `league_teams`
+| Column | Type | Notes |
+|--------|------|-------|
+| `avatar_url` | text | Nullable, stores URL to team photo |
+
+### Create storage bucket for team photos
+```sql
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('team-avatars', 'team-avatars', true);
+```
+
+### RLS policies for storage
+- Allow authenticated users to upload their own team avatar
+- Allow anyone to view avatars (public bucket)
+
+## File Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/Leagues.tsx` | Add auth loading check before redirect |
+| `src/components/CreateLeagueDialog.tsx` | Add second step for team customization after league creation |
+| `src/components/JoinLeagueDialog.tsx` | Add second step for team customization after joining |
+| `src/components/LeagueInfo.tsx` | Add "My Team" card where users can edit their team name + photo |
+| `src/hooks/useLeagueTeams.ts` | Add `updateTeamAvatar` function, include `avatar_url` in type |
+| `src/components/SetupMode.tsx` | Display team avatars in the admin team list |
+
+## UI Flow
+
+### Create League Flow
+```text
+Step 1: [League Name Input] -> [Create Button]
+        ↓
+Step 2: "You're Team 1! Customize your team:"
+        [Team Name Input]
+        [Upload Team Photo] (optional)
+        [Done Button]
+```
+
+### Join League Flow
+```text
+Step 1: [Invite Code Input] -> [Join Button]
+        ↓
+Step 2: "Welcome! You've been assigned to [Team Name]. Customize your team:"
+        [Team Name Input]
+        [Upload Team Photo] (optional)
+        [Done Button]
+```
+
+### League Tab - My Team Section
+New card at the top of LeagueInfo showing:
+- Current team name (editable)
+- Current team photo (with upload button)
+- Position number in the league
 
 ## Technical Details
 
-**Current code (lines 28-37):**
-```tsx
-const { user, signOut } = useAuth();
-const navigate = useNavigate();
+### CreateLeagueDialog Changes
+- Add `step` state (1 or 2)
+- After successful league creation, transition to step 2
+- Store the team ID returned from the `create_league` function (requires function update)
+- Step 2 shows team name input and photo upload
+- On "Done", update the team via Supabase
 
-useEffect(() => {
-  if (!user) {
-    navigate('/auth');
-    return;
-  }
-  fetchMemberships();
-}, [user, navigate]);
+### JoinLeagueDialog Changes
+- Add `step` state (1 or 2)
+- After successful join, transition to step 2
+- The `join_league` function already returns membership data; need to also get team info
+- Step 2 shows team name input and photo upload
+- On "Done", update the team via Supabase
+
+### Image Upload Flow
+1. User selects image file
+2. Upload to `team-avatars` bucket with path `{league_id}/{team_id}.{ext}`
+3. Get public URL
+4. Save URL to `league_teams.avatar_url`
+
+### RLS Update for league_teams
+Add policy: "Users can update their own team name and avatar"
+```sql
+CREATE POLICY "Users can update own team"
+ON league_teams FOR UPDATE
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 ```
 
-**Updated code:**
-```tsx
-const { user, signOut, loading: authLoading } = useAuth();
-const navigate = useNavigate();
-
-useEffect(() => {
-  // Wait for auth to finish loading before making decisions
-  if (authLoading) return;
-  
-  if (!user) {
-    navigate('/auth');
-    return;
-  }
-  fetchMemberships();
-}, [user, authLoading, navigate]);
-```
-
-**Also update the loading state check (line 110):**
-```tsx
-// Current
-if (loading) {
-
-// Updated - show loading if either auth or memberships are loading
-if (authLoading || loading) {
-```
-
-## Why This Works
-- `authLoading` starts as `true` when `useAuth` initializes
-- The useEffect exits early while `authLoading` is true, preventing premature redirect
-- Once auth finishes loading, if there's a valid session, `user` will be populated
-- The redirect only happens when we're certain there's no authenticated user
+## Benefits
+- Personal connection: Users feel ownership of their team from the start
+- Better UX: No need to hunt for where to customize your team
+- Flexibility: Can always update later in the League tab
+- Visual appeal: Team photos make the league feel more personalized
