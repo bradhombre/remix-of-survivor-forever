@@ -9,6 +9,7 @@ import { Player, Contestant, DraftType } from "@/types/survivor";
 import { useToast } from "@/hooks/use-toast";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface SetupModeProps {
   leagueId: string;
@@ -394,6 +395,12 @@ export const SetupMode = ({
 
                   return (
                     <div key={team.id} className="glass p-3 rounded-lg flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={team.avatar_url || undefined} alt={team.name} />
+                        <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                          {team.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <span className="font-bold text-accent w-6">{team.position}.</span>
                       
                       {isEditing ? (

@@ -8,6 +8,7 @@ export interface LeagueTeam {
   position: number;
   user_id: string | null;
   user_email?: string | null;
+  avatar_url?: string | null;
   created_at: string;
 }
 
@@ -68,6 +69,7 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
         position: team.position,
         user_id: team.user_id,
         user_email: team.user_id ? emailMap[team.user_id] || null : null,
+        avatar_url: (team as any).avatar_url || null,
         created_at: team.created_at,
       }));
 
@@ -137,6 +139,20 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     }
   };
 
+  const updateTeam = async (teamId: string, updates: { name?: string; avatar_url?: string }) => {
+    const { error: updateError } = await supabase
+      .from('league_teams')
+      .update(updates)
+      .eq('id', teamId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Refetch to update local state
+    await fetchTeams();
+  };
+
   const getFilledCount = () => {
     return teams.filter(t => t.user_id !== null).length;
   };
@@ -145,14 +161,21 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
     return teams.map(t => t.name);
   };
 
+  const getMyTeam = (userId: string | null) => {
+    if (!userId) return null;
+    return teams.find(t => t.user_id === userId) || null;
+  };
+
   return {
     teams,
     loading,
     error,
     resizeLeague,
     renameTeam,
+    updateTeam,
     getFilledCount,
     getTeamNames,
+    getMyTeam,
     refetch: fetchTeams,
   };
 };
