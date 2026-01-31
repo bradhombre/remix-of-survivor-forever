@@ -11,6 +11,7 @@ import { AdminPanel } from "@/components/AdminPanel";
 import { LeagueInfo } from "@/components/LeagueInfo";
 import { SeasonCompleteBanner } from "@/components/SeasonCompleteBanner";
 import { NewsFeed } from "@/components/NewsFeed";
+import { LeagueChat } from "@/components/LeagueChat";
 import { Button } from "@/components/ui/button";
 import { Trophy, History, Users, Shield, LogOut, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -313,6 +314,13 @@ const LeagueDashboard = () => {
           />
         </div>
       )}
+
+      {/* Floating Chat Widget */}
+      <LeagueChat
+        leagueId={leagueId}
+        userId={user?.id}
+        userEmail={user?.email}
+      />
     </div>
   );
 };
