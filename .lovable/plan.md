@@ -1,109 +1,142 @@
 
-# Let Users Name Their Team and Upload Photo When Creating/Joining
 
-## Problem
-Currently, when users create or join a league:
-- They're auto-assigned to a generic team slot like "Team 1"
-- Only admins can rename teams
-- There's no way to upload a team photo
+# Implement Themed Default Avatars for Teams
 
-Users should be able to personalize their team right from the start.
+## Overview
+Currently, when a team doesn't have an uploaded avatar, the fallback shows plain initials on a muted background. This plan adds visually appealing, survivor-themed default avatars that make the experience more fun and personalized even before users upload photos.
 
-## Solution Overview
-Add a two-step flow when creating/joining a league:
-1. First: Enter league name (create) or invite code (join)
-2. Second: Customize your team (name + optional photo)
+## Solution Options
 
-Also add a "My Team" section in the League tab where users can update their team name and photo anytime.
+### Recommended Approach: Deterministic Themed Backgrounds with Initials
 
-## Database Changes
+Each team gets a unique, colorful gradient background based on their team name (or position). This ensures:
+- Consistent appearance (same team = same colors)
+- Visual variety across teams
+- No need for external image assets
+- Survivor-inspired color palettes (jungle greens, ocean blues, sunset oranges, tribal reds)
 
-### Add `avatar_url` column to `league_teams`
-| Column | Type | Notes |
-|--------|------|-------|
-| `avatar_url` | text | Nullable, stores URL to team photo |
-
-### Create storage bucket for team photos
-```sql
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('team-avatars', 'team-avatars', true);
-```
-
-### RLS policies for storage
-- Allow authenticated users to upload their own team avatar
-- Allow anyone to view avatars (public bucket)
-
-## File Changes
+### Implementation
 
 | File | Change |
 |------|--------|
-| `src/components/CreateLeagueDialog.tsx` | Add second step for team customization after league creation |
-| `src/components/JoinLeagueDialog.tsx` | Add second step for team customization after joining |
-| `src/components/LeagueInfo.tsx` | Add "My Team" card where users can edit their team name + photo |
-| `src/hooks/useLeagueTeams.ts` | Add `updateTeamAvatar` function, include `avatar_url` in type |
-| `src/components/SetupMode.tsx` | Display team avatars in the admin team list |
-
-## UI Flow
-
-### Create League Flow
-```text
-Step 1: [League Name Input] -> [Create Button]
-        ↓
-Step 2: "You're Team 1! Customize your team:"
-        [Team Name Input]
-        [Upload Team Photo] (optional)
-        [Done Button]
-```
-
-### Join League Flow
-```text
-Step 1: [Invite Code Input] -> [Join Button]
-        ↓
-Step 2: "Welcome! You've been assigned to [Team Name]. Customize your team:"
-        [Team Name Input]
-        [Upload Team Photo] (optional)
-        [Done Button]
-```
-
-### League Tab - My Team Section
-New card at the top of LeagueInfo showing:
-- Current team name (editable)
-- Current team photo (with upload button)
-- Position number in the league
+| `src/lib/avatarUtils.ts` | New utility file with avatar generation logic |
+| `src/components/TeamAvatar.tsx` | New reusable component for team avatars with themed defaults |
+| `src/components/TeamAvatarUpload.tsx` | Use new TeamAvatar component |
+| `src/components/DraftMode.tsx` | Replace inline Avatar with TeamAvatar |
+| `src/components/GameMode.tsx` | Replace inline Avatar with TeamAvatar |
+| `src/components/SetupMode.tsx` | Replace inline Avatar with TeamAvatar |
 
 ## Technical Details
 
-### CreateLeagueDialog Changes
-- Add `step` state (1 or 2)
-- After successful league creation, transition to step 2
-- Store the team ID returned from the `create_league` function (requires function update)
-- Step 2 shows team name input and photo upload
-- On "Done", update the team via Supabase
+### Avatar Utility (`src/lib/avatarUtils.ts`)
 
-### JoinLeagueDialog Changes
-- Add `step` state (1 or 2)
-- After successful join, transition to step 2
-- The `join_league` function already returns membership data; need to also get team info
-- Step 2 shows team name input and photo upload
-- On "Done", update the team via Supabase
+```typescript
+// Survivor-themed color palettes (gradient pairs)
+const AVATAR_THEMES = [
+  { bg: 'from-emerald-600 to-teal-500', icon: '🌴' },    // Jungle
+  { bg: 'from-amber-500 to-orange-600', icon: '🔥' },    // Fire
+  { bg: 'from-blue-500 to-cyan-500', icon: '🌊' },       // Ocean
+  { bg: 'from-rose-500 to-pink-600', icon: '🌺' },       // Tropical
+  { bg: 'from-violet-500 to-purple-600', icon: '🗿' },   // Idol
+  { bg: 'from-yellow-500 to-amber-500', icon: '☀️' },   // Sun
+  { bg: 'from-slate-600 to-gray-700', icon: '🏝️' },     // Island
+  { bg: 'from-red-500 to-rose-600', icon: '🎯' },        // Tribal
+];
 
-### Image Upload Flow
-1. User selects image file
-2. Upload to `team-avatars` bucket with path `{league_id}/{team_id}.{ext}`
-3. Get public URL
-4. Save URL to `league_teams.avatar_url`
+// Generate consistent theme based on team name
+export function getAvatarTheme(teamName: string) {
+  const hash = teamName.split('').reduce((acc, char) => 
+    acc + char.charCodeAt(0), 0);
+  return AVATAR_THEMES[hash % AVATAR_THEMES.length];
+}
 
-### RLS Update for league_teams
-Add policy: "Users can update their own team name and avatar"
-```sql
-CREATE POLICY "Users can update own team"
-ON league_teams FOR UPDATE
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+export function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+```
+
+### TeamAvatar Component (`src/components/TeamAvatar.tsx`)
+
+A reusable component that:
+1. Shows the uploaded image if `avatarUrl` is provided
+2. Falls back to a themed gradient with initials if no image
+3. Supports multiple sizes (`sm`, `md`, `lg`)
+4. Option to show survivor icon instead of initials (`useIcon` prop)
+
+```tsx
+interface TeamAvatarProps {
+  teamName: string;
+  avatarUrl?: string | null;
+  size?: 'sm' | 'md' | 'lg';
+  useIcon?: boolean;  // Show survivor icon instead of initials
+  className?: string;
+}
+
+export function TeamAvatar({ teamName, avatarUrl, size = 'md', useIcon = false }: TeamAvatarProps) {
+  const theme = getAvatarTheme(teamName);
+  const sizeClasses = { sm: 'h-8 w-8', md: 'h-10 w-10', lg: 'h-16 w-16' };
+  
+  if (avatarUrl) {
+    return (
+      <Avatar className={sizeClasses[size]}>
+        <AvatarImage src={avatarUrl} alt={teamName} />
+        <AvatarFallback className={`bg-gradient-to-br ${theme.bg} text-white`}>
+          {useIcon ? theme.icon : getInitials(teamName)}
+        </AvatarFallback>
+      </Avatar>
+    );
+  }
+  
+  return (
+    <div className={cn(
+      sizeClasses[size],
+      `bg-gradient-to-br ${theme.bg}`,
+      'rounded-full flex items-center justify-center text-white font-bold'
+    )}>
+      {useIcon ? theme.icon : getInitials(teamName)}
+    </div>
+  );
+}
+```
+
+## Visual Examples
+
+```text
+Without upload (themed defaults):
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│ 🌴      │  │ 🔥      │  │ 🌊      │  │ 🌺      │
+│ Green   │  │ Orange  │  │ Blue    │  │ Pink    │
+│ Gradient│  │ Gradient│  │ Gradient│  │ Gradient│
+│  "BR"   │  │  "CC"   │  │  "KL"   │  │  "RY"   │
+└─────────┘  └─────────┘  └─────────┘  └─────────┘
+ Team Brad   Team Coco    Team Kalin   Team Roy
+
+With upload:
+┌─────────┐
+│  Photo  │
+│  shows  │
+│ instead │
+└─────────┘
 ```
 
 ## Benefits
-- Personal connection: Users feel ownership of their team from the start
-- Better UX: No need to hunt for where to customize your team
-- Flexibility: Can always update later in the League tab
-- Visual appeal: Team photos make the league feel more personalized
+
+1. **Visual Variety**: Each team gets a unique, colorful avatar without requiring uploads
+2. **Survivor Theme**: Colors and icons inspired by Survivor (jungle, fire, ocean, tribal)
+3. **Consistency**: Same team name always gets the same theme (deterministic)
+4. **Clean Code**: Single reusable component replaces scattered Avatar implementations
+5. **Progressive Enhancement**: Works great as default, even better with custom photo
+
+## Alternative Considered: Pre-made Avatar Images
+
+We considered adding static SVG avatar images (e.g., torch, buff designs, tribal patterns) but the gradient approach is:
+- Lighter (no additional assets)
+- More flexible (infinite combinations)
+- Still visually appealing
+- Easier to maintain
+
