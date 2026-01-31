@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable/index';
 
 export type UserRole = 'admin' | 'user';
 
@@ -104,11 +105,8 @@ export function useAuth() {
   };
 
   const signInWithGoogle = async (redirectUrl?: string) => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl || `${window.location.origin}/leagues`
-      }
+    const { error } = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: redirectUrl || `${window.location.origin}/leagues`
     });
     return { error };
   };
