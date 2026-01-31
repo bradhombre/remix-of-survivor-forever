@@ -24,7 +24,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Users, Eye, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NewsManager } from "@/components/admin/NewsManager";
+import { ArrowLeft, Users, Eye, Trash2, Newspaper } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -164,89 +166,108 @@ export default function Admin() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              All Leagues ({leagues.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {leagues.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No leagues created yet.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Owner Email</TableHead>
-                    <TableHead className="text-center">Members</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leagues.map((league) => (
-                    <TableRow key={league.id}>
-                      <TableCell className="font-medium">{league.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {league.owner_email}
-                      </TableCell>
-                      <TableCell className="text-center">{league.member_count}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(league.created_at), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/league/${league.id}`)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+        <Tabs defaultValue="leagues" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="leagues" className="gap-2">
+              <Users className="h-4 w-4" />
+              Leagues
+            </TabsTrigger>
+            <TabsTrigger value="news" className="gap-2">
+              <Newspaper className="h-4 w-4" />
+              News
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="leagues">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  All Leagues ({leagues.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {leagues.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No leagues created yet.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Owner Email</TableHead>
+                        <TableHead className="text-center">Members</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leagues.map((league) => (
+                        <TableRow key={league.id}>
+                          <TableCell className="font-medium">{league.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {league.owner_email}
+                          </TableCell>
+                          <TableCell className="text-center">{league.member_count}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {format(new Date(league.created_at), "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-destructive hover:text-destructive"
-                                disabled={deletingId === league.id}
+                                onClick={() => navigate(`/league/${league.id}`)}
                               >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete League</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{league.name}"? This will permanently remove the league, all memberships, game sessions, and associated data. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteLeague(league.id, league.name)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete League
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    disabled={deletingId === league.id}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete League</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{league.name}"? This will permanently remove the league, all memberships, game sessions, and associated data. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteLeague(league.id, league.name)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete League
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="news">
+            <NewsManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

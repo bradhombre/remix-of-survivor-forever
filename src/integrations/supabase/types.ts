@@ -207,6 +207,7 @@ export type Database = {
           league_id: string | null
           mode: string
           season: number
+          status: string
           updated_at: string
         }
         Insert: {
@@ -219,6 +220,7 @@ export type Database = {
           league_id?: string | null
           mode?: string
           season?: number
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -231,6 +233,7 @@ export type Database = {
           league_id?: string | null
           mode?: string
           season?: number
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -315,6 +318,7 @@ export type Database = {
       }
       leagues: {
         Row: {
+          auto_renew: boolean
           created_at: string | null
           id: string
           invite_code: string
@@ -324,6 +328,7 @@ export type Database = {
           team_count: number | null
         }
         Insert: {
+          auto_renew?: boolean
           created_at?: string | null
           id?: string
           invite_code: string
@@ -333,6 +338,7 @@ export type Database = {
           team_count?: number | null
         }
         Update: {
+          auto_renew?: boolean
           created_at?: string | null
           id?: string
           invite_code?: string
@@ -340,6 +346,36 @@ export type Database = {
           owner_id?: string
           scoring_config?: Json | null
           team_count?: number | null
+        }
+        Relationships: []
+      }
+      news_posts: {
+        Row: {
+          author_id: string | null
+          content: string
+          expires_at: string | null
+          id: string
+          is_spoiler: boolean
+          published_at: string
+          title: string
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          expires_at?: string | null
+          id?: string
+          is_spoiler?: boolean
+          published_at?: string
+          title: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          expires_at?: string | null
+          id?: string
+          is_spoiler?: boolean
+          published_at?: string
+          title?: string
         }
         Relationships: []
       }
@@ -540,6 +576,7 @@ export type Database = {
       create_league: {
         Args: { league_name: string }
         Returns: {
+          auto_renew: boolean
           created_at: string | null
           id: string
           invite_code: string

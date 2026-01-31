@@ -9,6 +9,8 @@ import { GameMode } from "@/components/GameMode";
 import { HistoryMode } from "@/components/HistoryMode";
 import { AdminPanel } from "@/components/AdminPanel";
 import { LeagueInfo } from "@/components/LeagueInfo";
+import { SeasonCompleteBanner } from "@/components/SeasonCompleteBanner";
+import { NewsFeed } from "@/components/NewsFeed";
 import { Button } from "@/components/ui/button";
 import { Trophy, History, Users, Shield, LogOut, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ const LeagueDashboard = () => {
     state,
     loading: gameLoading,
     sessionId,
+    sessionStatus,
     scoringConfig,
     setMode,
     setSeason,
@@ -45,6 +48,7 @@ const LeagueDashboard = () => {
     exportData,
     importData,
     resetState,
+    startNewSeason,
     updatePlayerAvatar,
     clearScores,
     clearEpisodeScores,
@@ -119,6 +123,18 @@ const LeagueDashboard = () => {
 
   return (
     <div className="min-h-screen">
+      {/* Season Complete Banner */}
+      {sessionStatus === "completed" && (
+        <SeasonCompleteBanner
+          season={state.season}
+          isLeagueAdmin={isLeagueAdmin}
+          onStartNewSeason={startNewSeason}
+        />
+      )}
+
+      {/* News Feed */}
+      <NewsFeed />
+
       {/* League Header */}
       <div className="bg-muted/50 border-b border-border">
         <div className="container max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -233,8 +249,9 @@ const LeagueDashboard = () => {
       )}
 
       {/* History Tab */}
-      {viewMode === "history" && (
+      {viewMode === "history" && leagueId && (
         <HistoryMode
+          leagueId={leagueId}
           archivedSeasons={state.archivedSeasons}
           playerProfiles={state.playerProfiles}
         />

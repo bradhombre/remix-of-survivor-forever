@@ -1,16 +1,62 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArchivedSeason, Player } from "@/types/survivor";
 import { Download, Calendar, Users, Trophy } from "lucide-react";
-import { useState } from "react";
+
+interface CompletedSession {
+  id: string;
+  season: number;
+  updated_at: string;
+}
 
 interface HistoryModeProps {
+  leagueId: string;
   archivedSeasons: ArchivedSeason[];
   playerProfiles: Record<Player, { avatar?: string }>;
 }
 
-export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProps) => {
+export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: HistoryModeProps) => {
+  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<string>("");
   const [selectedSeason, setSelectedSeason] = useState<ArchivedSeason | null>(null);
+
+  // Fetch completed sessions for this league
+  useEffect(() => {
+    const fetchCompletedSessions = async () => {
+      const { data } = await supabase
+        .from("game_sessions")
+        .select("id, season, updated_at")
+        .eq("league_id", leagueId)
+        .eq("status", "completed")
+        .order("season", { ascending: false });
+
+      if (data && data.length > 0) {
+        setCompletedSessions(data);
+        // Default to most recent completed season
+        setSelectedSeasonNumber(String(data[0].season));
+      }
+    };
+
+    fetchCompletedSessions();
+  }, [leagueId]);
+
+  // When season selection changes, find the matching archived data
+  useEffect(() => {
+    if (selectedSeasonNumber) {
+      const seasonNum = parseInt(selectedSeasonNumber);
+      const archived = archivedSeasons.find((s) => s.season === seasonNum);
+      setSelectedSeason(archived || null);
+    }
+  }, [selectedSeasonNumber, archivedSeasons]);
 
   const exportSeason = (season: ArchivedSeason) => {
     const dataStr = JSON.stringify(season, null, 2);
@@ -32,7 +78,8 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
     }
   };
 
-  if (archivedSeasons.length === 0) {
+  // No completed sessions or archived seasons
+  if (completedSessions.length === 0 && archivedSeasons.length === 0) {
     return (
       <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
         <div className="text-center space-y-4">
@@ -44,26 +91,39 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
     );
   }
 
+  // Show season selector and details
   if (selectedSeason) {
     return (
       <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <Button onClick={() => setSelectedSeason(null)} variant="outline">
-              ← Back to All Seasons
-            </Button>
+        {/* Season Selector */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">📜 Season History</h1>
+            <Select value={selectedSeasonNumber} onValueChange={setSelectedSeasonNumber}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select season" />
+              </SelectTrigger>
+              <SelectContent>
+                {completedSessions.map((session) => (
+                  <SelectItem key={session.id} value={String(session.season)}>
+                    Season {session.season}
+                  </SelectItem>
+                ))}
+                {/* Also include archived seasons not in completed sessions */}
+                {archivedSeasons
+                  .filter((as) => !completedSessions.some((cs) => cs.season === as.season))
+                  .map((as) => (
+                    <SelectItem key={as.season} value={String(as.season)}>
+                      Season {as.season}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={() => exportSeason(selectedSeason)} variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export Season
           </Button>
-        </div>
-
-        <div className="text-center space-y-2">
-          <h1 className="text-5xl font-bold">Season {selectedSeason.season}</h1>
-          <p className="text-muted-foreground">
-            Archived on {new Date(selectedSeason.archivedAt).toLocaleDateString()}
-          </p>
         </div>
 
         {/* Final Standings */}
@@ -152,60 +212,36 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
     );
   }
 
+  // Default view: prompt to select a season
   return (
     <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-5xl md:text-6xl font-bold">📜 Season History</h1>
-        <p className="text-muted-foreground text-lg">{archivedSeasons.length} archived season(s)</p>
+      <div className="flex items-center gap-4">
+        <h1 className="text-3xl font-bold">📜 Season History</h1>
+        <Select value={selectedSeasonNumber} onValueChange={setSelectedSeasonNumber}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select season" />
+          </SelectTrigger>
+          <SelectContent>
+            {completedSessions.map((session) => (
+              <SelectItem key={session.id} value={String(session.season)}>
+                Season {session.season}
+              </SelectItem>
+            ))}
+            {archivedSeasons
+              .filter((as) => !completedSessions.some((cs) => cs.season === as.season))
+              .map((as) => (
+                <SelectItem key={as.season} value={String(as.season)}>
+                  Season {as.season}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
       </div>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {archivedSeasons.sort((a, b) => b.season - a.season).map((season) => (
-          <Card key={season.season} className="glass p-6 space-y-4 hover:scale-105 transition-transform cursor-pointer"
-            onClick={() => setSelectedSeason(season)}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-3xl font-bold">Season {season.season}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(season.archivedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  exportSeason(season);
-                }}
-                variant="ghost"
-                size="icon"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-muted-foreground">Winner</p>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🥇</span>
-                <div>
-                  <p className="font-bold text-lg">{season.finalStandings[0].player}</p>
-                  <p className="text-2xl font-bold text-accent">{season.finalStandings[0].score} pts</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
-              <div>
-                <p className="text-xs text-muted-foreground">Contestants</p>
-                <p className="text-lg font-bold">{season.contestants.length}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Events</p>
-                <p className="text-lg font-bold">{season.scoringEvents.length}</p>
-              </div>
-            </div>
-          </Card>
-        ))}
+      
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">
+          Select a season above to view its history
+        </p>
       </div>
     </div>
   );
