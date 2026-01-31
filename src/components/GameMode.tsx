@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
 import { getPoints, isActionEnabled, getCustomActions, CustomScoringAction, ScoringConfig } from "@/lib/scoring";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 interface GameModeProps {
+  leagueId?: string;
   season: number;
   episode: number;
   isPostMerge: boolean;
@@ -56,6 +59,7 @@ interface GameModeProps {
 }
 
 export const GameMode = ({
+  leagueId,
   season,
   episode,
   isPostMerge,
@@ -87,6 +91,18 @@ export const GameMode = ({
   const [showSurvivorsDialog, setShowSurvivorsDialog] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  
+  // Get league teams for avatars
+  const { teams } = useLeagueTeams({ leagueId });
+  
+  // Map team names to their avatar URLs
+  const teamAvatarMap = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    teams.forEach(team => {
+      map[team.name] = team.avatar_url || null;
+    });
+    return map;
+  }, [teams]);
   
   // Get custom actions from scoring config
   const customActions = getCustomActions(scoringConfig);
@@ -691,30 +707,48 @@ export const GameMode = ({
                   
                   <div className="flex items-center gap-3">
                     <div className="relative group">
-                      {playerProfiles?.[entry.player]?.avatar ? (
+                      {/* Priority: team avatar from league_teams, then playerProfiles, then fallback */}
+                      {teamAvatarMap[entry.player] ? (
+                        <Avatar className="w-16 h-16 border-2 border-border">
+                          <AvatarImage 
+                            src={teamAvatarMap[entry.player]!} 
+                            alt={entry.player}
+                          />
+                          <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
+                            {String(entry.player).slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : playerProfiles?.[entry.player]?.avatar ? (
                         <img 
                           src={playerProfiles[entry.player].avatar} 
                           alt={entry.player}
                           className="w-16 h-16 rounded-full object-cover border-2 border-border"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-full glass-strong flex items-center justify-center border-2 border-border">
-                          <User className="w-8 h-8 text-muted-foreground" />
-                        </div>
+                        <Avatar className="w-16 h-16 border-2 border-border">
+                          <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
+                            {String(entry.player).slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                       )}
-                      <label 
-                        htmlFor={`avatar-${entry.player}`}
-                        className="absolute inset-0 rounded-full glass-strong opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all"
-                      >
-                        <Upload className="w-6 h-6" />
-                      </label>
-                      <input
-                        id={`avatar-${entry.player}`}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleAvatarUpload(entry.player, e)}
-                        className="hidden"
-                      />
+                      {/* Only show upload overlay if no team avatar (allows legacy override) */}
+                      {!teamAvatarMap[entry.player] && (
+                        <>
+                          <label 
+                            htmlFor={`avatar-${entry.player}`}
+                            className="absolute inset-0 rounded-full glass-strong opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all"
+                          >
+                            <Upload className="w-6 h-6" />
+                          </label>
+                          <input
+                            id={`avatar-${entry.player}`}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleAvatarUpload(entry.player, e)}
+                            className="hidden"
+                          />
+                        </>
+                      )}
                     </div>
                     
                     <div className="flex-1">

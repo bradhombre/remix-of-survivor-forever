@@ -195,6 +195,7 @@ const LeagueDashboard = () => {
         <>
           {canShowGame ? (
             <GameMode
+              leagueId={leagueId}
               season={state.season}
               episode={state.episode}
               isPostMerge={state.isPostMerge}
