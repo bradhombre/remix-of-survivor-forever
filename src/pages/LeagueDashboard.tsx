@@ -60,7 +60,7 @@ const LeagueDashboard = () => {
   
   const { user, isAdmin, playerName, loading, signOut } = useAuth();
   const { isLeagueAdmin, loading: roleLoading } = useLeagueRole(leagueId);
-  const { getMyTeam } = useLeagueTeams({ leagueId });
+  const { getMyTeam, teams } = useLeagueTeams({ leagueId });
   const navigate = useNavigate();
   
   // Get current user's team name for chat
@@ -328,6 +328,7 @@ const LeagueDashboard = () => {
         userId={user?.id}
         userEmail={user?.email}
         userTeamName={userTeamName}
+        teams={teams}
       />
     </div>
   );
