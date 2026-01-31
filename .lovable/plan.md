@@ -1,146 +1,238 @@
 
 
-# Automatic Survivor News Feed Integration
+# League Live Chat + JeffBot Implementation
 
 ## Overview
 
-This plan adds automatic fetching of Survivor news from external RSS feeds, specifically using Inside Survivor's spoiler-free news category feed. The system will periodically sync news from the RSS feed into the database, filtering out any content marked as spoilers.
+This plan implements a real-time chat system for each league with an AI-powered "JeffBot" assistant that can answer Survivor trivia questions. The chat appears as a floating widget on the league dashboard.
 
-## How It Works
+## Architecture
 
-The current news system stores posts in the `news_posts` table with fields for `title`, `content`, `is_spoiler`, `published_at`, and `expires_at`. We will:
-
-1. Create a backend function that fetches RSS feeds from spoiler-free sources
-2. Parse the XML feed and extract news articles
-3. Store new articles in the database (avoiding duplicates)
-4. Run this automatically on a schedule (e.g., every 6 hours)
-5. Keep the existing manual posting system for platform-specific announcements
-
-## Data Source
-
-**Inside Survivor** provides category-specific RSS feeds:
-- `https://insidesurvivor.com/category/news/feed` - Official announcements, casting news, premiere dates (spoiler-free)
-- `https://insidesurvivor.com/category/features/feed` - Features, reviews, retrospectives (spoiler-free)
-
-We will specifically avoid:
-- `https://insidesurvivor.com/category/spoilers/feed` - Contains boot orders, elimination leaks
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                      LeagueDashboard                            │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                  Main Content Area                        │  │
+│  │                  (Play/History/League/Admin)              │  │
+│  │                                                           │  │
+│  │                                                           │  │
+│  │                                                           │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                           ┌───────────────────┐ │
+│                                           │  Chat Widget      │ │
+│                                           │  (Floating)       │ │
+│                                           │  - Collapsed: fab │ │
+│                                           │  - Expanded: 350w │ │
+│                                           └───────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Implementation Details
 
-### 1. Database Changes
+### Phase 1: Database Schema
 
-Add columns to track external news sources:
+Create the `chat_messages` table with the following structure:
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| `source` | text | Origin of the post ('manual', 'rss_insidesurvivor') |
-| `external_id` | text | Unique identifier from source (URL) to prevent duplicates |
-| `source_url` | text | Link back to original article |
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key, auto-generated |
+| `league_id` | uuid | Reference to leagues table (cascade delete) |
+| `user_id` | uuid | Reference to auth.users |
+| `content` | text | Message content (max 500 chars) |
+| `is_bot` | boolean | True for JeffBot messages |
+| `reactions` | jsonb | Emoji reactions storage |
+| `created_at` | timestamp | Message timestamp |
 
-### 2. New Backend Function: `fetch-survivor-news`
+**Row Level Security:**
+- SELECT: Users can view messages in leagues they belong to
+- INSERT: Users can insert messages in leagues they belong to
 
-Creates a new edge function that:
-- Fetches RSS XML from Inside Survivor's news feed
-- Parses the XML to extract title, content (description), link, and publish date
-- Checks for existing posts by `external_id` to avoid duplicates
-- Inserts new articles with `is_spoiler = false` (since we use spoiler-free feeds)
-- Sets expiration to 30 days (configurable) so old news auto-hides
+**Indexes:**
+- Composite index on `(league_id, created_at)` for efficient message queries
+- Enable realtime for the table
 
-```text
-Flow:
-[Cron/Manual Trigger] --> [fetch-survivor-news edge function]
-                                    |
-                                    v
-                      [Fetch RSS from insidesurvivor.com/category/news/feed]
-                                    |
-                                    v
-                      [Parse XML, extract articles]
-                                    |
-                                    v
-                      [Check for duplicates by external_id]
-                                    |
-                                    v
-                      [Insert new posts into news_posts table]
-```
+### Phase 2: Chat UI Component
 
-### 3. Scheduled Sync (Cron Job)
+Create a floating chat widget (`src/components/LeagueChat.tsx`) with:
 
-Set up a PostgreSQL cron job to call the edge function every 6 hours:
+**Collapsed State:**
+- Circular floating button in bottom-right corner
+- Chat icon with unread count badge
+- Persists collapsed/expanded state in localStorage
 
-```sql
-select cron.schedule(
-  'fetch-survivor-news-every-6h',
-  '0 */6 * * *',
-  -- HTTP POST to edge function
-);
-```
+**Expanded State:**
+- 350px wide, 450px tall floating panel
+- Header: "League Chat" title, online indicator, minimize button
+- Message list: Scrollable, auto-scroll on new messages
+- Each message shows: sender name, timestamp, content
+- Bot messages: Different background color, "JeffBot" label
+- Input area: Text field (500 char limit), send button
 
-### 4. Admin Panel Enhancements
+**Mobile Behavior:**
+- Takes fuller width (95% of viewport)
+- Clear close button
+- Still floats over content
 
-Add to the NewsManager component:
-- "Sync Now" button to manually trigger RSS fetch
-- Visual indicator showing which posts are from RSS vs manual
-- Filter toggle to show only manual or only RSS posts
-- Last sync timestamp display
+**Real-time Updates:**
+- Subscribe to `chat_messages` table changes for the league
+- New messages appear instantly for all users
+- Typing indicator when waiting for JeffBot response
 
-### 5. Frontend Updates
+### Phase 3: JeffBot Edge Function
 
-Update NewsFeed component:
-- Add source link icon that opens the original article
-- Show source attribution (e.g., "via Inside Survivor")
-- Increase post limit from 3 to 5 for more content
+Create `supabase/functions/jeffbot/index.ts` that:
 
-## Spoiler Protection Strategy
+1. Receives `league_id`, `user_id`, and `question` parameters
+2. Fetches the current season from the league's game session
+3. Calls Lovable AI with a carefully crafted system prompt:
+   - Acts as a friendly Survivor superfan
+   - Knows Survivor history, challenges, player stats, trivia
+   - Uses Jeff Probst catchphrases occasionally
+   - NEVER reveals current season spoilers
+   - Keeps responses brief (2-3 sentences)
+4. Inserts the bot response as a chat message with `is_bot = true`
+5. Returns success/error status
 
-| Layer | Protection |
-|-------|------------|
-| **Source Selection** | Only fetch from `/category/news/feed` and `/category/features/feed` - explicitly exclude `/category/spoilers/feed` |
-| **Keyword Filtering** | Scan titles for spoiler keywords (elimination, voted out, boot) and skip those articles |
-| **Auto-Expiration** | RSS posts expire after 30 days, reducing stale/risky content |
-| **Manual Override** | Admins can still mark any post as spoiler, hiding it from users |
+**Lovable AI Integration:**
+- Uses `google/gemini-3-flash-preview` model via the Lovable AI Gateway
+- LOVABLE_API_KEY is already available as a secret
+
+### Phase 4: JeffBot Trigger in Chat
+
+When a user sends a message starting with `@jeffbot`:
+
+1. Insert the user's message normally
+2. Show typing indicator in chat
+3. Call the jeffbot edge function with the question text
+4. Bot response appears via realtime subscription
+5. On error, show toast: "JeffBot is taking a break, try again"
+
+### Phase 5: Chat Polish Features
+
+**Presence Tracking:**
+- Track active users using Supabase Realtime Presence
+- Show green dot and "X online" when others are active
+- Update presence on focus/blur events
+
+**Date Separators:**
+- Group messages by date
+- Show "Today", "Yesterday", or full date between message groups
+
+**Emoji Reactions:**
+- Three quick reactions: thumbsUp, fire, laughing
+- Stored in JSONB column as `{ emoji: [userId, userId, ...] }`
+- Click to toggle reaction
+- Show reaction counts on messages
+
+**Rate Limiting:**
+- Client-side: 1 message per 2 seconds
+- Show disabled state on send button during cooldown
 
 ## Files to Create/Modify
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/migrations/[timestamp].sql` | Create | Add `source`, `external_id`, `source_url` columns to `news_posts` |
-| `supabase/functions/fetch-survivor-news/index.ts` | Create | Edge function to fetch and parse RSS feed |
-| `src/components/admin/NewsManager.tsx` | Modify | Add sync button, source indicators, filters |
-| `src/components/NewsFeed.tsx` | Modify | Show source attribution and link to original |
-| `supabase/config.toml` | Modify | Register new edge function |
+| `supabase/migrations/[timestamp].sql` | Create | Add chat_messages table, RLS, indexes |
+| `supabase/functions/jeffbot/index.ts` | Create | JeffBot AI edge function |
+| `supabase/config.toml` | Modify | Register jeffbot function |
+| `src/components/LeagueChat.tsx` | Create | Main floating chat widget component |
+| `src/components/ChatMessage.tsx` | Create | Individual message component with reactions |
+| `src/hooks/useChatMessages.ts` | Create | Hook for fetching and subscribing to messages |
+| `src/hooks/useChatPresence.ts` | Create | Hook for tracking online users |
+| `src/pages/LeagueDashboard.tsx` | Modify | Add LeagueChat component |
 
 ## Technical Notes
 
-### RSS Parsing in Deno
+### Real-time Subscription Pattern
 
-The edge function will use the `deno.land/x/rss` module:
+Following the existing pattern in `useGameStateDB.ts`:
 
 ```typescript
-import { parseFeed } from "https://deno.land/x/rss/mod.ts";
-
-const response = await fetch("https://insidesurvivor.com/category/news/feed");
-const xml = await response.text();
-const feed = await parseFeed(xml);
-
-for (const entry of feed.entries) {
-  // entry.title, entry.description, entry.links[0].href, entry.published
-}
+const channel = supabase
+  .channel(`chat-${leagueId}`)
+  .on(
+    "postgres_changes",
+    { 
+      event: "INSERT", 
+      schema: "public", 
+      table: "chat_messages", 
+      filter: `league_id=eq.${leagueId}` 
+    },
+    (payload) => {
+      // Add new message to state
+    }
+  )
+  .subscribe();
 ```
 
-### Duplicate Prevention
+### Presence Tracking
 
-Each RSS entry has a unique URL. We'll store this as `external_id` and use an upsert:
-
-```sql
-INSERT INTO news_posts (title, content, source, external_id, source_url, ...)
-ON CONFLICT (external_id) DO NOTHING;
+```typescript
+const channel = supabase.channel(`presence-${leagueId}`)
+  .on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState();
+    // Update online users count
+  })
+  .subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ user_id: userId, email: userEmail });
+    }
+  });
 ```
 
-This requires adding a unique constraint on `external_id`.
+### JeffBot System Prompt
 
-### Security
+```text
+You are JeffBot, a friendly Survivor superfan assistant. You know everything 
+about Survivor history, past seasons, challenges, player stats, and trivia. 
+You speak casually with occasional Jeff Probst catchphrases like "Come on in!" 
+or "The tribe has spoken."
 
-- The edge function uses `SUPABASE_SERVICE_ROLE_KEY` to insert posts (bypassing RLS)
-- No user authentication needed for the cron trigger
-- Rate limiting: Only sync every 6 hours to respect the source site
+CRITICAL RULE: You must NEVER reveal any information about Season [CURRENT_SEASON] 
+including cast, boot order, challenges, advantages, or winner. If asked about the 
+current season, say something like "No spoilers! You'll have to watch and find out. 
+The tribe has spoken... but I haven't!"
+
+Keep responses brief (2-3 sentences max) since this is a chat.
+```
+
+### Message Character Limit
+
+- Frontend enforces 500 character max
+- Shows character count when approaching limit
+- Send button disabled at 0 or >500 characters
+
+### Rate Limiting Implementation
+
+```typescript
+const [canSend, setCanSend] = useState(true);
+
+const sendMessage = async (content: string) => {
+  if (!canSend) return;
+  
+  setCanSend(false);
+  // Send message...
+  
+  setTimeout(() => setCanSend(true), 2000);
+};
+```
+
+## Security Considerations
+
+- RLS ensures users can only access chat in their own leagues
+- Uses existing `is_league_member` helper function for policies
+- JeffBot function uses service role key to insert bot messages
+- User messages require valid auth token
+
+## User Experience
+
+1. User opens league dashboard, sees chat button in bottom-right
+2. Clicks to expand chat panel
+3. Sees recent messages from league members
+4. Types message, clicks send (or presses Enter)
+5. Message appears instantly for all online users
+6. Types "@jeffbot who won season 40?" and sends
+7. Sees typing indicator, then JeffBot's response appears
+8. Can react to any message with quick emoji buttons
+9. Minimizes chat, badge shows unread count
 
