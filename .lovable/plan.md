@@ -1,73 +1,104 @@
 
 
-# Add Display Names and Online Users List
+# Default Chat Display Name to Team Name
 
 ## Overview
-This plan adds a `display_name` column to user profiles and enhances the chat to show who is currently online in the league.
+Update the chat system to use the user's **team name** (from `league_teams`) as their display name in chat, instead of requiring a separate "Chat Display Name" field.
+
+## Current Behavior
+- Chat display name comes from `profiles.display_name` (global across all leagues)
+- If not set, falls back to email username
+- Requires users to manually set a separate "Chat Display Name"
+
+## New Behavior
+- Chat display name will automatically use the user's **team name** for that league
+- If no team is claimed, fall back to email username
+- No need for a separate "Chat Display Name" field
 
 ## Changes Summary
 
-### 1. Database: Add display_name column
-Add a nullable `display_name` text column to the `profiles` table with a max length of 50 characters.
+### 1. Update `useChatMessages.ts`
+- When fetching messages, also query `league_teams` to get team names for users
+- Join user_id to league_teams.user_id where league_id matches
+- Use team name as display name, falling back to email username
 
-### 2. Update Profile Fetching
-Modify the hooks to fetch and use `display_name` when available, falling back to the email username (portion before @) when not set.
+### 2. Update `useChatPresence.ts`
+- Accept `userTeamName` prop instead of relying on display_name from profiles
+- Track team name in presence state
 
-### 3. Display Name Priority Logic
-- If user has set a `display_name`, show that
-- Otherwise, show the first part of their email (before @)
+### 3. Update `LeagueChat.tsx`
+- Pass user's team name (from `useLeagueTeams` hook) instead of profile display_name
 
-### 4. Online Users Popover
-Add a clickable popover in the chat header that shows the list of currently online users with their display names and a visual indicator.
+### 4. Update `LeagueDashboard.tsx`
+- Remove the profile display_name fetch (no longer needed for chat)
+- Pass the user's team name to `LeagueChat`
 
-### 5. Profile Settings Option
-Users can set their display name from the League tab's "My Team" section or a new profile section.
+### 5. Update `LeagueInfo.tsx`
+- Remove the "Chat Display Name" section since it's now automatic
 
 ---
 
 ## Technical Details
 
-### Database Migration
-```sql
-ALTER TABLE public.profiles 
-ADD COLUMN display_name text;
+### Display Name Priority (Updated)
+1. User's team name for the current league (from `league_teams`)
+2. Email username (fallback if no team claimed)
 
--- Add constraint for reasonable length
-ALTER TABLE public.profiles 
-ADD CONSTRAINT profiles_display_name_length 
-CHECK (char_length(display_name) <= 50);
-```
+### Updated Data Flow
+
+| Component | Change |
+|-----------|--------|
+| `useChatMessages.ts` | Fetch team names from `league_teams` instead of `profiles.display_name` |
+| `useChatPresence.ts` | Rename prop from `userDisplayName` to `userTeamName` for clarity |
+| `LeagueChat.tsx` | Get team name from `useLeagueTeams().getMyTeam()` |
+| `LeagueDashboard.tsx` | Remove profile fetch, use team name from existing state |
+| `LeagueInfo.tsx` | Remove "Chat Display Name" editor section |
 
 ### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useChatMessages.ts` | Fetch `display_name` from profiles, add to ChatMessage interface |
-| `src/hooks/useChatPresence.ts` | Add `display_name` to PresenceUser interface and track it |
-| `src/components/ChatMessage.tsx` | Update to accept and display `displayName` prop |
-| `src/components/LeagueChat.tsx` | Add online users popover, pass user's display name to presence hook |
-| `src/pages/LeagueDashboard.tsx` | Fetch and pass user's display name to LeagueChat |
+| `src/hooks/useChatMessages.ts` | Query `league_teams` for user team names instead of profiles.display_name |
+| `src/hooks/useChatPresence.ts` | Update prop name for clarity |
+| `src/components/LeagueChat.tsx` | Use `useLeagueTeams` to get current user's team name |
+| `src/pages/LeagueDashboard.tsx` | Simplify - no need to fetch profile display_name |
+| `src/components/LeagueInfo.tsx` | Remove "Chat Display Name" section |
+| `src/lib/displayNameUtils.ts` | Update helper to accept teamName parameter |
 
-### New Component
-Create a small `OnlineUsersPopover` component to show the list of online users when clicking the "X online" indicator.
+### Example Query Change
 
-### Data Flow
-1. On page load, fetch user's profile including `display_name`
-2. Pass `display_name` (or email fallback) to `LeagueChat`
-3. `useChatPresence` tracks each user with their display name
-4. Chat header shows popover with online users list
-5. Messages show display name instead of email
-
-### Display Name Helper Function
+**Before (profiles.display_name):**
 ```typescript
-function getDisplayName(displayName: string | null, email: string): string {
-  return displayName?.trim() || email.split("@")[0];
+const { data: profiles } = await supabase
+  .from("profiles")
+  .select("id, email, display_name")
+  .in("id", userIds);
+```
+
+**After (league_teams.name):**
+```typescript
+const { data: teams } = await supabase
+  .from("league_teams")
+  .select("user_id, name")
+  .eq("league_id", leagueId)
+  .in("user_id", userIds);
+```
+
+### Display Name Helper Update
+
+```typescript
+// Updated to use team name
+export function getDisplayName(teamName: string | null | undefined, email: string): string {
+  const trimmed = teamName?.trim();
+  if (trimmed && trimmed.length > 0) {
+    return trimmed;
+  }
+  return email.split("@")[0];
 }
 ```
 
-### Online Users Popover UI
-- Green dot indicator + "X online" text (existing)
-- Clicking opens a small popover showing list of online users
-- Each user shows: green status dot + display name
-- Current user shown with "(you)" suffix
+## Benefits
+- Simpler UX: No need to set a separate display name
+- Consistent identity: Users are identified by their team name across the league
+- Automatic: When users update their team name, chat reflects it immediately
 
