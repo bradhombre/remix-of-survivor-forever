@@ -193,9 +193,10 @@ const LeagueDashboard = () => {
       {/* Play Tab - Game or Draft */}
       {viewMode === "play" && (
         <>
-          {canShowGame ? (
+        {canShowGame ? (
             <GameMode
               leagueId={leagueId}
+              currentUserId={user?.id}
               season={state.season}
               episode={state.episode}
               isPostMerge={state.isPostMerge}

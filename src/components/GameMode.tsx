@@ -11,6 +11,7 @@ import { getPoints, isActionEnabled, getCustomActions, CustomScoringAction, Scor
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
+import { TeamAvatarUpload } from "./TeamAvatarUpload";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 interface GameModeProps {
   leagueId?: string;
+  currentUserId?: string;
   season: number;
   episode: number;
   isPostMerge: boolean;
@@ -60,6 +62,7 @@ interface GameModeProps {
 
 export const GameMode = ({
   leagueId,
+  currentUserId,
   season,
   episode,
   isPostMerge,
@@ -93,13 +96,16 @@ export const GameMode = ({
   const isMobile = useIsMobile();
   
   // Get league teams for avatars
-  const { teams } = useLeagueTeams({ leagueId });
+  const { teams, getMyTeam, updateTeam } = useLeagueTeams({ leagueId });
   
-  // Map team names to their avatar URLs
-  const teamAvatarMap = useMemo(() => {
-    const map: Record<string, string | null> = {};
+  // Get current user's team
+  const myTeam = getMyTeam(currentUserId || null);
+  
+  // Map team names to their team data (id + avatar_url)
+  const teamDataMap = useMemo(() => {
+    const map: Record<string, { id: string; avatar_url: string | null }> = {};
     teams.forEach(team => {
-      map[team.name] = team.avatar_url || null;
+      map[team.name] = { id: team.id, avatar_url: team.avatar_url || null };
     });
     return map;
   }, [teams]);
@@ -707,37 +713,33 @@ export const GameMode = ({
                   
                   <div className="flex items-center gap-3">
                     <div className="relative group">
-                      {/* Priority: team avatar from league_teams, then playerProfiles, then themed fallback */}
-                      {teamAvatarMap[entry.player] || !playerProfiles?.[entry.player]?.avatar ? (
-                        <TeamAvatar 
-                          teamName={String(entry.player)} 
-                          avatarUrl={teamAvatarMap[entry.player]} 
-                          size="lg"
-                          className="border-2 border-border"
+                      {/* Show upload component for user's own team, static avatar for others */}
+                      {myTeam?.name === entry.player && teamDataMap[entry.player] ? (
+                        <TeamAvatarUpload
+                          teamId={teamDataMap[entry.player].id}
+                          leagueId={leagueId || ''}
+                          currentAvatarUrl={teamDataMap[entry.player].avatar_url}
+                          teamName={String(entry.player)}
+                          onUploadComplete={(url) => updateTeam(teamDataMap[entry.player].id, { avatar_url: url })}
+                          size="md"
                         />
                       ) : (
-                        <img 
-                          src={playerProfiles[entry.player].avatar} 
-                          alt={entry.player}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-border"
-                        />
-                      )}
-                      {/* Only show upload overlay if no team avatar (allows legacy override) */}
-                      {!teamAvatarMap[entry.player] && (
                         <>
-                          <label 
-                            htmlFor={`avatar-${entry.player}`}
-                            className="absolute inset-0 rounded-full glass-strong opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all"
-                          >
-                            <Upload className="w-6 h-6" />
-                          </label>
-                          <input
-                            id={`avatar-${entry.player}`}
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleAvatarUpload(entry.player, e)}
-                            className="hidden"
-                          />
+                          {/* Priority: team avatar from league_teams, then playerProfiles, then themed fallback */}
+                          {teamDataMap[entry.player]?.avatar_url || !playerProfiles?.[entry.player]?.avatar ? (
+                            <TeamAvatar 
+                              teamName={String(entry.player)} 
+                              avatarUrl={teamDataMap[entry.player]?.avatar_url} 
+                              size="lg"
+                              className="border-2 border-border"
+                            />
+                          ) : (
+                            <img 
+                              src={playerProfiles[entry.player].avatar} 
+                              alt={entry.player}
+                              className="w-16 h-16 rounded-full object-cover border-2 border-border"
+                            />
+                          )}
                         </>
                       )}
                     </div>
