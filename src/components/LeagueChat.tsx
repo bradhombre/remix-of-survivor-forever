@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ChatMessage } from "@/components/ChatMessage";
+import { ChatMentionInput, MentionableUser } from "@/components/ChatMentionInput";
 import { OnlineUsersPopover } from "@/components/OnlineUsersPopover";
-import { useChatMessages } from "@/hooks/useChatMessages";
+import { useChatMessages, ChatMessage as ChatMessageType } from "@/hooks/useChatMessages";
 import { useChatPresence } from "@/hooks/useChatPresence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getDisplayName } from "@/lib/displayNameUtils";
@@ -14,17 +14,24 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { isToday, isSameDay } from "date-fns";
 
+interface LeagueTeam {
+  id: string;
+  name: string;
+  user_id: string | null;
+}
+
 interface LeagueChatProps {
   leagueId: string | undefined;
   userId: string | undefined;
   userEmail: string | undefined;
   userTeamName: string | undefined;
+  teams: LeagueTeam[];
 }
 
 const STORAGE_KEY = "league-chat-expanded";
 const RATE_LIMIT_MS = 2000;
 
-export function LeagueChat({ leagueId, userId, userEmail, userTeamName }: LeagueChatProps) {
+export function LeagueChat({ leagueId, userId, userEmail, userTeamName, teams }: LeagueChatProps) {
   const [isExpanded, setIsExpanded] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) === "true";
@@ -33,10 +40,35 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName }: League
   const [canSend, setCanSend] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isExpandedRef = useRef(isExpanded);
   const isMobile = useIsMobile();
+
+  // Keep ref in sync
+  useEffect(() => {
+    isExpandedRef.current = isExpanded;
+  }, [isExpanded]);
 
   // Use team name, fall back to email username
   const currentUserDisplayName = userTeamName || (userEmail ? getDisplayName(null, userEmail) : undefined);
+
+  // Handle new message notifications
+  const handleNewMessage = useCallback((message: ChatMessageType) => {
+    // Only show notification if chat is collapsed
+    if (!isExpandedRef.current) {
+      const senderName = message.user_display_name || "Someone";
+      const preview = message.content.length > 50 
+        ? message.content.slice(0, 50) + "..." 
+        : message.content;
+      
+      toast(
+        <div className="cursor-pointer" onClick={() => setIsExpanded(true)}>
+          <div className="font-medium">{senderName}</div>
+          <div className="text-sm text-muted-foreground truncate">{preview}</div>
+        </div>,
+        { duration: 5000 }
+      );
+    }
+  }, []);
 
   const {
     messages,
@@ -47,13 +79,26 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName }: League
     toggleReaction,
     getUnreadCount,
     markAllRead,
-  } = useChatMessages({ leagueId, userId });
+  } = useChatMessages({ leagueId, userId, onNewMessage: handleNewMessage });
 
   const { onlineUsers, othersOnline } = useChatPresence({ 
     leagueId, 
     userId, 
     userDisplayName: currentUserDisplayName 
   });
+
+  // Build mentionable users list
+  const mentionableUsers: MentionableUser[] = [
+    { id: "jeffbot", name: "JeffBot 🏝️", isBot: true, isOnline: true },
+    ...teams
+      .filter(t => t.user_id && t.user_id !== userId) // Exclude self and unclaimed teams
+      .map(t => ({
+        id: t.user_id!,
+        name: t.name,
+        isBot: false,
+        isOnline: onlineUsers.some(ou => ou.user_id === t.user_id),
+      })),
+  ];
 
   // Persist expanded state
   useEffect(() => {
@@ -231,15 +276,15 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName }: League
           <div className="p-3 border-t border-border">
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Input
-                  ref={inputRef}
+                <ChatMentionInput
+                  inputRef={inputRef}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={setInputValue}
                   onKeyDown={handleKeyDown}
                   placeholder="Message or @jeffbot question..."
-                  className="pr-16"
                   maxLength={500}
                   disabled={isSending}
+                  mentionableUsers={mentionableUsers}
                 />
                 {charCount > 400 && (
                   <span

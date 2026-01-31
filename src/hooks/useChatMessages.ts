@@ -17,9 +17,10 @@ export interface ChatMessage {
 interface UseChatMessagesOptions {
   leagueId: string | undefined;
   userId: string | undefined;
+  onNewMessage?: (message: ChatMessage) => void;
 }
 
-export function useChatMessages({ leagueId, userId }: UseChatMessagesOptions) {
+export function useChatMessages({ leagueId, userId, onNewMessage }: UseChatMessagesOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -131,16 +132,23 @@ export function useChatMessages({ leagueId, userId }: UseChatMessagesOptions) {
             displayName = team?.name || userEmail.split("@")[0];
           }
 
+          const enrichedMessage: ChatMessage = { 
+            ...newMessage, 
+            reactions: (newMessage.reactions as Record<string, string[]>) || {},
+            user_email: userEmail,
+            user_display_name: displayName,
+          };
+
           setMessages((prev) => {
             // Check if message already exists
             if (prev.some(m => m.id === newMessage.id)) return prev;
-            return [...prev, { 
-              ...newMessage, 
-              reactions: (newMessage.reactions as Record<string, string[]>) || {},
-              user_email: userEmail,
-              user_display_name: displayName,
-            }];
+            return [...prev, enrichedMessage];
           });
+
+          // Notify about new message (for notifications)
+          if (onNewMessage && newMessage.user_id !== userId) {
+            onNewMessage(enrichedMessage);
+          }
 
           // If it's a bot message, stop typing indicator
           if (newMessage.is_bot) {
