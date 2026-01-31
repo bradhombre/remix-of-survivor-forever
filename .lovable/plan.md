@@ -1,79 +1,73 @@
 
 
-# Fix Chat Sender Names and JeffBot Knowledge Issues
+# Add Display Names and Online Users List
 
-## Issues Identified
+## Overview
+This plan adds a `display_name` column to user profiles and enhances the chat to show who is currently online in the league.
 
-### Issue 1: Chat Not Showing Sender Names
-**Root Cause**: The `profiles` table is empty. Although there is a `handle_new_user()` function that should insert into `profiles` when a user signs up, the trigger binding this function to the `auth.users` table was never created in the migrations. The user `admin@test.com` exists in `auth.users` but has no corresponding row in `profiles`.
+## Changes Summary
 
-**Evidence**: 
-- Query `SELECT * FROM profiles` returns `[]` (empty)
-- Query `SELECT * FROM auth.users` returns `admin@test.com` user
-- RLS policy "League members can view co-member profiles" is working, but there's no data to return
+### 1. Database: Add display_name column
+Add a nullable `display_name` text column to the `profiles` table with a max length of 50 characters.
 
-### Issue 2: JeffBot Doesn't Know Season 48 Winner
-**Root Cause**: The AI model (Gemini) has a knowledge cutoff date. The current date is January 2026, but Season 48 may be beyond the model's training data. JeffBot responded: *"Season 48 hasn't actually aired yet..."* which is the model's best guess based on its knowledge.
+### 2. Update Profile Fetching
+Modify the hooks to fetch and use `display_name` when available, falling back to the email username (portion before @) when not set.
 
-**Note**: This is a fundamental AI model limitation, not a bug. We can improve the prompt to clarify that any season with a number lower than the current season is definitely a past season and should be answered.
+### 3. Display Name Priority Logic
+- If user has set a `display_name`, show that
+- Otherwise, show the first part of their email (before @)
 
-## Solution
+### 4. Online Users Popover
+Add a clickable popover in the chat header that shows the list of currently online users with their display names and a visual indicator.
 
-### Part 1: Fix Empty Profiles Table
+### 5. Profile Settings Option
+Users can set their display name from the League tab's "My Team" section or a new profile section.
 
-1. **Create trigger on auth.users** - Add a database trigger that fires the `handle_new_user()` function when new users are inserted into `auth.users`
+---
 
-2. **Backfill existing users** - Insert profile records for any existing users in `auth.users` that don't have corresponding `profiles` entries
+## Technical Details
 
-### Part 2: Improve JeffBot Knowledge Handling
-
-1. **Update the system prompt** - Clarify that all seasons with numbers less than the current season are definitely past seasons and JeffBot should answer questions about them
-
-2. **Add season context** - Tell the AI model the current date/year to help it reason about which seasons have aired
-
-## Database Migration
-
+### Database Migration
 ```sql
--- Create trigger on auth.users to create profiles automatically
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+ALTER TABLE public.profiles 
+ADD COLUMN display_name text;
 
--- Backfill profiles for existing users who don't have one
-INSERT INTO public.profiles (id, email)
-SELECT id, email FROM auth.users
-WHERE id NOT IN (SELECT id FROM public.profiles)
-ON CONFLICT (id) DO NOTHING;
+-- Add constraint for reasonable length
+ALTER TABLE public.profiles 
+ADD CONSTRAINT profiles_display_name_length 
+CHECK (char_length(display_name) <= 50);
 ```
 
-## Edge Function Update
-
-Update `supabase/functions/jeffbot/index.ts` system prompt:
-
-```text
-You are JeffBot, a friendly Survivor superfan assistant...
-
-IMPORTANT CONTEXT:
-- The current season is Season {currentSeason}
-- All seasons numbered LESS than {currentSeason} are past seasons you CAN discuss
-- You must NEVER reveal information about Season {currentSeason} (the current season)
-
-For example: If current season is 49, you CAN answer about seasons 1-48.
-```
-
-## Files to Modify
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| Database migration | Create trigger, backfill profiles |
-| `supabase/functions/jeffbot/index.ts` | Update system prompt with clearer past/current season logic |
+| `src/hooks/useChatMessages.ts` | Fetch `display_name` from profiles, add to ChatMessage interface |
+| `src/hooks/useChatPresence.ts` | Add `display_name` to PresenceUser interface and track it |
+| `src/components/ChatMessage.tsx` | Update to accept and display `displayName` prop |
+| `src/components/LeagueChat.tsx` | Add online users popover, pass user's display name to presence hook |
+| `src/pages/LeagueDashboard.tsx` | Fetch and pass user's display name to LeagueChat |
 
-## Expected Outcome
+### New Component
+Create a small `OnlineUsersPopover` component to show the list of online users when clicking the "X online" indicator.
 
-After these changes:
-- New users will automatically get profile records created
-- Existing users will have their profiles backfilled
-- Chat messages will show sender emails instead of "Unknown"
-- JeffBot will correctly answer questions about past seasons (1-48) while still protecting current season (49) spoilers
+### Data Flow
+1. On page load, fetch user's profile including `display_name`
+2. Pass `display_name` (or email fallback) to `LeagueChat`
+3. `useChatPresence` tracks each user with their display name
+4. Chat header shows popover with online users list
+5. Messages show display name instead of email
+
+### Display Name Helper Function
+```typescript
+function getDisplayName(displayName: string | null, email: string): string {
+  return displayName?.trim() || email.split("@")[0];
+}
+```
+
+### Online Users Popover UI
+- Green dot indicator + "X online" text (existing)
+- Clicking opens a small popover showing list of online users
+- Each user shows: green status dot + display name
+- Current user shown with "(you)" suffix
 
