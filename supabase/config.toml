@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.jeffbot]
 verify_jwt = false
+
+[functions.fetch-cast-images]
+verify_jwt = false
