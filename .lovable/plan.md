@@ -1,143 +1,182 @@
 
-
-# Improved Master Cast CSV Import
+# Bulk Image Fetch Helper for Cast Manager
 
 ## Overview
-Enhance the Cast Manager with smarter CSV parsing and a "Delete All" option for easy cleanup when imports go wrong.
+Add a feature that automatically searches for and fetches official Survivor contestant headshots using AI-powered web search, then updates the database with found image URLs.
 
-## Problem Analysis
+## How It Works
 
-### Current CSV Parsing Issues
-The current parser assumes columns are always in this exact order:
+The feature uses AI to search the web for each contestant's official CBS headshot and extracts the image URL from search results. This is done through a new backend function that processes contestants in batches.
+
+## Architecture
+
+```text
++------------------+     +-------------------------+     +------------------+
+|   Cast Manager   | --> |  fetch-cast-images      | --> |  Lovable AI      |
+|   (Frontend)     |     |  (Edge Function)        |     |  (Web Search)    |
++------------------+     +-------------------------+     +------------------+
+        |                          |                              |
+        v                          v                              v
+  "Fetch Images"           For each contestant:           Search for:
+     button                1. Build search query          "Survivor S50 
+        |                  2. Call AI with search           [Name] CBS
+        v                  3. Extract image URLs            headshot"
+  Progress UI              4. Validate URLs                    |
+  showing status           5. Update database                  v
+                                                         Return image
+                                                         URLs found
 ```
-name, tribe, age, occupation, image_url
-```
-
-If your CSV has columns in a different order (e.g., `name, age, occupation, tribe`) or uses different header names, data gets assigned to wrong fields.
-
-### Missing Features
-- No way to delete all contestants at once for a season
-- No preview of parsed data before import
-- No column mapping when headers don't match expected format
-
----
-
-## Solution
-
-### 1. "Delete All Season" Button
-Add a destructive action button that deletes all contestants for the currently selected season. Include a confirmation dialog showing how many will be deleted.
-
-### 2. Smart Header Detection
-When importing CSV, detect and map column headers intelligently:
-- Look for common variations: "name", "contestant", "player"
-- Detect "tribe", "team", "starting tribe"
-- Detect "age" (also validate it's a number)
-- Detect "occupation", "job", "profession"
-- Detect "image", "image_url", "photo", "headshot"
-
-### 3. Import Preview Dialog
-Before importing, show a preview table of the first 5 rows with the detected column mappings. Allow the user to:
-- See how data will be parsed
-- Confirm or cancel the import
-- Identify issues before committing
-
----
 
 ## Implementation Details
 
-### Delete All Season Feature
+### 1. New Edge Function: `fetch-cast-images`
 
-```text
-UI Location: Next to the season selector, show "Delete All" button (only when contestants exist)
+**Location:** `supabase/functions/fetch-cast-images/index.ts`
 
-Flow:
-1. User clicks "Delete All for Season X"
-2. Confirmation dialog: "Delete all 18 contestants for Season 49?"
-3. On confirm: DELETE FROM master_contestants WHERE season_number = X
-4. Refresh list and show success toast
-```
+**Purpose:** Process a batch of contestants and search for their official headshots using AI.
 
-### Smart CSV Parser
-
-```typescript
-// Detect column type from header name
-function detectColumnType(header: string): 'name' | 'tribe' | 'age' | 'occupation' | 'image_url' | null {
-  const h = header.toLowerCase().trim();
-  
-  if (['name', 'contestant', 'player', 'castaway'].includes(h)) return 'name';
-  if (['tribe', 'team', 'starting tribe', 'original tribe'].includes(h)) return 'tribe';
-  if (['age'].includes(h)) return 'age';
-  if (['occupation', 'job', 'profession', 'career'].includes(h)) return 'occupation';
-  if (['image', 'image_url', 'photo', 'headshot', 'picture', 'url'].includes(h)) return 'image_url';
-  
-  return null;
-}
-
-// Build column index mapping from headers
-function buildColumnMapping(headers: string[]): Record<string, number> {
-  const mapping: Record<string, number> = {};
-  
-  headers.forEach((header, index) => {
-    const type = detectColumnType(header);
-    if (type && !(type in mapping)) {
-      mapping[type] = index;
-    }
-  });
-  
-  return mapping;
+**Input:**
+```json
+{
+  "season_number": 50,
+  "contestant_ids": ["uuid1", "uuid2", ...],  // Optional - if omitted, fetch all missing
+  "force_refresh": false  // Re-fetch even if image exists
 }
 ```
 
-### Import Preview Dialog
+**Process:**
+1. Fetch contestants from `master_contestants` table
+2. For each contestant without an image (or all if force_refresh):
+   - Build search query: `"Survivor Season [X] [Name] CBS official headshot photo"`
+   - Call Lovable AI with a prompt asking it to find the best official image URL
+   - Extract and validate the image URL
+   - Update the database record
+3. Return results summary
 
+**AI Prompt Strategy:**
+```text
+Find the official CBS headshot image URL for this Survivor contestant:
+- Name: [contestant name]
+- Season: [season number]
+
+Search for their official CBS press photo or Survivor Wiki profile image.
+Return ONLY the direct image URL (ending in .jpg, .png, or similar).
+Prefer CBS.com or static.wikia.nocookie.net sources.
+If no official image found, return "NOT_FOUND".
+```
+
+### 2. Frontend UI Changes
+
+**Location:** `src/components/admin/CastManager.tsx`
+
+**New Features:**
+
+1. **"Fetch Images" Button**
+   - Appears in the toolbar next to CSV Import
+   - Shows count of contestants missing images
+   - Icon: Image or Download icon
+
+2. **Progress Dialog**
+   - Shows while fetching is in progress
+   - Displays: "Fetching image 3 of 18..."
+   - Progress bar visualization
+   - Cancel button to stop early
+
+3. **Results Summary**
+   - Toast notification with success count
+   - "Found images for 15 of 18 contestants"
+   - Failed items shown in a collapsible list
+
+4. **Per-Row Image Fetch**
+   - Small button in Actions column for individual fetch
+   - Useful for retrying failed contestants
+
+### 3. UI Mockup
+
+**Toolbar Addition:**
+```text
+[Delete All] [Add Contestant] [Bulk Import] [CSV Import] [🖼️ Fetch Images (5 missing)]
+```
+
+**Progress Dialog:**
 ```text
 +----------------------------------------------------------+
-|  CSV Import Preview - Season 49                          |
+|  Fetching Cast Images                                    |
 +----------------------------------------------------------+
-|  Detected columns: Name (col 1), Age (col 2),            |
-|  Occupation (col 3), Tribe (col 4)                       |
 |                                                          |
-|  Preview (first 5 rows):                                 |
-|  +------+-----+-------------+-------+----------+         |
-|  | Name | Age | Occupation  | Tribe | Image    |         |
-|  +------+-----+-------------+-------+----------+         |
-|  | Sam  | 28  | Teacher     | Luvu  | —        |         |
-|  | Alex | 32  | Attorney    | Yase  | —        |         |
-|  | ...  |     |             |       |          |         |
-|  +------+-----+-------------+-------+----------+         |
+|  Searching for official headshots...                     |
 |                                                          |
-|  Ready to import 18 contestants                          |
+|  [████████████░░░░░░░░░░░░░░░░] 8 / 18                   |
 |                                                          |
-|  [Cancel]                        [Import All]            |
+|  Current: Stephanie Berger                               |
+|                                                          |
+|  ✅ Found: 7                                             |
+|  ❌ Not found: 1                                         |
+|                                                          |
+|  [Cancel]                                                |
 +----------------------------------------------------------+
 ```
 
+**After Completion:**
+```text
+Toast: "Found images for 15 of 18 contestants"
+
+Table now shows thumbnail previews instead of "View" links
+```
+
+### 4. Image URL Validation
+
+The edge function validates found URLs:
+- Must be a valid URL format
+- Must end with image extension (.jpg, .jpeg, .png, .webp, .gif)
+- Must be accessible (HEAD request returns 200)
+- Prefer HTTPS sources
+
+### 5. Rate Limiting Protection
+
+- Process contestants sequentially with 500ms delay between requests
+- Handle 429 (rate limit) errors gracefully with exponential backoff
+- Allow cancellation mid-process
+- Save progress as we go (each successful fetch is immediately saved)
+
 ---
 
-## Files to Modify
+## Files to Create/Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/admin/CastManager.tsx` | Add Delete All button, smart CSV parsing, preview dialog |
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/functions/fetch-cast-images/index.ts` | Create | Edge function for AI-powered image search |
+| `supabase/config.toml` | Update | Add function configuration |
+| `src/components/admin/CastManager.tsx` | Update | Add Fetch Images button, progress dialog, and results handling |
 
 ---
 
-## User Experience
+## Technical Considerations
 
-### Delete All Flow
-1. Select season with bad data
-2. Click "Delete All" (red button, appears when contestants exist)
-3. Confirm in dialog
-4. All contestants for that season are removed
-5. Ready for fresh import
+### Why Use AI for Image Search?
+- CBS doesn't have a public API for contestant images
+- Survivor Wiki uses standardized URL patterns but names vary
+- AI can intelligently find the best match across multiple sources
+- Handles name variations (nicknames, full names)
 
-### Improved CSV Import Flow
-1. Click "CSV Import" and select file
-2. Preview dialog shows detected columns and first 5 rows
-3. User verifies data looks correct
-4. Click "Import All" to proceed or "Cancel" to abort
-5. On success, table refreshes with new data
+### Fallback Sources (Priority Order)
+1. CBS Press Express (official source)
+2. Survivor Wiki (static.wikia.nocookie.net)
+3. CBS.com cast pages
+4. People.com / Entertainment Weekly (for recent seasons)
 
-### Fallback for No Headers
-If the CSV has no recognizable headers (first row doesn't contain words like "name", "tribe", etc.), fall back to the original positional parsing but show a warning in the preview.
+### Error Handling
+- If AI can't find an image, mark as "NOT_FOUND" (don't error)
+- If API rate limited, pause and retry
+- If network error, skip and continue to next contestant
+- Always save partial progress
 
+---
+
+## User Experience Flow
+
+1. Admin imports cast via CSV (names, tribes, etc.)
+2. Admin clicks "Fetch Images" button
+3. Progress dialog shows real-time status
+4. On completion, table refreshes with thumbnails
+5. Admin can manually fix any missing images via inline edit
