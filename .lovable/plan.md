@@ -1,165 +1,143 @@
 
 
-# Push Notifications + @Mention Autocomplete for Chat
+# Improved Master Cast CSV Import
 
 ## Overview
-Add two features to the chat system:
-1. **Toast notifications** for new messages when the chat widget is minimized
-2. **@mention autocomplete** to easily tag JeffBot or other league members
+Enhance the Cast Manager with smarter CSV parsing and a "Delete All" option for easy cleanup when imports go wrong.
 
-## Feature 1: Chat Notifications
+## Problem Analysis
 
-When the chat widget is minimized and a new message arrives, show a toast notification with the sender's name and a preview of the message. Clicking the notification opens the chat.
+### Current CSV Parsing Issues
+The current parser assumes columns are always in this exact order:
+```
+name, tribe, age, occupation, image_url
+```
 
-### Implementation
-- Add a callback prop `onNewMessage` to `useChatMessages` hook
-- In `LeagueChat`, trigger a toast notification when:
-  - Chat is collapsed (`!isExpanded`)
-  - New message arrives from someone else (not from current user)
-- Toast will show sender name and truncated message content
-- Clicking toast expands the chat
+If your CSV has columns in a different order (e.g., `name, age, occupation, tribe`) or uses different header names, data gets assigned to wrong fields.
 
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/hooks/useChatMessages.ts` | Add callback for new messages, pass to realtime handler |
-| `src/components/LeagueChat.tsx` | Subscribe to new messages, show toast when collapsed |
+### Missing Features
+- No way to delete all contestants at once for a season
+- No preview of parsed data before import
+- No column mapping when headers don't match expected format
 
 ---
 
-## Feature 2: @Mention Autocomplete
+## Solution
 
-When user types `@` in the chat input, show a dropdown with mentionable options:
-- **JeffBot** (always available)
-- **Online league members** (team names from presence)
+### 1. "Delete All Season" Button
+Add a destructive action button that deletes all contestants for the currently selected season. Include a confirmation dialog showing how many will be deleted.
 
-Selecting an option inserts `@name ` into the input.
+### 2. Smart Header Detection
+When importing CSV, detect and map column headers intelligently:
+- Look for common variations: "name", "contestant", "player"
+- Detect "tribe", "team", "starting tribe"
+- Detect "age" (also validate it's a number)
+- Detect "occupation", "job", "profession"
+- Detect "image", "image_url", "photo", "headshot"
 
-### UI Design
-- Popover appears above the input when typing `@`
-- Filters as user continues typing (e.g., `@bra` filters to "Brad")
-- Up/Down arrow keys navigate, Enter/Tab selects
-- Clicking an option selects it
-- Escape or clicking outside dismisses without selection
-
-### Implementation Approach
-1. Track cursor position and detect `@` trigger
-2. Extract the partial mention text after `@`
-3. Filter mentionable users based on partial text
-4. Render a popover with filtered options
-5. Handle keyboard navigation and selection
-6. Insert mention and close popover on selection
-
-### Mentionable List
-- Always include: `jeffbot` (displays as "JeffBot 🏝️")
-- Include all team members from the league (from `useLeagueTeams`)
-- Prioritize online users at top
-
-### Files to Modify/Create
-| File | Changes |
-|------|---------|
-| `src/components/ChatMentionInput.tsx` | **NEW** - Input with mention autocomplete functionality |
-| `src/components/LeagueChat.tsx` | Replace plain `Input` with `ChatMentionInput`, pass league teams |
-| `src/pages/LeagueDashboard.tsx` | Pass full teams list to `LeagueChat` |
+### 3. Import Preview Dialog
+Before importing, show a preview table of the first 5 rows with the detected column mappings. Allow the user to:
+- See how data will be parsed
+- Confirm or cancel the import
+- Identify issues before committing
 
 ---
 
-## Technical Details
+## Implementation Details
 
-### ChatMentionInput Component Props
-```typescript
-interface ChatMentionInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  onKeyDown: (e: React.KeyboardEvent) => void;
-  onSend: () => void;
-  placeholder?: string;
-  maxLength?: number;
-  disabled?: boolean;
-  mentionableUsers: MentionableUser[];
-  inputRef?: React.RefObject<HTMLInputElement>;
-}
-
-interface MentionableUser {
-  id: string;
-  name: string;
-  isBot?: boolean;
-  isOnline?: boolean;
-}
-```
-
-### Mention Detection Logic
-```typescript
-// Find the last @ before cursor
-const lastAtIndex = value.lastIndexOf('@', cursorPosition - 1);
-if (lastAtIndex >= 0) {
-  // Check no space between @ and cursor
-  const textAfterAt = value.slice(lastAtIndex + 1, cursorPosition);
-  if (!textAfterAt.includes(' ')) {
-    // Show popover with filtered users
-    const query = textAfterAt.toLowerCase();
-    const filtered = mentionableUsers.filter(u => 
-      u.name.toLowerCase().includes(query)
-    );
-  }
-}
-```
-
-### Notification Toast
-```typescript
-// When new message arrives while collapsed
-toast(
-  <div 
-    className="cursor-pointer" 
-    onClick={() => setIsExpanded(true)}
-  >
-    <div className="font-medium">{senderName}</div>
-    <div className="text-sm text-muted-foreground truncate">
-      {messageContent.slice(0, 50)}...
-    </div>
-  </div>,
-  { duration: 5000 }
-);
-```
-
-### Data Flow
+### Delete All Season Feature
 
 ```text
-LeagueDashboard
-    |
-    +-- useLeagueTeams() -> teams[]
-    |
-    +-- LeagueChat
-            |-- teams (for mention suggestions)
-            |-- onlineUsers (from useChatPresence)
-            |
-            +-- ChatMentionInput
-                    |-- mentionableUsers = [
-                    |       { id: 'jeffbot', name: 'JeffBot 🏝️', isBot: true },
-                    |       ...teams.map(t => ({ id: t.user_id, name: t.name, isOnline: ... }))
-                    |   ]
-                    |
-                    +-- Popover (shows on @ trigger)
-                            |-- filtered options
-                            |-- keyboard navigation
+UI Location: Next to the season selector, show "Delete All" button (only when contestants exist)
+
+Flow:
+1. User clicks "Delete All for Season X"
+2. Confirmation dialog: "Delete all 18 contestants for Season 49?"
+3. On confirm: DELETE FROM master_contestants WHERE season_number = X
+4. Refresh list and show success toast
+```
+
+### Smart CSV Parser
+
+```typescript
+// Detect column type from header name
+function detectColumnType(header: string): 'name' | 'tribe' | 'age' | 'occupation' | 'image_url' | null {
+  const h = header.toLowerCase().trim();
+  
+  if (['name', 'contestant', 'player', 'castaway'].includes(h)) return 'name';
+  if (['tribe', 'team', 'starting tribe', 'original tribe'].includes(h)) return 'tribe';
+  if (['age'].includes(h)) return 'age';
+  if (['occupation', 'job', 'profession', 'career'].includes(h)) return 'occupation';
+  if (['image', 'image_url', 'photo', 'headshot', 'picture', 'url'].includes(h)) return 'image_url';
+  
+  return null;
+}
+
+// Build column index mapping from headers
+function buildColumnMapping(headers: string[]): Record<string, number> {
+  const mapping: Record<string, number> = {};
+  
+  headers.forEach((header, index) => {
+    const type = detectColumnType(header);
+    if (type && !(type in mapping)) {
+      mapping[type] = index;
+    }
+  });
+  
+  return mapping;
+}
+```
+
+### Import Preview Dialog
+
+```text
++----------------------------------------------------------+
+|  CSV Import Preview - Season 49                          |
++----------------------------------------------------------+
+|  Detected columns: Name (col 1), Age (col 2),            |
+|  Occupation (col 3), Tribe (col 4)                       |
+|                                                          |
+|  Preview (first 5 rows):                                 |
+|  +------+-----+-------------+-------+----------+         |
+|  | Name | Age | Occupation  | Tribe | Image    |         |
+|  +------+-----+-------------+-------+----------+         |
+|  | Sam  | 28  | Teacher     | Luvu  | —        |         |
+|  | Alex | 32  | Attorney    | Yase  | —        |         |
+|  | ...  |     |             |       |          |         |
+|  +------+-----+-------------+-------+----------+         |
+|                                                          |
+|  Ready to import 18 contestants                          |
+|                                                          |
+|  [Cancel]                        [Import All]            |
++----------------------------------------------------------+
 ```
 
 ---
 
-## Expected Behavior
+## Files to Modify
 
-### Notifications
-1. User has chat minimized (collapsed FAB button)
-2. Another user or JeffBot sends a message
-3. Toast appears: "**TeamName** sent a message..."
-4. Clicking toast opens chat and scrolls to bottom
-5. No notification for user's own messages
+| File | Changes |
+|------|---------|
+| `src/components/admin/CastManager.tsx` | Add Delete All button, smart CSV parsing, preview dialog |
 
-### @Mentions
-1. User types `@` in input
-2. Popover appears with JeffBot + all team members
-3. User types more (`@jef`) -> filters to "JeffBot"
-4. User presses Enter or clicks -> `@jeffbot ` inserted
-5. Popover closes, cursor is after the inserted mention
-6. User can continue typing their message
+---
+
+## User Experience
+
+### Delete All Flow
+1. Select season with bad data
+2. Click "Delete All" (red button, appears when contestants exist)
+3. Confirm in dialog
+4. All contestants for that season are removed
+5. Ready for fresh import
+
+### Improved CSV Import Flow
+1. Click "CSV Import" and select file
+2. Preview dialog shows detected columns and first 5 rows
+3. User verifies data looks correct
+4. Click "Import All" to proceed or "Cancel" to abort
+5. On success, table refreshes with new data
+
+### Fallback for No Headers
+If the CSV has no recognizable headers (first row doesn't contain words like "name", "tribe", etc.), fall back to the original positional parsing but show a warning in the preview.
 
