@@ -65,15 +65,60 @@ interface ColumnMapping {
 
 type ColumnType = 'name' | 'tribe' | 'age' | 'occupation' | 'image_url';
 
-// Smart header detection
+// Normalize column name for matching
+function normalizeColumnName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/[_\s]+/g, " ") // Normalize underscores and whitespace to single space
+    .trim();
+}
+
+// Smart header detection with flexible matching
 function detectColumnType(header: string): ColumnType | null {
-  const h = header.toLowerCase().trim();
+  const h = normalizeColumnName(header);
   
-  if (['name', 'contestant', 'player', 'castaway', 'full name', 'contestant name'].includes(h)) return 'name';
-  if (['tribe', 'team', 'starting tribe', 'original tribe', 'starting_tribe'].includes(h)) return 'tribe';
-  if (['age'].includes(h)) return 'age';
-  if (['occupation', 'job', 'profession', 'career', 'hometown'].includes(h)) return 'occupation';
-  if (['image', 'image_url', 'photo', 'headshot', 'picture', 'url', 'img', 'photo_url', 'pic'].includes(h)) return 'image_url';
+  // Exact matches first
+  const exactMatches: Record<string, ColumnType> = {
+    'name': 'name',
+    'contestant': 'name',
+    'player': 'name',
+    'castaway': 'name',
+    'full name': 'name',
+    'contestant name': 'name',
+    'tribe': 'tribe',
+    'team': 'tribe',
+    'starting tribe': 'tribe',
+    'starting tribe name': 'tribe',
+    'original tribe': 'tribe',
+    'age': 'age',
+    'occupation': 'occupation',
+    'job': 'occupation',
+    'profession': 'occupation',
+    'career': 'occupation',
+    'location': 'occupation', // Map location to occupation field as fallback
+    'hometown': 'occupation',
+    'image': 'image_url',
+    'image url': 'image_url',
+    'photo': 'image_url',
+    'headshot': 'image_url',
+    'picture': 'image_url',
+    'url': 'image_url',
+    'img': 'image_url',
+    'photo url': 'image_url',
+    'pic': 'image_url',
+  };
+  
+  if (exactMatches[h]) return exactMatches[h];
+  
+  // Partial/contains matching for common patterns
+  if (h.includes('name') && !h.includes('tribe')) return 'name';
+  if (h.includes('tribe') || h.includes('team')) return 'tribe';
+  if (h.includes('age')) return 'age';
+  if (h.includes('occupation') || h.includes('job') || h.includes('profession')) return 'occupation';
+  if (h.includes('location') || h.includes('hometown') || h.includes('from')) return 'occupation';
+  if (h.includes('image') || h.includes('photo') || h.includes('headshot') || h.includes('pic')) return 'image_url';
   
   return null;
 }
@@ -106,6 +151,33 @@ function getPositionalMapping(): ColumnMapping {
     occupation: 3,
     image_url: 4,
   };
+}
+
+// Parse CSV line handling quoted fields
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim());
+  return values;
 }
 
 // Parse a row using the column mapping
@@ -365,8 +437,8 @@ export function CastManager() {
           return;
         }
 
-        // Parse first row as potential headers
-        const firstRowParts = lines[0].split(",").map((p) => p.trim());
+        // Parse first row as potential headers using quote-aware parsing
+        const firstRowParts = parseCSVLine(lines[0]);
         const { mapping, hasHeaders } = buildColumnMapping(firstRowParts);
         
         // Use detected mapping or fall back to positional
@@ -377,10 +449,10 @@ export function CastManager() {
         setColumnMapping(finalMapping);
         setHasDetectedHeaders(hasHeaders);
 
-        // Parse all data rows
+        // Parse all data rows using quote-aware parsing
         const parsed: ParsedContestant[] = [];
         for (let i = startIndex; i < lines.length; i++) {
-          const parts = lines[i].split(",").map((p) => p.trim());
+          const parts = parseCSVLine(lines[i]);
           const contestant = parseRowWithMapping(parts, finalMapping);
           if (contestant) {
             parsed.push(contestant);
