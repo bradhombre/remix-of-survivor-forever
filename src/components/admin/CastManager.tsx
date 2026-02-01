@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -33,7 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Upload, Trash2, Pencil, Check, X, Users, FileUp, AlertTriangle } from "lucide-react";
+import { Plus, Upload, Trash2, Pencil, Check, X, Users, FileUp, AlertTriangle, ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface MasterContestant {
@@ -228,6 +229,14 @@ export function CastManager() {
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Fetch Images state
+  const [showFetchImagesDialog, setShowFetchImagesDialog] = useState(false);
+  const [isFetchingImages, setIsFetchingImages] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState({ current: 0, total: 0, currentName: "" });
+  const [fetchResults, setFetchResults] = useState<{ found: number; notFound: number; failed: string[] }>({ found: 0, notFound: 0, failed: [] });
+  const [fetchingContestantId, setFetchingContestantId] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Fetch available seasons
   useEffect(() => {
     const fetchSeasons = async () => {
@@ -361,6 +370,105 @@ export function CastManager() {
       setExistingSeasons(existingSeasons.filter(s => s !== season));
     }
     setIsDeleting(false);
+  };
+
+  // Count contestants missing images
+  const missingImagesCount = contestants.filter(c => !c.image_url).length;
+
+  // Fetch images for all contestants missing images
+  const handleFetchImages = async (forceRefresh = false) => {
+    const contestantsToFetch = forceRefresh 
+      ? contestants 
+      : contestants.filter(c => !c.image_url);
+    
+    if (contestantsToFetch.length === 0) {
+      toast.info("All contestants already have images");
+      return;
+    }
+
+    setIsFetchingImages(true);
+    setShowFetchImagesDialog(true);
+    setFetchProgress({ current: 0, total: contestantsToFetch.length, currentName: "" });
+    setFetchResults({ found: 0, notFound: 0, failed: [] });
+    
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-cast-images", {
+        body: {
+          season_number: season,
+          contestant_ids: contestantsToFetch.map(c => c.id),
+          force_refresh: forceRefresh,
+        },
+      });
+
+      if (error) {
+        console.error("Error fetching images:", error);
+        toast.error("Failed to fetch images");
+        setIsFetchingImages(false);
+        return;
+      }
+
+      // Update results
+      const failed = data.results
+        ?.filter((r: { success: boolean }) => !r.success)
+        .map((r: { name: string }) => r.name) || [];
+
+      setFetchResults({
+        found: data.found || 0,
+        notFound: data.notFound || 0,
+        failed,
+      });
+      setFetchProgress({ current: data.total || 0, total: data.total || 0, currentName: "" });
+
+      if (data.found > 0) {
+        toast.success(`Found images for ${data.found} of ${data.total} contestants`);
+      } else {
+        toast.info("No images found for any contestants");
+      }
+
+      // Refresh the list
+      fetchContestants();
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to fetch images");
+    }
+
+    setIsFetchingImages(false);
+  };
+
+  // Fetch image for a single contestant
+  const handleFetchSingleImage = async (contestantId: string, contestantName: string) => {
+    setFetchingContestantId(contestantId);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-cast-images", {
+        body: {
+          season_number: season,
+          contestant_ids: [contestantId],
+          force_refresh: true,
+        },
+      });
+
+      if (error) {
+        console.error("Error fetching image:", error);
+        toast.error(`Failed to fetch image for ${contestantName}`);
+        setFetchingContestantId(null);
+        return;
+      }
+
+      if (data.found > 0) {
+        toast.success(`Found image for ${contestantName}`);
+        fetchContestants();
+      } else {
+        toast.info(`No image found for ${contestantName}`);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(`Failed to fetch image for ${contestantName}`);
+    }
+
+    setFetchingContestantId(null);
   };
 
   const handleBulkImport = async () => {
@@ -608,6 +716,17 @@ export function CastManager() {
                 />
               </label>
             </Button>
+            {contestants.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleFetchImages(false)}
+                disabled={isFetchingImages || missingImagesCount === 0}
+              >
+                <ImageIcon className="h-4 w-4 mr-1" />
+                Fetch Images {missingImagesCount > 0 && `(${missingImagesCount} missing)`}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -724,19 +843,35 @@ export function CastManager() {
                       <TableCell className="text-muted-foreground">
                         {c.occupation || "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground max-w-[150px] truncate">
-                        {c.image_url ? (
-                          <a
-                            href={c.image_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline"
+                      <TableCell className="text-muted-foreground max-w-[150px]">
+                        <div className="flex items-center gap-2">
+                          {c.image_url ? (
+                            <a
+                              href={c.image_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline truncate max-w-[100px]"
+                            >
+                              View
+                            </a>
+                          ) : (
+                            <span>—</span>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleFetchSingleImage(c.id, c.name)}
+                            disabled={fetchingContestantId === c.id}
+                            title="Fetch image"
                           >
-                            View
-                          </a>
-                        ) : (
-                          "—"
-                        )}
+                            {fetchingContestantId === c.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <ImageIcon className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -994,6 +1129,92 @@ export function CastManager() {
               <Button onClick={handleBulkImport} disabled={isSaving || !bulkText.trim()}>
                 {isSaving ? "Importing..." : "Import All"}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Fetch Images Progress Dialog */}
+        <Dialog open={showFetchImagesDialog} onOpenChange={(open) => {
+          if (!isFetchingImages) setShowFetchImagesDialog(open);
+        }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                Fetching Cast Images
+              </DialogTitle>
+              <DialogDescription>
+                Searching for official headshots using AI...
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {isFetchingImages ? (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{fetchProgress.current} / {fetchProgress.total}</span>
+                    </div>
+                    <Progress value={(fetchProgress.current / Math.max(fetchProgress.total, 1)) * 100} />
+                  </div>
+                  
+                  {fetchProgress.currentName && (
+                    <p className="text-sm text-muted-foreground">
+                      Current: <span className="font-medium">{fetchProgress.currentName}</span>
+                    </p>
+                  )}
+                  
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-primary">
+                      ✅ Found: {fetchResults.found}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ❌ Not found: {fetchResults.notFound}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-primary">
+                      ✅ Found: {fetchResults.found}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ❌ Not found: {fetchResults.notFound}
+                    </span>
+                  </div>
+                  
+                  {fetchResults.failed.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Failed contestants:</p>
+                      <div className="max-h-32 overflow-auto text-sm text-muted-foreground bg-muted/50 rounded p-2">
+                        {fetchResults.failed.map((name, i) => (
+                          <div key={i}>{name}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              {isFetchingImages ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    abortControllerRef.current?.abort();
+                    setIsFetchingImages(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              ) : (
+                <Button onClick={() => setShowFetchImagesDialog(false)}>
+                  Close
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
