@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -31,7 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Upload, Trash2, Pencil, Check, X, Users, FileUp } from "lucide-react";
+import { Plus, Upload, Trash2, Pencil, Check, X, Users, FileUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface MasterContestant {
@@ -43,6 +45,84 @@ interface MasterContestant {
   age: number | null;
   occupation: string | null;
   created_at: string;
+}
+
+interface ParsedContestant {
+  name: string;
+  tribe: string | null;
+  age: number | null;
+  occupation: string | null;
+  image_url: string | null;
+}
+
+interface ColumnMapping {
+  name?: number;
+  tribe?: number;
+  age?: number;
+  occupation?: number;
+  image_url?: number;
+}
+
+type ColumnType = 'name' | 'tribe' | 'age' | 'occupation' | 'image_url';
+
+// Smart header detection
+function detectColumnType(header: string): ColumnType | null {
+  const h = header.toLowerCase().trim();
+  
+  if (['name', 'contestant', 'player', 'castaway', 'full name', 'contestant name'].includes(h)) return 'name';
+  if (['tribe', 'team', 'starting tribe', 'original tribe', 'starting_tribe'].includes(h)) return 'tribe';
+  if (['age'].includes(h)) return 'age';
+  if (['occupation', 'job', 'profession', 'career', 'hometown'].includes(h)) return 'occupation';
+  if (['image', 'image_url', 'photo', 'headshot', 'picture', 'url', 'img', 'photo_url', 'pic'].includes(h)) return 'image_url';
+  
+  return null;
+}
+
+// Build column mapping from headers
+function buildColumnMapping(headers: string[]): { mapping: ColumnMapping; hasHeaders: boolean } {
+  const mapping: ColumnMapping = {};
+  let matchedColumns = 0;
+  
+  headers.forEach((header, index) => {
+    const type = detectColumnType(header);
+    if (type && !(type in mapping)) {
+      mapping[type] = index;
+      matchedColumns++;
+    }
+  });
+  
+  // If we matched at least 1 column with name, consider it as having headers
+  const hasHeaders = matchedColumns > 0 && 'name' in mapping;
+  
+  return { mapping, hasHeaders };
+}
+
+// Fallback positional mapping
+function getPositionalMapping(): ColumnMapping {
+  return {
+    name: 0,
+    tribe: 1,
+    age: 2,
+    occupation: 3,
+    image_url: 4,
+  };
+}
+
+// Parse a row using the column mapping
+function parseRowWithMapping(parts: string[], mapping: ColumnMapping): ParsedContestant | null {
+  const name = mapping.name !== undefined ? parts[mapping.name]?.trim() : '';
+  if (!name) return null;
+  
+  const ageStr = mapping.age !== undefined ? parts[mapping.age]?.trim() : '';
+  const age = ageStr ? parseInt(ageStr) : null;
+  
+  return {
+    name,
+    tribe: mapping.tribe !== undefined ? parts[mapping.tribe]?.trim() || null : null,
+    age: age && !isNaN(age) ? age : null,
+    occupation: mapping.occupation !== undefined ? parts[mapping.occupation]?.trim() || null : null,
+    image_url: mapping.image_url !== undefined ? parts[mapping.image_url]?.trim() || null : null,
+  };
 }
 
 export function CastManager() {
@@ -64,6 +144,17 @@ export function CastManager() {
   });
   const [bulkText, setBulkText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // CSV Preview state
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewData, setPreviewData] = useState<ParsedContestant[]>([]);
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
+  const [hasDetectedHeaders, setHasDetectedHeaders] = useState(true);
+  const [rawHeaders, setRawHeaders] = useState<string[]>([]);
+
+  // Delete All state
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch available seasons
   useEffect(() => {
@@ -181,6 +272,25 @@ export function CastManager() {
     }
   };
 
+  const handleDeleteAllSeason = async () => {
+    setIsDeleting(true);
+    const { error } = await supabase
+      .from("master_contestants")
+      .delete()
+      .eq("season_number", season);
+
+    if (error) {
+      toast.error("Failed to delete contestants");
+    } else {
+      toast.success(`Deleted all ${contestants.length} contestants for Season ${season}`);
+      setShowDeleteAllDialog(false);
+      fetchContestants();
+      // Update existing seasons list
+      setExistingSeasons(existingSeasons.filter(s => s !== season));
+    }
+    setIsDeleting(false);
+  };
+
   const handleBulkImport = async () => {
     if (!bulkText.trim()) return;
 
@@ -245,69 +355,87 @@ export function CastManager() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       try {
         const csvData = event.target?.result as string;
         const lines = csvData.split("\n").filter((line) => line.trim());
-
-        // Check for header row
-        const startIndex = lines[0]?.toLowerCase().includes("name") ? 1 : 0;
         
-        const toInsert: Array<{
-          season_number: number;
-          name: string;
-          tribe: string | null;
-          age: number | null;
-          occupation: string | null;
-          image_url: string | null;
-        }> = [];
-
-        for (let i = startIndex; i < lines.length; i++) {
-          const parts = lines[i].split(",").map((p) => p.trim());
-          const name = parts[0];
-          if (!name) continue;
-
-          toInsert.push({
-            season_number: season,
-            name,
-            tribe: parts[1] || null,
-            age: parts[2] ? parseInt(parts[2]) : null,
-            occupation: parts[3] || null,
-            image_url: parts[4] || null,
-          });
+        if (lines.length === 0) {
+          toast.error("CSV file is empty");
+          return;
         }
 
-        if (toInsert.length === 0) {
+        // Parse first row as potential headers
+        const firstRowParts = lines[0].split(",").map((p) => p.trim());
+        const { mapping, hasHeaders } = buildColumnMapping(firstRowParts);
+        
+        // Use detected mapping or fall back to positional
+        const finalMapping = hasHeaders ? mapping : getPositionalMapping();
+        const startIndex = hasHeaders ? 1 : 0;
+        
+        setRawHeaders(firstRowParts);
+        setColumnMapping(finalMapping);
+        setHasDetectedHeaders(hasHeaders);
+
+        // Parse all data rows
+        const parsed: ParsedContestant[] = [];
+        for (let i = startIndex; i < lines.length; i++) {
+          const parts = lines[i].split(",").map((p) => p.trim());
+          const contestant = parseRowWithMapping(parts, finalMapping);
+          if (contestant) {
+            parsed.push(contestant);
+          }
+        }
+
+        if (parsed.length === 0) {
           toast.error("No valid contestants found in CSV");
           return;
         }
 
-        setIsSaving(true);
-        const { error, data } = await supabase
-          .from("master_contestants")
-          .insert(toInsert)
-          .select();
-
-        if (error) {
-          if (error.code === "23505") {
-            toast.error("Some contestants already exist. Remove duplicates from CSV.");
-          } else {
-            toast.error("Failed to import CSV");
-          }
-        } else {
-          toast.success(`Imported ${data?.length || 0} contestants from CSV`);
-          fetchContestants();
-          if (!existingSeasons.includes(season)) {
-            setExistingSeasons([season, ...existingSeasons].sort((a, b) => b - a));
-          }
-        }
-        setIsSaving(false);
+        setPreviewData(parsed);
+        setShowPreviewDialog(true);
       } catch (error) {
         toast.error("Invalid CSV format");
       }
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    if (previewData.length === 0) return;
+
+    const toInsert = previewData.map((c) => ({
+      season_number: season,
+      name: c.name,
+      tribe: c.tribe,
+      age: c.age,
+      occupation: c.occupation,
+      image_url: c.image_url,
+    }));
+
+    setIsSaving(true);
+    const { error, data } = await supabase
+      .from("master_contestants")
+      .insert(toInsert)
+      .select();
+
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("Some contestants already exist. Delete existing data first.");
+      } else {
+        toast.error("Failed to import CSV");
+      }
+    } else {
+      toast.success(`Imported ${data?.length || 0} contestants from CSV`);
+      setShowPreviewDialog(false);
+      setPreviewData([]);
+      fetchContestants();
+      if (!existingSeasons.includes(season)) {
+        setExistingSeasons([season, ...existingSeasons].sort((a, b) => b - a));
+      }
+    }
+    setIsSaving(false);
   };
 
   const startEditing = (contestant: MasterContestant) => {
@@ -324,6 +452,17 @@ export function CastManager() {
   const cancelEditing = () => {
     setEditingId(null);
     resetForm();
+  };
+
+  // Generate column mapping display
+  const getMappingDisplay = () => {
+    const parts: string[] = [];
+    if (columnMapping.name !== undefined) parts.push(`Name (col ${columnMapping.name + 1})`);
+    if (columnMapping.tribe !== undefined) parts.push(`Tribe (col ${columnMapping.tribe + 1})`);
+    if (columnMapping.age !== undefined) parts.push(`Age (col ${columnMapping.age + 1})`);
+    if (columnMapping.occupation !== undefined) parts.push(`Occupation (col ${columnMapping.occupation + 1})`);
+    if (columnMapping.image_url !== undefined) parts.push(`Image (col ${columnMapping.image_url + 1})`);
+    return parts.join(", ");
   };
 
   return (
@@ -366,6 +505,16 @@ export function CastManager() {
           )}
 
           <div className="flex gap-2 ml-auto flex-wrap">
+            {contestants.length > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => setShowDeleteAllDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete All
+              </Button>
+            )}
             <Button onClick={() => setShowAddDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Contestant
@@ -569,6 +718,111 @@ export function CastManager() {
           {contestants.length} contestant{contestants.length !== 1 ? "s" : ""} for Season{" "}
           {season}
         </p>
+
+        {/* Delete All Confirmation Dialog */}
+        <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Delete All Contestants
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete all <strong>{contestants.length}</strong> contestants for Season {season}? 
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAllSeason}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? "Deleting..." : `Delete All ${contestants.length}`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* CSV Import Preview Dialog */}
+        <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>CSV Import Preview - Season {season}</DialogTitle>
+              <DialogDescription>
+                Review the parsed data before importing
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+              {/* Column mapping info */}
+              <div className="space-y-2">
+                {hasDetectedHeaders ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary">Headers detected</Badge>
+                    <span className="text-sm text-muted-foreground">{getMappingDisplay()}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+                    <span className="text-sm">
+                      No recognizable headers found. Using positional mapping (name, tribe, age, occupation, image_url).
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Preview table */}
+              <div className="border rounded-lg overflow-auto flex-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Tribe</TableHead>
+                      <TableHead>Age</TableHead>
+                      <TableHead>Occupation</TableHead>
+                      <TableHead>Image</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.slice(0, 10).map((c, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell className="font-medium">{c.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.tribe || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.age || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.occupation || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground max-w-[100px] truncate">
+                          {c.image_url ? "✓" : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {previewData.length > 10 && (
+                  <p className="text-sm text-muted-foreground p-3 text-center border-t">
+                    ... and {previewData.length - 10} more
+                  </p>
+                )}
+              </div>
+
+              <p className="text-sm font-medium">
+                Ready to import {previewData.length} contestant{previewData.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmImport} disabled={isSaving}>
+                {isSaving ? "Importing..." : `Import All ${previewData.length}`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Add Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
