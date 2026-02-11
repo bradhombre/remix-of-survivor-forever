@@ -1,67 +1,108 @@
 
 
-# Update fetch-cast-images to Use Firecrawl Web Search
+# Display Contestant Headshots Throughout the App
 
 ## Overview
-Replace the current AI-guessing approach with Firecrawl's **search API** to find real, working contestant headshot URLs from CBS and Survivor Wiki pages.
+Bring the contestant headshot images (fetched via Firecrawl into `master_contestants`) into the actual gameplay experience. Currently images are only visible in the Admin Cast Manager -- this plan adds them everywhere contestants appear.
 
-## Strategy
+## Data Bridge Strategy
 
-The new approach uses a **3-tier search** for each contestant:
+The per-session `contestants` table doesn't have an `image_url` column. We need to add one so images flow into gameplay views.
 
 ```text
-For each contestant:
-  1. Firecrawl Search  -->  "Survivor [Season] [Name] CBS headshot"
-     |                      Extract image URLs from search results
-     v
-  2. Firecrawl Scrape  -->  Scrape the Survivor Wiki page for the contestant
-     |                      Extract profile image from page HTML
-     v  
-  3. AI Fallback       -->  Use Lovable AI to analyze scraped content
-     |                      and identify the best headshot URL
-     v
-  4. URL Validation    -->  HEAD request to confirm image is accessible
+master_contestants (platform-wide)         contestants (per-session)
++------------------+                       +------------------+
+| name             |  --- Import Cast -->  | name             |
+| image_url   [*]  |                       | image_url   [NEW]|
+| tribe            |                       | tribe            |
+| age              |                       | age              |
++------------------+                       +------------------+
 ```
 
-## Changes to `supabase/functions/fetch-cast-images/index.ts`
+## Changes
 
-### What Changes
+### 1. Database Migration
+- Add `image_url TEXT` column to the `contestants` table
+- This stores the headshot URL per-session contestant
 
-1. **Add Firecrawl search function** - Uses `FIRECRAWL_API_KEY` to call the Firecrawl Search API with a query like `"Survivor Season 50 [Name] official CBS headshot photo"`. Extracts image URLs from the search results' markdown content.
+### 2. Update the Contestant Type
+**File: `src/types/survivor.ts`**
+- Add `imageUrl?: string` to the `Contestant` interface
 
-2. **Add Firecrawl scrape function** - If search doesn't find an image, scrape the contestant's Survivor Wiki page directly (`https://survivor.fandom.com/wiki/[Name]`) and extract the profile image URL from the page content.
+### 3. Update Import Official Cast Flow
+**File: `src/components/SetupMode.tsx`**
+- When importing from `master_contestants`, also fetch and pass `image_url` so it gets stored in the session's `contestants` table
 
-3. **Keep AI as fallback** - If Firecrawl doesn't find images, fall back to the existing Lovable AI approach for best-effort guessing.
+### 4. Update Game State Hooks
+**File: `src/hooks/useGameStateDB.ts`**
+- Include `image_url` in SELECT queries for contestants
+- Map `image_url` to `imageUrl` in the Contestant objects
 
-4. **Remove hardcoded URL patterns** - The `generateWikiImageUrls` function becomes unnecessary since Firecrawl will find real URLs.
+### 5. Create a ContestantAvatar Component
+**New file: `src/components/ContestantAvatar.tsx`**
+- Small reusable component: shows the headshot image in a circular avatar, with initials fallback
+- Props: `name`, `imageUrl`, `size`, `isEliminated` (adds grayscale/opacity)
 
-5. **Add `FIRECRAWL_API_KEY` check** - Verify the key exists at startup; log a warning if missing but continue with AI-only fallback.
+### 6. Add Headshots to Game Views
 
-### New Search Flow (per contestant)
+**GameMode** (`src/components/GameMode.tsx`)
+- Team roster cards: add avatar next to each contestant name
+- All-contestants scoring view: add avatar in contestant rows
+- Eliminated contestants get a grayscale/dimmed avatar
 
-**Step 1 - Firecrawl Search:**
-- Query: `"Survivor Season [X] [Name] CBS official photo"`
-- Parse results for image URLs from CBS, Paramount, or Wikia domains
-- If found and validated, use it
+**DraftMode** (`src/components/DraftMode.tsx`)
+- Available contestants grid: show headshot above name in each draft button
+- Drafted contestants list: small avatar next to name in team cards
 
-**Step 2 - Firecrawl Scrape (if search fails):**
-- Scrape `https://survivor.fandom.com/wiki/[Name_(Survivor_[X])]`
-- Extract the main profile image from the page HTML/markdown
-- Wiki profile images follow patterns like `static.wikia.nocookie.net/survivor/images/...`
+**SetupMode** (`src/components/SetupMode.tsx`)
+- Contestant list: small avatar next to name if image exists
 
-**Step 3 - AI Fallback (if scrape fails):**
-- Use existing Lovable AI approach as last resort
+**HistoryMode** (`src/components/HistoryMode.tsx`)
+- Archived team rosters: avatar next to contestant name
 
-### Rate Limiting
-- 500ms delay between Firecrawl API calls (respecting their rate limits)
-- Sequential processing to avoid overwhelming the API
+**FinalPredictionDialog** (`src/components/FinalPredictionDialog.tsx`)
+- Select dropdowns: show avatar next to contestant names in the finalist/vote-out selectors
 
-## No Frontend Changes Needed
-The CastManager UI already handles calling this edge function and displaying progress -- only the backend logic changes.
+### 7. Update AdminPanel Contestant Display
+**File: `src/components/AdminPanel.tsx`**
+- Add small avatar thumbnails next to contestant names in the admin scoring view
 
-## Files Modified
+## Technical Details
 
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/functions/fetch-cast-images/index.ts` | Rewrite | Replace AI-guessing with Firecrawl search + scrape pipeline |
+### Database Migration SQL
+```sql
+ALTER TABLE contestants ADD COLUMN image_url TEXT;
+```
+
+### ContestantAvatar Component (new)
+```text
+Props:
+  - name: string
+  - imageUrl?: string
+  - size: 'xs' | 'sm' | 'md' (default 'sm')
+  - isEliminated?: boolean
+
+Renders:
+  - Avatar with AvatarImage (if imageUrl exists)
+  - AvatarFallback with first initial
+  - If eliminated: grayscale filter + reduced opacity
+```
+
+### Import Cast Update
+The `handleImportOfficialCast` function in SetupMode currently fetches `name, tribe, age, occupation` from `master_contestants`. It needs to also fetch `image_url` and pass it through when creating session contestants.
+
+### Files Changed Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `image_url` column to `contestants` |
+| `src/types/survivor.ts` | Add `imageUrl` to Contestant interface |
+| `src/components/ContestantAvatar.tsx` | New reusable avatar component |
+| `src/hooks/useGameStateDB.ts` | Include `image_url` in queries |
+| `src/components/SetupMode.tsx` | Pass image_url during official cast import |
+| `src/components/GameMode.tsx` | Add avatars to team rosters and contestant cards |
+| `src/components/DraftMode.tsx` | Add avatars to draft buttons and drafted lists |
+| `src/components/HistoryMode.tsx` | Add avatars to archived rosters |
+| `src/components/FinalPredictionDialog.tsx` | Add avatars to select options |
+| `src/components/AdminPanel.tsx` | Add avatar thumbnails |
 
