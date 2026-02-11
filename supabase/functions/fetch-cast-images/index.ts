@@ -20,13 +20,18 @@ interface ContestantResult {
   error?: string;
 }
 
-// Filter out junk URLs (logos, icons, site-wide images)
+// Filter out junk URLs (logos, icons, site-wide images, wiki utility images)
 function isJunkImageUrl(url: string): boolean {
   const lower = url.toLowerCase();
-  return lower.includes("site-logo") || lower.includes("favicon") || lower.includes("wiki-wordmark") ||
-    lower.includes("community-header") || lower.includes("site-community") ||
-    lower.includes("community-corner") || lower.includes("wiki.png") ||
-    lower.includes("icon") && lower.includes("wiki");
+  const junkPatterns = [
+    "site-logo", "favicon", "wiki-wordmark", "community-header", "site-community",
+    "community-corner", "wiki.png", "information.png", "ambox", "disambig",
+    "lock-icon", "edit-icon", "icon_", "nuvola", "crystal_clear", "gnome-",
+    "replacement_filing_cabinet", "question_book", "text-x-generic", "folder-",
+    "symbol-", "stub", "cquote", "merge-arrow",
+  ];
+  return junkPatterns.some((p) => lower.includes(p)) ||
+    (lower.includes("icon") && lower.includes("wiki"));
 }
 
 // Validate that a URL points to an accessible image
@@ -148,6 +153,7 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
       // Extract wikia CDN images from combined content (HTML has actual src URLs)
       const wikiaUrls = extractWikiaImageUrls(combined).filter((u) => !isJunkImageUrl(u));
       console.log(`[Firecrawl Scrape] found ${wikiaUrls.length} wikia image URLs (filtered)`);
+      if (wikiaUrls.length > 0) console.log(`[Firecrawl Scrape] wikia URLs: ${wikiaUrls.slice(0, 3).join(", ")}`);
 
       for (const rawUrl of wikiaUrls.slice(0, 5)) {
         const cleaned = cleanWikiaUrl(rawUrl);
