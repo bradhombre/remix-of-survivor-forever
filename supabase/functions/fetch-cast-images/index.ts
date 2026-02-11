@@ -41,11 +41,15 @@ function extractImageUrls(text: string): string[] {
   return [...new Set(text.match(urlPattern) || [])];
 }
 
-// Extract wikia CDN image URLs specifically
+// Extract wikia CDN image URLs specifically, filtering out logos/icons
 function extractWikiaImageUrls(text: string): string[] {
   const pattern = /https?:\/\/static\.wikia\.nocookie\.net\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|webp)(?:\/revision\/[^\s"'<>\]\)]*)?/gi;
   const matches = text.match(pattern) || [];
   return [...new Set(matches)].filter((url) => {
+    const lower = url.toLowerCase();
+    // Skip site logos, icons, and tiny thumbnails
+    if (lower.includes("site-logo") || lower.includes("favicon") || lower.includes("wiki-wordmark")) return false;
+    if (lower.includes("community-header") || lower.includes("site-community")) return false;
     if (/\/scale-to-width-down\/\d{1,2}(?:$|\?|"|')/.test(url)) return false;
     return true;
   });
@@ -67,8 +71,8 @@ function pickBestImageUrl(urls: string[]): string | null {
   return cbs || wikia || urls[0] || null;
 }
 
-// Tier 1: Firecrawl Scrape of Survivor Wiki page
-async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
+// Build wiki URL variants for a contestant name
+function buildWikiUrls(name: string, seasonNumber: number): string[] {
   const cleanName = name.replace(/"/g, "").trim();
   const wikiName = cleanName.replace(/\s+/g, "_");
   
@@ -76,6 +80,36 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
     `https://survivor.fandom.com/wiki/${wikiName}_(Survivor_${seasonNumber})`,
     `https://survivor.fandom.com/wiki/${wikiName}`,
   ];
+
+  // If name has a nickname in quotes like Benjamin "Coach" Wade, also try the nickname
+  const nicknameMatch = name.match(/"([^"]+)"/);
+  if (nicknameMatch) {
+    const nickname = nicknameMatch[1];
+    const lastName = cleanName.split(/\s+/).pop() || "";
+    if (lastName) {
+      urls.push(`https://survivor.fandom.com/wiki/${nickname}_${lastName}_(Survivor_${seasonNumber})`);
+      urls.push(`https://survivor.fandom.com/wiki/${nickname}_${lastName}`);
+    }
+    urls.push(`https://survivor.fandom.com/wiki/${nickname}_(Survivor_${seasonNumber})`);
+    urls.push(`https://survivor.fandom.com/wiki/${nickname}`);
+  }
+
+  // If name has a nickname like Quintavius "Q" Burdette, try without first name
+  // Also try first + last without middle
+  const parts = cleanName.split(/\s+/);
+  if (parts.length >= 3) {
+    const firstLast = `${parts[0]}_${parts[parts.length - 1]}`;
+    urls.push(`https://survivor.fandom.com/wiki/${firstLast}_(Survivor_${seasonNumber})`);
+    urls.push(`https://survivor.fandom.com/wiki/${firstLast}`);
+  }
+
+  // Deduplicate
+  return [...new Set(urls)];
+}
+
+// Tier 1: Firecrawl Scrape of Survivor Wiki page
+async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
+  const urls = buildWikiUrls(name, seasonNumber);
 
   for (const url of urls) {
     console.log(`[Firecrawl Scrape] scraping: ${url}`);
