@@ -10,6 +10,7 @@ export interface Contestant {
   owner?: Player;
   pickNumber?: number;
   isEliminated: boolean;
+  imageUrl?: string;
 }
 
 export type DraftType = "snake" | "linear";
