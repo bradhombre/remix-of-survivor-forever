@@ -129,7 +129,7 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, formats: ["markdown"] }),
+        body: JSON.stringify({ url, formats: ["markdown", "html"] }),
       });
 
       if (!res.ok) {
@@ -139,13 +139,15 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
 
       const data = await res.json();
       const markdown = data.data?.markdown || data.markdown || "";
-      console.log(`[Firecrawl Scrape] got ${markdown.length} chars of markdown`);
+      const html = data.data?.html || data.html || "";
+      const combined = markdown + "\n" + html;
+      console.log(`[Firecrawl Scrape] got ${markdown.length} chars markdown, ${html.length} chars html`);
 
-      if (!markdown) continue;
+      if (!combined || combined.length < 200) continue;
 
-      // Extract wikia CDN images first (most reliable for profile photos)
-      const wikiaUrls = extractWikiaImageUrls(markdown);
-      console.log(`[Firecrawl Scrape] found ${wikiaUrls.length} wikia image URLs`);
+      // Extract wikia CDN images from combined content (HTML has actual src URLs)
+      const wikiaUrls = extractWikiaImageUrls(combined).filter((u) => !isJunkImageUrl(u));
+      console.log(`[Firecrawl Scrape] found ${wikiaUrls.length} wikia image URLs (filtered)`);
 
       for (const rawUrl of wikiaUrls.slice(0, 5)) {
         const cleaned = cleanWikiaUrl(rawUrl);
@@ -155,8 +157,8 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
         }
       }
 
-      // Try all image URLs from the page (filtered)
-      const allImageUrls = extractImageUrls(markdown).filter((u) => !isJunkImageUrl(u));
+      // Try all image URLs from the combined content (filtered)
+      const allImageUrls = extractImageUrls(combined).filter((u) => !isJunkImageUrl(u));
       console.log(`[Firecrawl Scrape] found ${allImageUrls.length} total image URLs (filtered)`);
 
       const best = pickBestImageUrl(allImageUrls);
