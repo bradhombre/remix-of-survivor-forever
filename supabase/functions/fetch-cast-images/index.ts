@@ -20,6 +20,15 @@ interface ContestantResult {
   error?: string;
 }
 
+// Filter out junk URLs (logos, icons, site-wide images)
+function isJunkImageUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.includes("site-logo") || lower.includes("favicon") || lower.includes("wiki-wordmark") ||
+    lower.includes("community-header") || lower.includes("site-community") ||
+    lower.includes("community-corner") || lower.includes("wiki.png") ||
+    lower.includes("icon") && lower.includes("wiki");
+}
+
 // Validate that a URL points to an accessible image
 async function validateImageUrl(url: string): Promise<boolean> {
   try {
@@ -146,9 +155,9 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
         }
       }
 
-      // Try all image URLs from the page
-      const allImageUrls = extractImageUrls(markdown);
-      console.log(`[Firecrawl Scrape] found ${allImageUrls.length} total image URLs`);
+      // Try all image URLs from the page (filtered)
+      const allImageUrls = extractImageUrls(markdown).filter((u) => !isJunkImageUrl(u));
+      console.log(`[Firecrawl Scrape] found ${allImageUrls.length} total image URLs (filtered)`);
 
       const best = pickBestImageUrl(allImageUrls);
       if (best && await validateImageUrl(best)) {
@@ -163,6 +172,9 @@ async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: s
           return imgUrl;
         }
       }
+
+      // Log the markdown for debugging if no images found
+      console.log(`[Firecrawl Scrape] no valid images. First 500 chars: ${markdown.substring(0, 500)}`);
 
       await new Promise((r) => setTimeout(r, 500));
     } catch (err) {
