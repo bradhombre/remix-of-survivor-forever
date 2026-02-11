@@ -35,13 +35,18 @@ async function validateImageUrl(url: string): Promise<boolean> {
   }
 }
 
-// Extract wikia CDN image URLs from HTML
-function extractWikiaImageUrls(html: string): string[] {
+// Extract image URLs from text/markdown content
+function extractImageUrls(text: string): string[] {
+  const urlPattern = /https?:\/\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"'<>\]\)]*)?/gi;
+  return [...new Set(text.match(urlPattern) || [])];
+}
+
+// Extract wikia CDN image URLs specifically
+function extractWikiaImageUrls(text: string): string[] {
   const pattern = /https?:\/\/static\.wikia\.nocookie\.net\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|webp)(?:\/revision\/[^\s"'<>\]\)]*)?/gi;
-  const matches = html.match(pattern) || [];
+  const matches = text.match(pattern) || [];
   return [...new Set(matches)].filter((url) => {
-    // Skip very small thumbnails
-    if (/\/scale-to-width-down\/\d{1,2}(?:$|\?|")/.test(url)) return false;
+    if (/\/scale-to-width-down\/\d{1,2}(?:$|\?|"|')/.test(url)) return false;
     return true;
   });
 }
@@ -55,57 +60,89 @@ function cleanWikiaUrl(url: string): string {
   return url;
 }
 
-// Fetch wiki page HTML for a contestant
-async function fetchWikiHtml(name: string, seasonNumber: number): Promise<string> {
+// Pick the best image URL, preferring official sources
+function pickBestImageUrl(urls: string[]): string | null {
+  const wikia = urls.find((u) => u.includes("static.wikia.nocookie.net"));
+  const cbs = urls.find((u) => u.includes("cbs.com") || u.includes("paramount"));
+  return cbs || wikia || urls[0] || null;
+}
+
+// Tier 1: Firecrawl Scrape of Survivor Wiki page
+async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
   const cleanName = name.replace(/"/g, "").trim();
   const wikiName = cleanName.replace(/\s+/g, "_");
-
+  
   const urls = [
-    `https://survivor.fandom.com/wiki/${encodeURIComponent(wikiName)}_(Survivor_${seasonNumber})`,
-    `https://survivor.fandom.com/wiki/${encodeURIComponent(wikiName)}`,
+    `https://survivor.fandom.com/wiki/${wikiName}_(Survivor_${seasonNumber})`,
+    `https://survivor.fandom.com/wiki/${wikiName}`,
   ];
 
   for (const url of urls) {
-    console.log(`[Wiki Fetch] trying: ${url}`);
+    console.log(`[Firecrawl Scrape] scraping: ${url}`);
     try {
-      const res = await fetch(url, {
+      const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml",
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ url, formats: ["markdown"] }),
       });
-      if (res.ok) {
-        const html = await res.text();
-        console.log(`[Wiki Fetch] got ${html.length} chars from ${url}`);
-        return html;
+
+      if (!res.ok) {
+        console.error(`[Firecrawl Scrape] API error ${res.status} for ${url}`);
+        continue;
       }
-      console.log(`[Wiki Fetch] ${res.status} for ${url}`);
+
+      const data = await res.json();
+      const markdown = data.data?.markdown || data.markdown || "";
+      console.log(`[Firecrawl Scrape] got ${markdown.length} chars of markdown`);
+
+      if (!markdown) continue;
+
+      // Extract wikia CDN images first (most reliable for profile photos)
+      const wikiaUrls = extractWikiaImageUrls(markdown);
+      console.log(`[Firecrawl Scrape] found ${wikiaUrls.length} wikia image URLs`);
+
+      for (const rawUrl of wikiaUrls.slice(0, 5)) {
+        const cleaned = cleanWikiaUrl(rawUrl);
+        if (await validateImageUrl(cleaned)) {
+          console.log(`[Firecrawl Scrape] ✓ valid wikia image: ${cleaned}`);
+          return cleaned;
+        }
+      }
+
+      // Try all image URLs from the page
+      const allImageUrls = extractImageUrls(markdown);
+      console.log(`[Firecrawl Scrape] found ${allImageUrls.length} total image URLs`);
+
+      const best = pickBestImageUrl(allImageUrls);
+      if (best && await validateImageUrl(best)) {
+        console.log(`[Firecrawl Scrape] ✓ valid image: ${best}`);
+        return best;
+      }
+
+      // Try remaining URLs
+      for (const imgUrl of allImageUrls.slice(0, 8)) {
+        if (imgUrl !== best && await validateImageUrl(imgUrl)) {
+          console.log(`[Firecrawl Scrape] ✓ fallback valid: ${imgUrl}`);
+          return imgUrl;
+        }
+      }
+
+      await new Promise((r) => setTimeout(r, 500));
     } catch (err) {
-      console.error(`[Wiki Fetch] error for ${url}:`, err);
+      console.error("[Firecrawl Scrape] error:", err);
     }
   }
-  return "";
+
+  return null;
 }
 
-// Tier 1: Parse wiki HTML for profile image
-function parseWikiForImage(html: string): string[] {
-  // Look for infobox first (most reliable source of profile photo)
-  const infoboxMatch = html.match(/<aside[^>]*class="[^"]*portable-infobox[^"]*"[^>]*>([\s\S]*?)<\/aside>/i);
-  const searchArea = infoboxMatch ? infoboxMatch[1] : html.substring(0, 20000);
-
-  const imageUrls = extractWikiaImageUrls(searchArea);
-
-  // If no infobox images, try broader page
-  if (imageUrls.length === 0) {
-    return extractWikiaImageUrls(html).slice(0, 10);
-  }
-  return imageUrls;
-}
-
-// Tier 2: Firecrawl Search (optional)
+// Tier 2: Firecrawl Search
 async function firecrawlSearch(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
-  const query = `Survivor Season ${seasonNumber} ${name} CBS official headshot photo`;
-  console.log(`[Firecrawl] query: "${query}"`);
+  const query = `Survivor Season ${seasonNumber} ${name} contestant photo`;
+  console.log(`[Firecrawl Search] query: "${query}"`);
   try {
     const res = await fetch("https://api.firecrawl.dev/v1/search", {
       method: "POST",
@@ -116,41 +153,37 @@ async function firecrawlSearch(name: string, seasonNumber: number, apiKey: strin
       body: JSON.stringify({ query, limit: 5 }),
     });
     if (!res.ok) {
-      console.error(`[Firecrawl] API error ${res.status}`);
+      console.error(`[Firecrawl Search] API error ${res.status}`);
       return null;
     }
     const data = await res.json();
     const results = data.data || data.results || [];
-    const urlPattern = /https?:\/\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"'<>\]\)]*)?/gi;
+    const allUrls: string[] = [];
     for (const r of results) {
       const text = [r.markdown, r.description, r.title, r.url].filter(Boolean).join(" ");
-      const urls = [...new Set(text.match(urlPattern) || [])];
-      for (const url of urls) {
-        if (await validateImageUrl(url)) {
-          console.log(`[Firecrawl] ✓ found: ${url}`);
-          return url;
-        }
+      allUrls.push(...extractImageUrls(text));
+    }
+    const best = pickBestImageUrl([...new Set(allUrls)]);
+    if (best && await validateImageUrl(best)) {
+      console.log(`[Firecrawl Search] ✓ found: ${best}`);
+      return best;
+    }
+    for (const url of [...new Set(allUrls)]) {
+      if (url !== best && await validateImageUrl(url)) {
+        console.log(`[Firecrawl Search] ✓ fallback: ${url}`);
+        return url;
       }
     }
     return null;
   } catch (err) {
-    console.error("[Firecrawl] error:", err);
+    console.error("[Firecrawl Search] error:", err);
     return null;
   }
 }
 
-// Tier 3: AI-Assisted Parse using wiki HTML content
-async function aiAssistedParse(name: string, seasonNumber: number, html: string, apiKey: string): Promise<string | null> {
-  if (!html || html.length < 200) return null;
-  console.log(`[AI Parse] trying for ${name}`);
-
-  // Extract a focused snippet with image tags
-  const imgTags = html.match(/<img[^>]+>/gi) || [];
-  const relevantImgs = imgTags.filter((tag) => tag.includes("wikia.nocookie.net") || tag.includes("static.wikia")).slice(0, 20);
-  const snippet = relevantImgs.join("\n");
-
-  if (!snippet) return null;
-
+// Tier 3: AI-Assisted (uses Lovable AI to help parse content)
+async function aiAssistedFind(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
+  console.log(`[AI Find] trying for ${name}`);
   try {
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -163,11 +196,11 @@ async function aiAssistedParse(name: string, seasonNumber: number, html: string,
         messages: [
           {
             role: "system",
-            content: "Extract the profile/headshot image URL from these HTML img tags. Return ONLY the URL or NOT_FOUND.",
+            content: "You are an expert at finding Survivor contestant headshot image URLs. Return ONLY the direct image URL (from static.wikia.nocookie.net, cbs.com, or similar official sources) or the word NOT_FOUND. No explanations.",
           },
           {
             role: "user",
-            content: `Find the main profile photo URL for ${name} (Survivor ${seasonNumber}) from these img tags:\n\n${snippet}`,
+            content: `What is the direct image URL for the Survivor Wiki profile photo of ${name} from Survivor Season ${seasonNumber}? The wiki page would be at https://survivor.fandom.com/wiki/${name.replace(/"/g, "").replace(/\s+/g, "_")}. Return ONLY the URL or NOT_FOUND.`,
           },
         ],
         max_tokens: 300,
@@ -178,12 +211,10 @@ async function aiAssistedParse(name: string, seasonNumber: number, html: string,
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content?.trim() || "";
     if (text.includes("NOT_FOUND")) return null;
-
-    const urlPattern = /https?:\/\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|webp)(?:\/[^\s"'<>\]\)]*)?/gi;
-    const urls = text.match(urlPattern) || [];
+    const urls = extractImageUrls(text);
     for (const url of urls) {
       if (await validateImageUrl(url)) {
-        console.log(`[AI Parse] ✓ found: ${url}`);
+        console.log(`[AI Find] ✓ found: ${url}`);
         return url;
       }
     }
@@ -243,6 +274,14 @@ Deno.serve(async (req) => {
     console.log(`[Config] LOVABLE_API_KEY: ${lovableKey ? "set" : "NOT SET"}`);
     console.log(`Processing ${contestants.length} contestants for Season ${season_number}`);
 
+    if (!firecrawlKey) {
+      console.error("FIRECRAWL_API_KEY is required for image fetching");
+      return new Response(
+        JSON.stringify({ success: false, error: "Firecrawl API key not configured. Please link the Firecrawl connector." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const results: ContestantResult[] = [];
     let foundCount = 0;
 
@@ -250,32 +289,18 @@ Deno.serve(async (req) => {
       console.log(`--- Processing: ${contestant.name} ---`);
       let imageUrl: string | null = null;
 
-      // Fetch wiki HTML once (used by Tier 1 and Tier 3)
-      const wikiHtml = await fetchWikiHtml(contestant.name, season_number);
+      // Tier 1: Firecrawl Scrape of wiki page (bypasses 403)
+      imageUrl = await firecrawlScrapeWiki(contestant.name, season_number, firecrawlKey);
 
-      // Tier 1: Parse wiki HTML for profile image
-      if (wikiHtml) {
-        const candidates = parseWikiForImage(wikiHtml);
-        console.log(`[Wiki Parse] ${candidates.length} candidate URLs found`);
-        for (const rawUrl of candidates.slice(0, 5)) {
-          const cleaned = cleanWikiaUrl(rawUrl);
-          if (await validateImageUrl(cleaned)) {
-            imageUrl = cleaned;
-            console.log(`[Wiki Parse] ✓ valid: ${imageUrl}`);
-            break;
-          }
-        }
-      }
-
-      // Tier 2: Firecrawl Search (optional)
-      if (!imageUrl && firecrawlKey) {
-        imageUrl = await firecrawlSearch(contestant.name, season_number, firecrawlKey);
+      // Tier 2: Firecrawl Search
+      if (!imageUrl) {
         await new Promise((r) => setTimeout(r, 500));
+        imageUrl = await firecrawlSearch(contestant.name, season_number, firecrawlKey);
       }
 
-      // Tier 3: AI-Assisted Parse using the wiki HTML
-      if (!imageUrl && lovableKey && wikiHtml) {
-        imageUrl = await aiAssistedParse(contestant.name, season_number, wikiHtml, lovableKey);
+      // Tier 3: AI-Assisted
+      if (!imageUrl && lovableKey) {
+        imageUrl = await aiAssistedFind(contestant.name, season_number, lovableKey);
       }
 
       if (imageUrl) {
