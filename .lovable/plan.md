@@ -1,42 +1,67 @@
 
-# Bulk Image Fetch Helper for Cast Manager
 
-## ✅ IMPLEMENTED
+# Update fetch-cast-images to Use Firecrawl Web Search
 
-### Backend: `supabase/functions/fetch-cast-images/index.ts`
-- Edge function that processes contestants and attempts to find headshots
-- Uses Lovable AI to suggest image URLs based on contestant names
-- Falls back to URL pattern generation for Survivor Wiki
-- Validates URLs before saving
-- Rate-limited processing (300ms between requests)
-- Returns detailed results with success/failure per contestant
+## Overview
+Replace the current AI-guessing approach with Firecrawl's **search API** to find real, working contestant headshot URLs from CBS and Survivor Wiki pages.
 
-### Frontend: `src/components/admin/CastManager.tsx`
-- **"Fetch Images" button** in toolbar showing count of missing images
-- **Progress dialog** with real-time status updates
-- **Per-row image fetch button** for individual contestants
-- Results summary showing found/not found counts
-- Failed contestants list in collapsible section
+## Strategy
 
-## 🔧 LIMITATION: No Real Web Search
+The new approach uses a **3-tier search** for each contestant:
 
-The current implementation uses Lovable AI (which has static knowledge) to suggest image URLs. For **real web search capability**, you would need to connect one of these:
+```text
+For each contestant:
+  1. Firecrawl Search  -->  "Survivor [Season] [Name] CBS headshot"
+     |                      Extract image URLs from search results
+     v
+  2. Firecrawl Scrape  -->  Scrape the Survivor Wiki page for the contestant
+     |                      Extract profile image from page HTML
+     v  
+  3. AI Fallback       -->  Use Lovable AI to analyze scraped content
+     |                      and identify the best headshot URL
+     v
+  4. URL Validation    -->  HEAD request to confirm image is accessible
+```
 
-1. **Perplexity Connector** - AI-powered web search with grounded results
-2. **Firecrawl Connector** - Web scraping to fetch actual image URLs from CBS/Wiki pages
+## Changes to `supabase/functions/fetch-cast-images/index.ts`
 
-Without a web search connector, the AI can only suggest URLs based on its training data, which may not find actual working images.
+### What Changes
 
-## How to Enable Full Functionality
+1. **Add Firecrawl search function** - Uses `FIRECRAWL_API_KEY` to call the Firecrawl Search API with a query like `"Survivor Season 50 [Name] official CBS headshot photo"`. Extracts image URLs from the search results' markdown content.
 
-1. Ask Lovable to "connect Perplexity" or "connect Firecrawl"
-2. The edge function can then be updated to use real web search
-3. This would enable finding actual current image URLs from the web
+2. **Add Firecrawl scrape function** - If search doesn't find an image, scrape the contestant's Survivor Wiki page directly (`https://survivor.fandom.com/wiki/[Name]`) and extract the profile image URL from the page content.
 
-## Files Created/Modified
+3. **Keep AI as fallback** - If Firecrawl doesn't find images, fall back to the existing Lovable AI approach for best-effort guessing.
 
-| File | Status |
-|------|--------|
-| `supabase/functions/fetch-cast-images/index.ts` | ✅ Created |
-| `supabase/config.toml` | ✅ Updated |
-| `src/components/admin/CastManager.tsx` | ✅ Updated |
+4. **Remove hardcoded URL patterns** - The `generateWikiImageUrls` function becomes unnecessary since Firecrawl will find real URLs.
+
+5. **Add `FIRECRAWL_API_KEY` check** - Verify the key exists at startup; log a warning if missing but continue with AI-only fallback.
+
+### New Search Flow (per contestant)
+
+**Step 1 - Firecrawl Search:**
+- Query: `"Survivor Season [X] [Name] CBS official photo"`
+- Parse results for image URLs from CBS, Paramount, or Wikia domains
+- If found and validated, use it
+
+**Step 2 - Firecrawl Scrape (if search fails):**
+- Scrape `https://survivor.fandom.com/wiki/[Name_(Survivor_[X])]`
+- Extract the main profile image from the page HTML/markdown
+- Wiki profile images follow patterns like `static.wikia.nocookie.net/survivor/images/...`
+
+**Step 3 - AI Fallback (if scrape fails):**
+- Use existing Lovable AI approach as last resort
+
+### Rate Limiting
+- 500ms delay between Firecrawl API calls (respecting their rate limits)
+- Sequential processing to avoid overwhelming the API
+
+## No Frontend Changes Needed
+The CastManager UI already handles calling this edge function and displaying progress -- only the backend logic changes.
+
+## Files Modified
+
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/functions/fetch-cast-images/index.ts` | Rewrite | Replace AI-guessing with Firecrawl search + scrape pipeline |
+
