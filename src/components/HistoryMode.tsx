@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ContestantAvatar } from "./ContestantAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -193,7 +194,10 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
                         contestant.isEliminated ? "opacity-50" : ""
                       }`}
                     >
-                      <p className="font-bold">{contestant.name}</p>
+                      <div className="flex items-center gap-2">
+                        <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="sm" isEliminated={contestant.isEliminated} />
+                        <p className="font-bold">{contestant.name}</p>
+                      </div>
                       <div className="text-xs text-muted-foreground space-y-0.5">
                         {contestant.age && <p>Age: {contestant.age}</p>}
                         {contestant.location && <p className="truncate">{contestant.location}</p>}

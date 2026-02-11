@@ -6,6 +6,7 @@ import { Player, Contestant, DraftType } from "@/types/survivor";
 import { ArrowRight, Undo2 } from "lucide-react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
+import { ContestantAvatar } from "./ContestantAvatar";
 
 interface DraftModeProps {
   leagueId?: string;
@@ -153,13 +154,16 @@ export const DraftMode = ({
                 {playerTeam.map((contestant) => (
                   <div
                     key={contestant.id}
-                    className="glass-strong p-2 rounded-lg text-sm"
+                    className="glass-strong p-2 rounded-lg text-sm flex items-center gap-2"
                   >
-                    <p className="font-medium truncate">{contestant.name}</p>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      {contestant.age && <p>Age: {contestant.age}</p>}
-                      {contestant.location && <p className="truncate">{contestant.location}</p>}
-                      <p>Pick #{contestant.pickNumber}</p>
+                    <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="xs" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{contestant.name}</p>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        {contestant.age && <p>Age: {contestant.age}</p>}
+                        {contestant.location && <p className="truncate">{contestant.location}</p>}
+                        <p>Pick #{contestant.pickNumber}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -180,10 +184,11 @@ export const DraftMode = ({
                 key={contestant.id}
                 onClick={() => onDraftContestant(contestant.id)}
                 variant="glass"
-                className="h-auto py-4 flex-col items-start hover:scale-105 transition-transform"
+                className="h-auto py-4 flex-col items-center hover:scale-105 transition-transform gap-2"
               >
-                <p className="font-bold text-base truncate">{contestant.name}</p>
-                <div className="text-xs text-muted-foreground text-left space-y-0.5">
+                <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="md" />
+                <p className="font-bold text-base truncate w-full text-center">{contestant.name}</p>
+                <div className="text-xs text-muted-foreground text-center space-y-0.5">
                   {contestant.age && <p>Age: {contestant.age}</p>}
                   {contestant.location && <p className="truncate">{contestant.location}</p>}
                   {contestant.tribe && <p>Tribe: {contestant.tribe}</p>}

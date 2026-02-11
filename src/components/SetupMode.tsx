@@ -287,7 +287,7 @@ export const SetupMode = ({
       // Fetch master cast for this season
       const { data: masterCast, error } = await supabase
         .from("master_contestants")
-        .select("name, tribe, age, occupation")
+        .select("name, tribe, age, occupation, image_url")
         .eq("season_number", season);
 
       if (error) throw error;
@@ -317,9 +317,37 @@ export const SetupMode = ({
         return;
       }
 
-      // Add each contestant
+      // Add each contestant (using onAddContestant which doesn't support image_url,
+      // so we'll insert directly to DB for image_url support)
       for (const mc of toImport) {
         onAddContestant(mc.name, mc.tribe || undefined, mc.age || undefined, mc.occupation || undefined);
+      }
+
+      // Update image_url for imported contestants that have images
+      // We need to do this after insertion since onAddContestant doesn't support image_url
+      if (toImport.some(mc => mc.image_url)) {
+        // Small delay to let the contestants be created
+        setTimeout(async () => {
+          const { data: sessionData } = await supabase
+            .from("game_sessions")
+            .select("id")
+            .eq("league_id", leagueId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (sessionData) {
+            for (const mc of toImport) {
+              if (mc.image_url) {
+                await supabase
+                  .from("contestants")
+                  .update({ image_url: mc.image_url })
+                  .eq("session_id", sessionData.id)
+                  .eq("name", mc.name);
+              }
+            }
+          }
+        }, 1000);
       }
 
       toast({

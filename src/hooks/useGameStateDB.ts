@@ -202,7 +202,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         season: session.season,
         episode: session.episode,
         isPostMerge: session.is_post_merge,
-        contestants: contestants.map((c) => ({
+      contestants: contestants.map((c) => ({
           id: c.id,
           name: c.name,
           tribe: c.tribe,
@@ -211,6 +211,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
           owner: c.owner as Player | undefined,
           pickNumber: c.pick_number,
           isEliminated: c.is_eliminated,
+          imageUrl: (c as any).image_url || undefined,
         })),
         draftOrder: draftOrder as Player[],
         draftType: session.draft_type as DraftType,

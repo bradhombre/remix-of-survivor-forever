@@ -98,6 +98,7 @@ export type Database = {
           age: number | null
           created_at: string
           id: string
+          image_url: string | null
           is_eliminated: boolean
           location: string | null
           name: string
@@ -110,6 +111,7 @@ export type Database = {
           age?: number | null
           created_at?: string
           id?: string
+          image_url?: string | null
           is_eliminated?: boolean
           location?: string | null
           name: string
@@ -122,6 +124,7 @@ export type Database = {
           age?: number | null
           created_at?: string
           id?: string
+          image_url?: string | null
           is_eliminated?: boolean
           location?: string | null
           name?: string

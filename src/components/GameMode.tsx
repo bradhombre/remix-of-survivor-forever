@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
 import { TeamAvatarUpload } from "./TeamAvatarUpload";
+import { ContestantAvatar } from "./ContestantAvatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -805,12 +806,15 @@ export const GameMode = ({
                             }`}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <p className="font-medium text-sm truncate">{contestant.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Pick #{contestant.pickNumber}
-                                  {contestant.tribe && ` • ${contestant.tribe}`}
-                                </p>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="xs" isEliminated={contestant.isEliminated} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{contestant.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Pick #{contestant.pickNumber}
+                                    {contestant.tribe && ` • ${contestant.tribe}`}
+                                  </p>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-bold text-accent">{contestantScore} pts</span>
@@ -917,13 +921,16 @@ export const GameMode = ({
                       >
                         {/* Header with Info and Top-Right Actions */}
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="sm" isEliminated={contestant.isEliminated} className="mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-base truncate">{contestant.name}</h4>
                             <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
                               {contestant.age && <p>Age: {contestant.age}</p>}
                               {contestant.location && <p className="truncate">{contestant.location}</p>}
                               {contestant.tribe && <p>Tribe: {contestant.tribe}</p>}
                               <p>Pick #{contestant.pickNumber}</p>
+                            </div>
                             </div>
                           </div>
                           
@@ -1071,13 +1078,16 @@ export const GameMode = ({
                 >
                   {/* Header with Info and Top-Right Actions */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="sm" isEliminated={contestant.isEliminated} className="mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-base truncate">{contestant.name}</h4>
                       <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
                         {contestant.age && <p>Age: {contestant.age}</p>}
                         {contestant.location && <p className="truncate">{contestant.location}</p>}
                         {contestant.tribe && <p>Tribe: {contestant.tribe}</p>}
                         <p>{contestant.owner} • Pick #{contestant.pickNumber}</p>
+                      </div>
                       </div>
                     </div>
                     
