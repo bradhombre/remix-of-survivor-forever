@@ -1,58 +1,62 @@
 
 
-# Fix: Fetch Cast Images - Firecrawl Key Not Available
+# Fix Cast Image Fetching - Reliable Approach
 
 ## Problem
-The `fetch-cast-images` edge function logs show `FIRECRAWL_API_KEY not set`, so it skips Firecrawl entirely and falls back to the AI model -- which hallucinates URLs that fail validation. Result: 0 images found for all 22 contestants.
+The current multi-tier scraping approach (Firecrawl wiki scrape, search, AI fallback) is fundamentally flawed:
+- It scrapes individual wiki pages and picks the first non-junk image, which is often the wrong contestant
+- Q Burdette got Ben's Season 46 thumbnail
+- Aubry Bracco and Cirie Fields got random E! Online article images
+- 21 other contestants have no images at all
 
-The Firecrawl connector is linked to the project, but the secret may not be injected under the name `FIRECRAWL_API_KEY`, or it may require using the Firecrawl connector gateway instead of direct API calls.
+## Root Cause
+Individual contestant wiki pages for Season 50 may not exist yet (it's a future/current season), and even when they do, the scraper can't distinguish the profile infobox photo from other images on the page.
 
-## Fix Strategy
+## Solution: Scrape the CBS Cast Page + AI Extraction
 
-Rather than relying on the `FIRECRAWL_API_KEY` environment variable directly, we should use the **connector gateway pattern** -- calling Firecrawl through dedicated edge functions that the connector provisions, or restructure to use a simpler, more reliable approach.
-
-**However**, the simplest fix is: the connector IS linked and the key should be available. We need to update the edge function to also try alternative env var names the connector might use (e.g., `FIRECRAWL_KEY`, `FC_API_KEY`), and add detailed logging to surface what environment variables are actually available.
-
-### Revised Approach: Direct Wiki Scraping Without Firecrawl
-
-Since the AI fallback also fails (it can't browse the web), and the Firecrawl key injection is unreliable, a more robust approach is to **scrape the Survivor Wiki directly** using plain `fetch()` -- no API key needed. The Survivor Wiki pages are publicly accessible.
-
-### Updated Edge Function Logic
+Instead of scraping 24 individual wiki pages, scrape the **single official CBS Survivor Season 50 cast page** which lists all contestants with their official headshots in a structured format. Use Firecrawl to get the page content, then use the Lovable AI model to extract name-to-image mappings from the HTML.
 
 ```text
-For each contestant:
-  1. Direct Wiki Fetch  -->  Fetch survivor.fandom.com HTML directly
-     |                      Parse <img> tags for profile images
-     v
-  2. Firecrawl Search   -->  If FIRECRAWL_API_KEY available, use it
-     |                      (bonus tier, not required)
-     v
-  3. AI-Assisted Parse  -->  If direct fetch got HTML but no image found,
-     |                      send HTML snippet to AI to extract image URL
-     v
-  4. Validate URL       -->  HEAD request to confirm image accessible
+Flow:
+  1. Firecrawl scrape CBS cast page (single request)
+     --> Get HTML with all contestant photos
+  2. AI extraction (Gemini Flash)
+     --> Parse HTML, return JSON mapping: { name: image_url }
+  3. Match to database contestants by name similarity
+  4. Validate each URL with HEAD request
+  5. Update master_contestants table
 ```
 
-### Key Changes to `supabase/functions/fetch-cast-images/index.ts`
+### Why This Is Better
+- One page has ALL contestants with correct photos next to their names
+- No risk of grabbing the wrong person's image
+- Uses 1 Firecrawl credit instead of 24+
+- AI parses structured content (reliable) instead of guessing URLs (unreliable)
 
-1. **Add direct wiki fetch as Tier 1** - Use plain `fetch()` to get the Survivor Wiki page HTML, then parse it with regex to find the profile infobox image. No API key required.
+## Technical Details
 
-2. **Keep Firecrawl as optional Tier 2** - If `FIRECRAWL_API_KEY` is available, use Firecrawl search as a secondary option.
+### Changes to `supabase/functions/fetch-cast-images/index.ts`
 
-3. **Improve AI fallback (Tier 3)** - Instead of asking AI to "find a URL" (which it can't do), send it the actual HTML/text content from the wiki page and ask it to extract the profile image URL from it.
+1. **New Tier 0: CBS Cast Page Scrape** - Scrape `https://www.cbs.com/shows/survivor/cast/` (or the season-specific URL) using Firecrawl. Extract all contestant headshots at once using AI to parse the HTML into a name-image mapping.
 
-4. **Add debug logging** - Log whether each env var is set so we can diagnose connector issues.
+2. **Fallback: Individual wiki scrape** - Keep existing logic as fallback for any contestants not matched from the CBS page, but add name-matching logic: only accept images where the filename contains part of the contestant's name.
 
-### Direct Wiki Fetch Implementation
+3. **Reset wrong images** - Clear all 3 incorrect `image_url` values before re-running.
 
-The Survivor Wiki profile pages have a predictable structure:
-- URL pattern: `https://survivor.fandom.com/wiki/[Name]` or `https://survivor.fandom.com/wiki/[Name]_(Survivor_[Season])`  
-- Profile images are in the page's infobox, typically the first large image from `static.wikia.nocookie.net`
-- We fetch the raw HTML and extract image URLs matching the wikia CDN pattern
+### Implementation Steps
+
+1. Clear incorrect images for Aubry, Cirie, and Q in `master_contestants`
+2. Rewrite the edge function with the CBS-first approach:
+   - Scrape the CBS cast page via Firecrawl (formats: html + markdown)
+   - Send the content to Gemini Flash with a prompt to extract a JSON array of `{name, image_url}` pairs
+   - Fuzzy-match extracted names to database contestant names
+   - Validate URLs and update the database
+   - Fall back to individual wiki scrape for any unmatched contestants
+3. Deploy and test
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `supabase/functions/fetch-cast-images/index.ts` | Add direct wiki HTML fetch as primary tier; keep Firecrawl as optional; improve AI fallback to parse provided content instead of guessing |
+| `supabase/functions/fetch-cast-images/index.ts` | Major rewrite: add CBS cast page bulk scrape as primary strategy, use AI for structured extraction, keep wiki scrape as fallback with name-matching |
 
