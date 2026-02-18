@@ -10,6 +10,7 @@ interface FetchRequest {
   season_number: number;
   contestant_ids?: string[];
   force_refresh?: boolean;
+  cast_page_url?: string;
 }
 
 interface ContestantResult {
@@ -20,21 +21,13 @@ interface ContestantResult {
   error?: string;
 }
 
-// Filter out junk URLs (logos, icons, site-wide images, wiki utility images)
-function isJunkImageUrl(url: string): boolean {
-  const lower = url.toLowerCase();
-  const junkPatterns = [
-    "site-logo", "favicon", "wiki-wordmark", "community-header", "site-community",
-    "community-corner", "wiki.png", "information.png", "ambox", "disambig",
-    "lock-icon", "edit-icon", "icon_", "nuvola", "crystal_clear", "gnome-",
-    "replacement_filing_cabinet", "question_book", "text-x-generic", "folder-",
-    "symbol-", "stub", "cquote", "merge-arrow",
-  ];
-  return junkPatterns.some((p) => lower.includes(p)) ||
-    (lower.includes("icon") && lower.includes("wiki"));
+interface CastMapping {
+  name: string;
+  image_url: string;
 }
 
-// Validate that a URL points to an accessible image
+// --- Utility Functions ---
+
 async function validateImageUrl(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
@@ -49,28 +42,30 @@ async function validateImageUrl(url: string): Promise<boolean> {
   }
 }
 
-// Extract image URLs from text/markdown content
-function extractImageUrls(text: string): string[] {
-  const urlPattern = /https?:\/\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"'<>\]\)]*)?/gi;
-  return [...new Set(text.match(urlPattern) || [])];
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
 }
 
-// Extract wikia CDN image URLs specifically, filtering out logos/icons
-function extractWikiaImageUrls(text: string): string[] {
-  const pattern = /https?:\/\/static\.wikia\.nocookie\.net\/[^\s"'<>\]\)]+\.(?:jpg|jpeg|png|webp)(?:\/revision\/[^\s"'<>\]\)]*)?/gi;
-  const matches = text.match(pattern) || [];
-  return [...new Set(matches)].filter((url) => {
-    const lower = url.toLowerCase();
-    // Skip site logos, icons, and tiny thumbnails
-    if (lower.includes("site-logo") || lower.includes("favicon") || lower.includes("wiki-wordmark")) return false;
-    if (lower.includes("community-header") || lower.includes("site-community")) return false;
-    if (/\/scale-to-width-down\/\d{1,2}(?:$|\?|"|')/.test(url)) return false;
-    return true;
-  });
+function namesMatch(dbName: string, extractedName: string): boolean {
+  const a = normalizeName(dbName);
+  const b = normalizeName(extractedName);
+  if (a === b) return true;
+
+  const aParts = a.split(" ");
+  const bParts = b.split(" ");
+  const aLast = aParts[aParts.length - 1];
+  const bLast = bParts[bParts.length - 1];
+
+  if (aLast === bLast && aParts[0]?.[0] === bParts[0]?.[0]) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  if (aLast === bLast) return true;
+
+  return false;
 }
 
-// Clean wikia URL to get a reasonable sized version
+// Clean a wikia image URL to get a 400px version
 function cleanWikiaUrl(url: string): string {
+  // Strip any existing /revision/... suffix and add our own
   const baseMatch = url.match(/^(https?:\/\/static\.wikia\.nocookie\.net\/[^/]+\/images\/[^/]+\/[^/]+\/[^/]+)/);
   if (baseMatch) {
     return baseMatch[1] + "/revision/latest/scale-to-width-down/400";
@@ -78,205 +73,106 @@ function cleanWikiaUrl(url: string): string {
   return url;
 }
 
-// Pick the best image URL, preferring official sources
-function pickBestImageUrl(urls: string[]): string | null {
-  const wikia = urls.find((u) => u.includes("static.wikia.nocookie.net"));
-  const cbs = urls.find((u) => u.includes("cbs.com") || u.includes("paramount"));
-  return cbs || wikia || urls[0] || null;
-}
+// --- Direct HTML parsing of wiki season page ---
+// The Castaways table has rows like:
+// <a href="/wiki/Name"><img src="..." /></a> ... <a href="/wiki/Name">Name</a>
+// Each row has a thumbnail image (S50_firstname_t) and the contestant's name as a link
 
-// Build wiki URL variants for a contestant name
-function buildWikiUrls(name: string, seasonNumber: number): string[] {
-  const cleanName = name.replace(/"/g, "").trim();
-  const wikiName = cleanName.replace(/\s+/g, "_");
-  
-  const urls = [
-    `https://survivor.fandom.com/wiki/${wikiName}_(Survivor_${seasonNumber})`,
-    `https://survivor.fandom.com/wiki/${wikiName}`,
-  ];
+function extractCastFromHTML(html: string): CastMapping[] {
+  const mappings: CastMapping[] = [];
 
-  // If name has a nickname in quotes like Benjamin "Coach" Wade, also try the nickname
-  const nicknameMatch = name.match(/"([^"]+)"/);
-  if (nicknameMatch) {
-    const nickname = nicknameMatch[1];
-    const lastName = cleanName.split(/\s+/).pop() || "";
-    if (lastName) {
-      urls.push(`https://survivor.fandom.com/wiki/${nickname}_${lastName}_(Survivor_${seasonNumber})`);
-      urls.push(`https://survivor.fandom.com/wiki/${nickname}_${lastName}`);
-    }
-    urls.push(`https://survivor.fandom.com/wiki/${nickname}_(Survivor_${seasonNumber})`);
-    urls.push(`https://survivor.fandom.com/wiki/${nickname}`);
+  // Pattern: Find contestant images in the castaway table
+  // Wiki uses format: alt="S50 firstname t" for Season 50 thumbnails
+  // Each row has: <img ... src="wikia_url" ... alt="S50 name t"> followed by <a ...>Full Name</a>
+
+  // Strategy: Find all wikia image URLs that match S50 contestant pattern
+  // Then find the associated name from the nearby link
+
+  // Look for rows that contain both an image and a contestant name link
+  // The castaway table pattern: image link -> name link with bold
+  const rowPattern = /<a[^>]*href="\/wiki\/([^"]+)"[^>]*>\s*<img[^>]*src="([^"]+static\.wikia\.nocookie\.net[^"]+)"[^>]*>\s*<\/a>\s*[\s\S]*?<a[^>]*href="\/wiki\/\1"[^>]*>\s*<b>([^<]+)<\/b>/gi;
+
+  let match;
+  while ((match = rowPattern.exec(html)) !== null) {
+    const imageUrl = match[2];
+    const name = match[3].trim();
+
+    // Skip non-contestant images (logos, icons)
+    if (imageUrl.includes("logo") || imageUrl.includes("icon") || imageUrl.includes("favicon")) continue;
+
+    const cleaned = cleanWikiaUrl(imageUrl);
+    mappings.push({ name, image_url: cleaned });
   }
 
-  // If name has a nickname like Quintavius "Q" Burdette, try without first name
-  // Also try first + last without middle
-  const parts = cleanName.split(/\s+/);
-  if (parts.length >= 3) {
-    const firstLast = `${parts[0]}_${parts[parts.length - 1]}`;
-    urls.push(`https://survivor.fandom.com/wiki/${firstLast}_(Survivor_${seasonNumber})`);
-    urls.push(`https://survivor.fandom.com/wiki/${firstLast}`);
+  if (mappings.length > 0) {
+    console.log(`[HTML Parse] Found ${mappings.length} contestants via row pattern`);
+    return mappings;
   }
 
-  // Deduplicate
-  return [...new Set(urls)];
-}
+  // Fallback: simpler pattern - find S50_*_t images and extract names from alt text
+  const imgPattern = /src="(https?:\/\/static\.wikia\.nocookie\.net\/[^"]+)"[^>]*alt="S\d+\s+(\w+)\s+t"/gi;
+  const nameImgMap = new Map<string, string>();
 
-// Tier 1: Firecrawl Scrape of Survivor Wiki page
-async function firecrawlScrapeWiki(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
-  const urls = buildWikiUrls(name, seasonNumber);
+  while ((match = imgPattern.exec(html)) !== null) {
+    const url = match[1];
+    const firstName = match[2].toLowerCase();
+    nameImgMap.set(firstName, cleanWikiaUrl(url));
+  }
 
-  for (const url of urls) {
-    console.log(`[Firecrawl Scrape] scraping: ${url}`);
-    try {
-      const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url, formats: ["markdown", "html"] }),
-      });
-
-      if (!res.ok) {
-        console.error(`[Firecrawl Scrape] API error ${res.status} for ${url}`);
-        continue;
-      }
-
-      const data = await res.json();
-      const markdown = data.data?.markdown || data.markdown || "";
-      const html = data.data?.html || data.html || "";
-      const combined = markdown + "\n" + html;
-      console.log(`[Firecrawl Scrape] got ${markdown.length} chars markdown, ${html.length} chars html`);
-
-      if (!combined || combined.length < 200) continue;
-
-      // Extract wikia CDN images from combined content (HTML has actual src URLs)
-      const wikiaUrls = extractWikiaImageUrls(combined).filter((u) => !isJunkImageUrl(u));
-      console.log(`[Firecrawl Scrape] found ${wikiaUrls.length} wikia image URLs (filtered)`);
-      if (wikiaUrls.length > 0) console.log(`[Firecrawl Scrape] wikia URLs: ${wikiaUrls.slice(0, 3).join(", ")}`);
-
-      for (const rawUrl of wikiaUrls.slice(0, 5)) {
-        const cleaned = cleanWikiaUrl(rawUrl);
-        if (await validateImageUrl(cleaned)) {
-          console.log(`[Firecrawl Scrape] ✓ valid wikia image: ${cleaned}`);
-          return cleaned;
-        }
-      }
-
-      // Try all image URLs from the combined content (filtered)
-      const allImageUrls = extractImageUrls(combined).filter((u) => !isJunkImageUrl(u));
-      console.log(`[Firecrawl Scrape] found ${allImageUrls.length} total image URLs (filtered)`);
-
-      const best = pickBestImageUrl(allImageUrls);
-      if (best && await validateImageUrl(best)) {
-        console.log(`[Firecrawl Scrape] ✓ valid image: ${best}`);
-        return best;
-      }
-
-      // Try remaining URLs
-      for (const imgUrl of allImageUrls.slice(0, 8)) {
-        if (imgUrl !== best && await validateImageUrl(imgUrl)) {
-          console.log(`[Firecrawl Scrape] ✓ fallback valid: ${imgUrl}`);
-          return imgUrl;
-        }
-      }
-
-      // Log the markdown for debugging if no images found
-      console.log(`[Firecrawl Scrape] no valid images. First 500 chars: ${markdown.substring(0, 500)}`);
-
-      await new Promise((r) => setTimeout(r, 500));
-    } catch (err) {
-      console.error("[Firecrawl Scrape] error:", err);
+  // Now find full names from links
+  const nameLinkPattern = /<a[^>]*href="\/wiki\/[^"]*"[^>]*title="([^"]+)"[^>]*>\s*<b>([^<]+)<\/b>/gi;
+  while ((match = nameLinkPattern.exec(html)) !== null) {
+    const fullName = match[2].trim();
+    const firstName = fullName.split(/\s+/)[0].toLowerCase();
+    const imgUrl = nameImgMap.get(firstName);
+    if (imgUrl) {
+      mappings.push({ name: fullName, image_url: imgUrl });
     }
   }
 
-  return null;
+  console.log(`[HTML Parse] Found ${mappings.length} contestants via alt-text pattern`);
+  return mappings;
 }
 
-// Tier 2: Firecrawl Search
-async function firecrawlSearch(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
-  const query = `Survivor Season ${seasonNumber} ${name} contestant photo`;
-  console.log(`[Firecrawl Search] query: "${query}"`);
-  try {
-    const res = await fetch("https://api.firecrawl.dev/v1/search", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query, limit: 5 }),
-    });
-    if (!res.ok) {
-      console.error(`[Firecrawl Search] API error ${res.status}`);
-      return null;
+// Even simpler fallback: extract from markdown
+function extractCastFromMarkdown(markdown: string): CastMapping[] {
+  const mappings: CastMapping[] = [];
+
+  // In markdown, the castaway table has rows like:
+  // | [![S50 name t](image_url)](wiki_link) | **[Full Name](wiki_link)** ...
+  const rowPattern = /\|\s*\[!\[S\d+\s+\w+\s+t\]\(([^)]+)\)\]/g;
+  const namePattern = /\*\*\[([^\]]+)\]\([^)]+\)\*\*/g;
+
+  // Collect images and names separately, then zip them
+  const images: string[] = [];
+  const names: string[] = [];
+
+  let match;
+  while ((match = rowPattern.exec(markdown)) !== null) {
+    const url = match[1];
+    if (url.includes("static.wikia.nocookie.net")) {
+      images.push(cleanWikiaUrl(url));
     }
-    const data = await res.json();
-    const results = data.data || data.results || [];
-    const allUrls: string[] = [];
-    for (const r of results) {
-      const text = [r.markdown, r.description, r.title, r.url].filter(Boolean).join(" ");
-      allUrls.push(...extractImageUrls(text));
-    }
-    const best = pickBestImageUrl([...new Set(allUrls)]);
-    if (best && await validateImageUrl(best)) {
-      console.log(`[Firecrawl Search] ✓ found: ${best}`);
-      return best;
-    }
-    for (const url of [...new Set(allUrls)]) {
-      if (url !== best && await validateImageUrl(url)) {
-        console.log(`[Firecrawl Search] ✓ fallback: ${url}`);
-        return url;
-      }
-    }
-    return null;
-  } catch (err) {
-    console.error("[Firecrawl Search] error:", err);
-    return null;
   }
+
+  while ((match = namePattern.exec(markdown)) !== null) {
+    names.push(match[1].trim());
+  }
+
+  // The pattern alternates: each castaway row has one image and one bold name
+  // But there might be extra bold names (non-contestants), so we match by position in the castaways section
+  console.log(`[Markdown Parse] Found ${images.length} images, ${names.length} bold names`);
+
+  // Simple zip - images and names should appear in order
+  const count = Math.min(images.length, names.length);
+  for (let i = 0; i < count; i++) {
+    mappings.push({ name: names[i], image_url: images[i] });
+  }
+
+  return mappings;
 }
 
-// Tier 3: AI-Assisted (uses Lovable AI to help parse content)
-async function aiAssistedFind(name: string, seasonNumber: number, apiKey: string): Promise<string | null> {
-  console.log(`[AI Find] trying for ${name}`);
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert at finding Survivor contestant headshot image URLs. Return ONLY the direct image URL (from static.wikia.nocookie.net, cbs.com, or similar official sources) or the word NOT_FOUND. No explanations.",
-          },
-          {
-            role: "user",
-            content: `What is the direct image URL for the Survivor Wiki profile photo of ${name} from Survivor Season ${seasonNumber}? The wiki page would be at https://survivor.fandom.com/wiki/${name.replace(/"/g, "").replace(/\s+/g, "_")}. Return ONLY the URL or NOT_FOUND.`,
-          },
-        ],
-        max_tokens: 300,
-        temperature: 0.1,
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || "";
-    if (text.includes("NOT_FOUND")) return null;
-    const urls = extractImageUrls(text);
-    for (const url of urls) {
-      if (await validateImageUrl(url)) {
-        console.log(`[AI Find] ✓ found: ${url}`);
-        return url;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+// --- Main Handler ---
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -284,7 +180,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { season_number, contestant_ids, force_refresh = false }: FetchRequest = await req.json();
+    const {
+      season_number,
+      contestant_ids,
+      force_refresh = false,
+      cast_page_url,
+    }: FetchRequest = await req.json();
 
     if (!season_number) {
       return new Response(
@@ -323,67 +224,141 @@ Deno.serve(async (req) => {
     }
 
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    console.log(`[Config] FIRECRAWL_API_KEY: ${firecrawlKey ? "set" : "NOT SET"}`);
-    console.log(`[Config] LOVABLE_API_KEY: ${lovableKey ? "set" : "NOT SET"}`);
-    console.log(`Processing ${contestants.length} contestants for Season ${season_number}`);
-
     if (!firecrawlKey) {
-      console.error("FIRECRAWL_API_KEY is required for image fetching");
       return new Response(
-        JSON.stringify({ success: false, error: "Firecrawl API key not configured. Please link the Firecrawl connector." }),
+        JSON.stringify({ success: false, error: "Firecrawl API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log(`Processing ${contestants.length} contestants for Season ${season_number}`);
+
+    // --- Scrape the wiki season page ---
+    const wikiUrl = cast_page_url || `https://survivor.fandom.com/wiki/Survivor_${season_number}`;
+    console.log(`Scraping wiki season page: ${wikiUrl}`);
+
+    const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: wikiUrl, formats: ["html", "markdown"] }),
+    });
+
+    let castMappings: CastMapping[] = [];
+
+    if (scrapeRes.ok) {
+      const scrapeData = await scrapeRes.json();
+      const html = scrapeData.data?.html || scrapeData.html || "";
+      const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
+      console.log(`Got ${html.length} chars HTML, ${markdown.length} chars markdown`);
+
+      // Try HTML parsing first
+      castMappings = extractCastFromHTML(html);
+
+      // Fall back to markdown parsing
+      if (castMappings.length === 0) {
+        console.log("HTML parsing found 0, trying markdown...");
+        castMappings = extractCastFromMarkdown(markdown);
+      }
+
+      // If still nothing, try AI extraction as last resort
+      if (castMappings.length === 0) {
+        console.log("Direct parsing found 0, trying AI extraction...");
+        const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+        if (lovableKey) {
+          try {
+            const content = html.length > 60000 ? html.substring(0, 60000) : html;
+            const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${lovableKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  {
+                    role: "system",
+                    content: `Extract Survivor contestant names and their profile image URLs from this wiki page. Look for the Castaways table. Each contestant has a thumbnail image from static.wikia.nocookie.net. Return ONLY a JSON array: [{"name":"Full Name","image_url":"https://..."}]`,
+                  },
+                  { role: "user", content: content },
+                ],
+                max_tokens: 4000,
+                temperature: 0,
+              }),
+            });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              const text = aiData.choices?.[0]?.message?.content?.trim() || "";
+              const jsonMatch = text.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                castMappings = JSON.parse(jsonMatch[0]).filter((m: CastMapping) => m.name && m.image_url);
+                console.log(`AI extraction found ${castMappings.length} contestants`);
+              }
+            }
+          } catch (err) {
+            console.error("AI extraction failed:", err);
+          }
+        }
+      }
+    } else {
+      console.error(`Firecrawl scrape failed: ${scrapeRes.status}`);
+    }
+
+    console.log(`Total mappings found: ${castMappings.length}`);
+    for (const m of castMappings.slice(0, 3)) {
+      console.log(`  ${m.name} -> ${m.image_url.substring(0, 60)}...`);
+    }
+
+    // Match and update
     const results: ContestantResult[] = [];
     let foundCount = 0;
 
+    // Validate URLs in parallel (batch of 5)
     for (const contestant of contestants) {
-      console.log(`--- Processing: ${contestant.name} ---`);
-      let imageUrl: string | null = null;
+      const match = castMappings.find((m) => namesMatch(contestant.name, m.name));
 
-      // Tier 1: Firecrawl Scrape of wiki page (bypasses 403)
-      imageUrl = await firecrawlScrapeWiki(contestant.name, season_number, firecrawlKey);
+      if (match) {
+        const valid = await validateImageUrl(match.image_url);
+        if (valid) {
+          const { error: updateError } = await supabase
+            .from("master_contestants")
+            .update({ image_url: match.image_url })
+            .eq("id", contestant.id);
 
-      // Tier 2: Firecrawl Search
-      if (!imageUrl) {
-        await new Promise((r) => setTimeout(r, 500));
-        imageUrl = await firecrawlSearch(contestant.name, season_number, firecrawlKey);
-      }
-
-      // Tier 3: AI-Assisted
-      if (!imageUrl && lovableKey) {
-        imageUrl = await aiAssistedFind(contestant.name, season_number, lovableKey);
-      }
-
-      if (imageUrl) {
-        const { error: updateError } = await supabase
-          .from("master_contestants")
-          .update({ image_url: imageUrl })
-          .eq("id", contestant.id);
-
-        if (updateError) {
-          results.push({ id: contestant.id, name: contestant.name, success: false, error: updateError.message });
+          if (updateError) {
+            results.push({ id: contestant.id, name: contestant.name, success: false, error: updateError.message });
+          } else {
+            results.push({ id: contestant.id, name: contestant.name, success: true, image_url: match.image_url });
+            foundCount++;
+            console.log(`✓ ${contestant.name}`);
+          }
         } else {
-          results.push({ id: contestant.id, name: contestant.name, success: true, image_url: imageUrl });
-          foundCount++;
+          results.push({ id: contestant.id, name: contestant.name, success: false, error: "URL invalid" });
+          console.log(`✗ ${contestant.name} - URL invalid`);
         }
       } else {
-        results.push({ id: contestant.id, name: contestant.name, success: false, error: "No image found" });
+        results.push({ id: contestant.id, name: contestant.name, success: false, error: "No match" });
+        console.log(`✗ ${contestant.name} - no match`);
       }
-
-      await new Promise((r) => setTimeout(r, 300));
     }
 
-    console.log(`Completed: ${foundCount} found, ${contestants.length - foundCount} not found`);
+    console.log(`Done: ${foundCount}/${contestants.length}`);
 
     return new Response(
-      JSON.stringify({ success: true, total: contestants.length, found: foundCount, notFound: contestants.length - foundCount, results }),
+      JSON.stringify({
+        success: true,
+        total: contestants.length,
+        found: foundCount,
+        notFound: contestants.length - foundCount,
+        results,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in fetch-cast-images:", error);
+    console.error("Error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
