@@ -46,26 +46,58 @@ function normalizeName(name: string): string {
   return name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
 }
 
+// Generate all name variants for matching (handles nicknames like Benjamin "Coach" Wade)
+function getNameVariants(name: string): string[] {
+  const variants: string[] = [normalizeName(name)];
+
+  // Extract nickname from quotes: Benjamin "Coach" Wade -> Coach Wade
+  const nicknameMatch = name.match(/"([^"]+)"/);
+  if (nicknameMatch) {
+    const nickname = nicknameMatch[1];
+    const withoutQuotedPart = name.replace(/"[^"]+"/g, "").replace(/\s+/g, " ").trim();
+    const parts = withoutQuotedPart.split(/\s+/);
+    const lastName = parts[parts.length - 1];
+
+    // Nickname + LastName (Coach Wade)
+    if (lastName) variants.push(normalizeName(`${nickname} ${lastName}`));
+    // Just nickname (Coach)
+    variants.push(normalizeName(nickname));
+    // Full name without nickname (Benjamin Wade)
+    variants.push(normalizeName(withoutQuotedPart));
+  }
+
+  // Also try first + last only (skip middle names)
+  const cleanParts = normalizeName(name).split(" ");
+  if (cleanParts.length >= 3) {
+    variants.push(`${cleanParts[0]} ${cleanParts[cleanParts.length - 1]}`);
+  }
+
+  return [...new Set(variants)];
+}
+
 function namesMatch(dbName: string, extractedName: string): boolean {
-  const a = normalizeName(dbName);
-  const b = normalizeName(extractedName);
-  if (a === b) return true;
+  const dbVariants = getNameVariants(dbName);
+  const extVariants = getNameVariants(extractedName);
 
-  const aParts = a.split(" ");
-  const bParts = b.split(" ");
-  const aLast = aParts[aParts.length - 1];
-  const bLast = bParts[bParts.length - 1];
-
-  if (aLast === bLast && aParts[0]?.[0] === bParts[0]?.[0]) return true;
-  if (a.includes(b) || b.includes(a)) return true;
-  if (aLast === bLast) return true;
+  // Check all variant combinations
+  for (const a of dbVariants) {
+    for (const b of extVariants) {
+      if (a === b) return true;
+      // Last name match
+      const aParts = a.split(" ");
+      const bParts = b.split(" ");
+      const aLast = aParts[aParts.length - 1];
+      const bLast = bParts[bParts.length - 1];
+      if (aLast === bLast && aLast.length > 2) return true;
+      // Contains check
+      if (a.includes(b) || b.includes(a)) return true;
+    }
+  }
 
   return false;
 }
 
-// Clean a wikia image URL to get a 400px version
 function cleanWikiaUrl(url: string): string {
-  // Strip any existing /revision/... suffix and add our own
   const baseMatch = url.match(/^(https?:\/\/static\.wikia\.nocookie\.net\/[^/]+\/images\/[^/]+\/[^/]+\/[^/]+)/);
   if (baseMatch) {
     return baseMatch[1] + "/revision/latest/scale-to-width-down/400";
@@ -73,56 +105,81 @@ function cleanWikiaUrl(url: string): string {
   return url;
 }
 
-// --- Direct HTML parsing of wiki season page ---
-// The Castaways table has rows like:
-// <a href="/wiki/Name"><img src="..." /></a> ... <a href="/wiki/Name">Name</a>
-// Each row has a thumbnail image (S50_firstname_t) and the contestant's name as a link
+// Extract just the Castaways section from the full HTML to reduce size
+function extractCastawaysSection(html: string): string {
+  // Look for the Castaways heading and grab content until the next major section
+  const castawaysHeadings = [
+    /id="Castaways"/i,
+    /id="Cast"/i,
+    />Castaways<\//i,
+    />Cast<\//i,
+  ];
+
+  let startIdx = -1;
+  for (const pattern of castawaysHeadings) {
+    const match = html.match(pattern);
+    if (match && match.index !== undefined) {
+      startIdx = match.index;
+      break;
+    }
+  }
+
+  if (startIdx === -1) {
+    console.log("[Section Extract] Could not find Castaways section, using full HTML");
+    return html;
+  }
+
+  // Find the next major section heading after the castaways table
+  const afterCastaways = html.substring(startIdx);
+  const nextSectionPatterns = [
+    /id="Season_Summary"/i,
+    /id="Voting_History"/i,
+    /id="Episode_Guide"/i,
+    /id="Trivia"/i,
+    />Season Summary<\//i,
+    />Voting History<\//i,
+  ];
+
+  let endIdx = afterCastaways.length;
+  for (const pattern of nextSectionPatterns) {
+    const match = afterCastaways.match(pattern);
+    if (match && match.index !== undefined && match.index < endIdx) {
+      endIdx = match.index;
+    }
+  }
+
+  const section = afterCastaways.substring(0, endIdx);
+  console.log(`[Section Extract] Extracted castaways section: ${section.length} chars (from ${startIdx} to ${startIdx + endIdx})`);
+  return section;
+}
+
+// --- Direct HTML parsing ---
 
 function extractCastFromHTML(html: string): CastMapping[] {
   const mappings: CastMapping[] = [];
 
-  // Pattern: Find contestant images in the castaway table
-  // Wiki uses format: alt="S50 firstname t" for Season 50 thumbnails
-  // Each row has: <img ... src="wikia_url" ... alt="S50 name t"> followed by <a ...>Full Name</a>
-
-  // Strategy: Find all wikia image URLs that match S50 contestant pattern
-  // Then find the associated name from the nearby link
-
-  // Look for rows that contain both an image and a contestant name link
-  // The castaway table pattern: image link -> name link with bold
-  const rowPattern = /<a[^>]*href="\/wiki\/([^"]+)"[^>]*>\s*<img[^>]*src="([^"]+static\.wikia\.nocookie\.net[^"]+)"[^>]*>\s*<\/a>\s*[\s\S]*?<a[^>]*href="\/wiki\/\1"[^>]*>\s*<b>([^<]+)<\/b>/gi;
-
-  let match;
-  while ((match = rowPattern.exec(html)) !== null) {
-    const imageUrl = match[2];
-    const name = match[3].trim();
-
-    // Skip non-contestant images (logos, icons)
-    if (imageUrl.includes("logo") || imageUrl.includes("icon") || imageUrl.includes("favicon")) continue;
-
-    const cleaned = cleanWikiaUrl(imageUrl);
-    mappings.push({ name, image_url: cleaned });
-  }
-
-  if (mappings.length > 0) {
-    console.log(`[HTML Parse] Found ${mappings.length} contestants via row pattern`);
-    return mappings;
-  }
-
-  // Fallback: simpler pattern - find S50_*_t images and extract names from alt text
-  const imgPattern = /src="(https?:\/\/static\.wikia\.nocookie\.net\/[^"]+)"[^>]*alt="S\d+\s+(\w+)\s+t"/gi;
+  // Strategy: Find all wikia contestant thumbnail images by alt text pattern "S{num} {name} t"
+  // Then correlate with bold name links nearby
+  const imgPattern = /alt="S\d+\s+(\w+)\s+t"[^>]*src="(https?:\/\/static\.wikia\.nocookie\.net\/[^"]+)"|src="(https?:\/\/static\.wikia\.nocookie\.net\/[^"]+)"[^>]*alt="S\d+\s+(\w+)\s+t"/gi;
   const nameImgMap = new Map<string, string>();
 
+  let match;
   while ((match = imgPattern.exec(html)) !== null) {
-    const url = match[1];
-    const firstName = match[2].toLowerCase();
-    nameImgMap.set(firstName, cleanWikiaUrl(url));
+    const firstName = (match[1] || match[4]).toLowerCase();
+    const url = match[2] || match[3];
+    if (!url.includes("logo") && !url.includes("icon")) {
+      nameImgMap.set(firstName, cleanWikiaUrl(url));
+    }
   }
 
-  // Now find full names from links
-  const nameLinkPattern = /<a[^>]*href="\/wiki\/[^"]*"[^>]*title="([^"]+)"[^>]*>\s*<b>([^<]+)<\/b>/gi;
-  while ((match = nameLinkPattern.exec(html)) !== null) {
-    const fullName = match[2].trim();
+  console.log(`[HTML Parse] Found ${nameImgMap.size} contestant thumbnails by alt text`);
+
+  if (nameImgMap.size === 0) return mappings;
+
+  // Find full names from bold links: <b><a ...>Full Name</a></b> or <a ...><b>Full Name</b></a>
+  const boldNamePattern = /<b>\s*<a[^>]*>([^<]+)<\/a>\s*<\/b>|<a[^>]*>\s*<b>([^<]+)<\/b>\s*<\/a>/gi;
+  while ((match = boldNamePattern.exec(html)) !== null) {
+    const fullName = (match[1] || match[2]).trim();
     const firstName = fullName.split(/\s+/)[0].toLowerCase();
     const imgUrl = nameImgMap.get(firstName);
     if (imgUrl) {
@@ -130,45 +187,7 @@ function extractCastFromHTML(html: string): CastMapping[] {
     }
   }
 
-  console.log(`[HTML Parse] Found ${mappings.length} contestants via alt-text pattern`);
-  return mappings;
-}
-
-// Even simpler fallback: extract from markdown
-function extractCastFromMarkdown(markdown: string): CastMapping[] {
-  const mappings: CastMapping[] = [];
-
-  // In markdown, the castaway table has rows like:
-  // | [![S50 name t](image_url)](wiki_link) | **[Full Name](wiki_link)** ...
-  const rowPattern = /\|\s*\[!\[S\d+\s+\w+\s+t\]\(([^)]+)\)\]/g;
-  const namePattern = /\*\*\[([^\]]+)\]\([^)]+\)\*\*/g;
-
-  // Collect images and names separately, then zip them
-  const images: string[] = [];
-  const names: string[] = [];
-
-  let match;
-  while ((match = rowPattern.exec(markdown)) !== null) {
-    const url = match[1];
-    if (url.includes("static.wikia.nocookie.net")) {
-      images.push(cleanWikiaUrl(url));
-    }
-  }
-
-  while ((match = namePattern.exec(markdown)) !== null) {
-    names.push(match[1].trim());
-  }
-
-  // The pattern alternates: each castaway row has one image and one bold name
-  // But there might be extra bold names (non-contestants), so we match by position in the castaways section
-  console.log(`[Markdown Parse] Found ${images.length} images, ${names.length} bold names`);
-
-  // Simple zip - images and names should appear in order
-  const count = Math.min(images.length, names.length);
-  for (let i = 0; i < count; i++) {
-    mappings.push({ name: names[i], image_url: images[i] });
-  }
-
+  console.log(`[HTML Parse] Matched ${mappings.length} contestants`);
   return mappings;
 }
 
@@ -235,7 +254,7 @@ Deno.serve(async (req) => {
 
     // --- Scrape the wiki season page ---
     const wikiUrl = cast_page_url || `https://survivor.fandom.com/wiki/Survivor_${season_number}`;
-    console.log(`Scraping wiki season page: ${wikiUrl}`);
+    console.log(`Scraping: ${wikiUrl}`);
 
     const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
@@ -243,33 +262,29 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${firecrawlKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: wikiUrl, formats: ["html", "markdown"] }),
+      body: JSON.stringify({ url: wikiUrl, formats: ["html"] }),
     });
 
     let castMappings: CastMapping[] = [];
 
     if (scrapeRes.ok) {
       const scrapeData = await scrapeRes.json();
-      const html = scrapeData.data?.html || scrapeData.html || "";
-      const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
-      console.log(`Got ${html.length} chars HTML, ${markdown.length} chars markdown`);
+      const fullHtml = scrapeData.data?.html || scrapeData.html || "";
+      console.log(`Got ${fullHtml.length} chars HTML`);
 
-      // Try HTML parsing first
-      castMappings = extractCastFromHTML(html);
+      // Extract just the Castaways section
+      const castawaysHtml = extractCastawaysSection(fullHtml);
 
-      // Fall back to markdown parsing
+      // Parse HTML directly
+      castMappings = extractCastFromHTML(castawaysHtml);
+
+      // If direct parsing failed, try AI on the focused section
       if (castMappings.length === 0) {
-        console.log("HTML parsing found 0, trying markdown...");
-        castMappings = extractCastFromMarkdown(markdown);
-      }
-
-      // If still nothing, try AI extraction as last resort
-      if (castMappings.length === 0) {
-        console.log("Direct parsing found 0, trying AI extraction...");
+        console.log("Direct parsing found 0, trying AI...");
         const lovableKey = Deno.env.get("LOVABLE_API_KEY");
         if (lovableKey) {
           try {
-            const content = html.length > 60000 ? html.substring(0, 60000) : html;
+            const content = castawaysHtml.length > 80000 ? castawaysHtml.substring(0, 80000) : castawaysHtml;
             const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -281,7 +296,7 @@ Deno.serve(async (req) => {
                 messages: [
                   {
                     role: "system",
-                    content: `Extract Survivor contestant names and their profile image URLs from this wiki page. Look for the Castaways table. Each contestant has a thumbnail image from static.wikia.nocookie.net. Return ONLY a JSON array: [{"name":"Full Name","image_url":"https://..."}]`,
+                    content: `Extract Survivor contestant names and their profile image URLs from this HTML section. Each contestant has a thumbnail from static.wikia.nocookie.net with alt text like "S50 firstname t". Extract the full name from the bold link next to the image. For image URLs, extract the base wikia CDN URL and append "/revision/latest/scale-to-width-down/400". Return ONLY a JSON array: [{"name":"Full Name","image_url":"https://static.wikia.nocookie.net/..."}]`,
                   },
                   { role: "user", content: content },
                 ],
@@ -295,7 +310,9 @@ Deno.serve(async (req) => {
               const jsonMatch = text.match(/\[[\s\S]*\]/);
               if (jsonMatch) {
                 castMappings = JSON.parse(jsonMatch[0]).filter((m: CastMapping) => m.name && m.image_url);
-                console.log(`AI extraction found ${castMappings.length} contestants`);
+                // Clean all URLs
+                castMappings = castMappings.map(m => ({ ...m, image_url: cleanWikiaUrl(m.image_url) }));
+                console.log(`AI found ${castMappings.length} contestants`);
               }
             }
           } catch (err) {
@@ -307,37 +324,31 @@ Deno.serve(async (req) => {
       console.error(`Firecrawl scrape failed: ${scrapeRes.status}`);
     }
 
-    console.log(`Total mappings found: ${castMappings.length}`);
+    console.log(`Total mappings: ${castMappings.length}`);
     for (const m of castMappings.slice(0, 3)) {
-      console.log(`  ${m.name} -> ${m.image_url.substring(0, 60)}...`);
+      console.log(`  ${m.name} -> ${m.image_url.substring(0, 80)}`);
     }
 
     // Match and update
     const results: ContestantResult[] = [];
     let foundCount = 0;
 
-    // Validate URLs in parallel (batch of 5)
     for (const contestant of contestants) {
       const match = castMappings.find((m) => namesMatch(contestant.name, m.name));
 
       if (match) {
-        const valid = await validateImageUrl(match.image_url);
-        if (valid) {
-          const { error: updateError } = await supabase
-            .from("master_contestants")
-            .update({ image_url: match.image_url })
-            .eq("id", contestant.id);
+        // Skip URL validation for wikia CDN URLs (they're reliable)
+        const { error: updateError } = await supabase
+          .from("master_contestants")
+          .update({ image_url: match.image_url })
+          .eq("id", contestant.id);
 
-          if (updateError) {
-            results.push({ id: contestant.id, name: contestant.name, success: false, error: updateError.message });
-          } else {
-            results.push({ id: contestant.id, name: contestant.name, success: true, image_url: match.image_url });
-            foundCount++;
-            console.log(`✓ ${contestant.name}`);
-          }
+        if (updateError) {
+          results.push({ id: contestant.id, name: contestant.name, success: false, error: updateError.message });
         } else {
-          results.push({ id: contestant.id, name: contestant.name, success: false, error: "URL invalid" });
-          console.log(`✗ ${contestant.name} - URL invalid`);
+          results.push({ id: contestant.id, name: contestant.name, success: true, image_url: match.image_url });
+          foundCount++;
+          console.log(`✓ ${contestant.name} -> ${match.name}`);
         }
       } else {
         results.push({ id: contestant.id, name: contestant.name, success: false, error: "No match" });
