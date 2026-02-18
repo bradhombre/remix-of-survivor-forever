@@ -1,5 +1,6 @@
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { getProxiedImageUrl } from '@/lib/imageProxy';
 
 interface ContestantAvatarProps {
   name: string;
@@ -23,6 +24,7 @@ export function ContestantAvatar({
   className,
 }: ContestantAvatarProps) {
   const initial = name.charAt(0).toUpperCase();
+  const proxiedUrl = getProxiedImageUrl(imageUrl);
 
   return (
     <Avatar
@@ -32,7 +34,7 @@ export function ContestantAvatar({
         className
       )}
     >
-      {imageUrl && <AvatarImage src={imageUrl} alt={name} />}
+      {proxiedUrl && <AvatarImage src={proxiedUrl} alt={name} />}
       <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
         {initial}
       </AvatarFallback>
