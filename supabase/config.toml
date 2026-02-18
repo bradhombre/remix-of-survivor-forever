@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.fetch-cast-images]
 verify_jwt = false
+
+[functions.image-proxy]
+verify_jwt = false
