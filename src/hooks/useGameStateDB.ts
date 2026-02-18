@@ -314,6 +314,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
 
   const setSeason = async (season: number) => {
     if (!sessionId) return;
+    setState((prev) => ({ ...prev, season }));
     await supabase.from("game_sessions").update({ season }).eq("id", sessionId);
   };
 
