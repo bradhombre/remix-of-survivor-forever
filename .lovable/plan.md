@@ -1,33 +1,50 @@
 
 
-# Branding Consistency: "Survivors Ready" with Subtitle "Survivor Fantasy League"
+# Fix: Admin Team Assignment for Survivor OGs League
 
-The app already uses "Survivors Ready" branding in most places. Here are the refinements:
+## Problem
+In the "Survivor OGs" league, you (the admin) are not assigned to any team slot, and there's no way to manually assign league members to specific team slots. The current system only supports auto-assignment when joining via invite code.
 
-## Changes
+## Immediate Data Fix
+Run a quick database update to assign you to the correct team slot (e.g., "Kalin" at position 3):
 
-### 1. `src/components/SetupMode.tsx`
-- Change the setup heading from "Survivor Fantasy League" to "Survivors Ready" with "Survivor Fantasy League" as a smaller subtitle beneath it
+This will be handled via a migration or direct query to set your `user_id` on the appropriate team.
 
-### 2. `src/pages/NotFound.tsx`
-- Restyle to match the app's dark theme (use `bg-background`, `text-foreground`, etc.)
-- Add the logo at the top
-- Change the heading to "Lost on the Island" or similar on-brand 404 message
-- Update the link styling to use the app's primary color
+## Feature: Admin Team Assignment UI
 
-### 3. `src/pages/Auth.tsx`
-- Update CardTitle to say "Survivors Ready" instead of generic "Welcome back" / "Create account"
-- Keep CardDescription as-is ("Sign in to Survivors Ready" / "Create your Survivors Ready account")
+Add a team assignment dropdown in the Setup tab so league admins can manually assign or reassign members to any team slot.
 
-### 4. `src/pages/Index.tsx`
-- Add "Survivor Fantasy League" as a small subtitle/badge above or below the main "Survivors Ready" heading (it currently only has the descriptive paragraph)
+### Changes
 
-### 5. `index.html`
-- Already correct — no changes needed
+**1. `src/components/SetupMode.tsx`**
+- For each team slot row, add a dropdown (visible to league admins) that lets them assign any league member to that slot
+- The dropdown shows all league members and allows "Unassign" as well
+- When a member is assigned to a new slot, their previous slot (if any) is cleared first
 
-## Summary of files
-- `src/components/SetupMode.tsx` — Update heading hierarchy
-- `src/pages/NotFound.tsx` — Restyle with branding
-- `src/pages/Auth.tsx` — Branded card title
-- `src/pages/Index.tsx` — Add subtitle
+### How it works
+- Each team row gets a small "Assign" button (or a Select dropdown) next to the team name
+- Clicking it shows league members who are not yet assigned to a team, plus the currently assigned user
+- Selecting a member updates `league_teams.user_id` for that row
+- Selecting "Unassign" sets `user_id` to null
+
+### Technical Details
+
+```text
+Team Slot Row (current):
+  [Avatar] 1. Brad -- kalinmckenna@gmail.com  [Edit]
+
+Team Slot Row (new, for admins):
+  [Avatar] 1. Brad  [Assign: dropdown of members]  [Edit]
+```
+
+- Query `league_memberships` joined with `profiles` to get available members
+- Filter out members already assigned to other teams
+- Use existing `updateTeam` from `useLeagueTeams` to set `user_id`
+- The RLS policy "League admins can update teams" already permits this
+
+**2. Quick fix for your specific league**
+- Database update to assign your user (`0b902fd8-5ed1-4869-bd1d-0ca959fdedee`) to the "Kalin" team slot (position 3) in the Survivor OGs league -- or whichever slot you prefer. I'll ask which one before running it.
+
+### Files modified
+- `src/components/SetupMode.tsx` -- add admin team assignment dropdown to each slot
 
