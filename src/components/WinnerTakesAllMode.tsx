@@ -39,6 +39,9 @@ export function WinnerTakesAllMode({
 
   const draftedContestants = contestants.filter((c) => c.owner);
   const remainingContestants = draftedContestants.filter((c) => !c.isEliminated);
+  const hasMultiplePicks = draftOrder.some(player => 
+    draftedContestants.filter(c => c.owner === player).length > 1
+  );
 
   // Check if there's a WIN_SURVIVOR scoring event (winner declared)
   // We detect winner by checking if a contestant's owner has the WIN_SURVIVOR event
@@ -115,13 +118,13 @@ export function WinnerTakesAllMode({
           {/* Show all picks */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
             {draftOrder.map((player) => {
-              const pick = draftedContestants.find((c) => c.owner === player);
-              if (!pick) return null;
-              const isWinner = pick.id === winnerContestant.id;
+              const picks = draftedContestants.filter((c) => c.owner === player);
+              if (picks.length === 0) return null;
+              const hasWinner = picks.some(p => p.id === winnerContestant.id);
               return (
                 <Card
                   key={player}
-                  className={`glass p-4 ${isWinner ? "ring-2 ring-accent" : "opacity-60"}`}
+                  className={`glass p-4 ${hasWinner ? "ring-2 ring-accent" : "opacity-60"}`}
                 >
                   <div className="flex items-center gap-3">
                     <TeamAvatar
@@ -131,19 +134,24 @@ export function WinnerTakesAllMode({
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold truncate">{player}</p>
-                      <div className="flex items-center gap-2">
-                        <ContestantAvatar
-                          name={pick.name}
-                          imageUrl={pick.imageUrl}
-                          size="xs"
-                          isEliminated={pick.isEliminated}
-                        />
-                        <span className={`text-sm ${pick.isEliminated ? "line-through text-muted-foreground" : ""}`}>
-                          {pick.name}
-                        </span>
+                      <div className="space-y-1">
+                        {picks.map(pick => (
+                          <div key={pick.id} className="flex items-center gap-2">
+                            <ContestantAvatar
+                              name={pick.name}
+                              imageUrl={pick.imageUrl}
+                              size="xs"
+                              isEliminated={pick.isEliminated}
+                            />
+                            <span className={`text-sm ${pick.isEliminated ? "line-through text-muted-foreground" : ""}`}>
+                              {pick.name}
+                            </span>
+                            {pick.id === winnerContestant.id && <Trophy className="h-3 w-3 text-accent" />}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {isWinner && <Trophy className="h-5 w-5 text-accent" />}
+                    {hasWinner && <Trophy className="h-5 w-5 text-accent" />}
                   </div>
                 </Card>
               );
@@ -167,13 +175,15 @@ export function WinnerTakesAllMode({
 
       <div className="grid sm:grid-cols-2 gap-4">
         {draftOrder.map((player) => {
-          const pick = draftedContestants.find((c) => c.owner === player);
-          if (!pick) return null;
+          const picks = draftedContestants.filter((c) => c.owner === player);
+          if (picks.length === 0) return null;
+          const allEliminated = picks.every(p => p.isEliminated);
+          const aliveCount = picks.filter(p => !p.isEliminated).length;
 
           return (
             <Card
               key={player}
-              className={`glass p-4 transition-all ${pick.isEliminated ? "opacity-50" : ""}`}
+              className={`glass p-4 transition-all ${allEliminated ? "opacity-50" : ""}`}
             >
               <div className="flex items-center gap-3">
                 <TeamAvatar
@@ -184,48 +194,57 @@ export function WinnerTakesAllMode({
                 />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold truncate">{player}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <ContestantAvatar
-                      name={pick.name}
-                      imageUrl={pick.imageUrl}
-                      size="sm"
-                      isEliminated={pick.isEliminated}
-                    />
-                    <span className={`text-sm ${pick.isEliminated ? "line-through text-muted-foreground" : "font-medium"}`}>
-                      {pick.name}
-                    </span>
+                  <div className="space-y-1 mt-1">
+                    {picks.map(pick => (
+                      <div key={pick.id} className="flex items-center gap-2">
+                        <ContestantAvatar
+                          name={pick.name}
+                          imageUrl={pick.imageUrl}
+                          size="sm"
+                          isEliminated={pick.isEliminated}
+                        />
+                        <span className={`text-sm ${pick.isEliminated ? "line-through text-muted-foreground" : "font-medium"}`}>
+                          {pick.name}
+                        </span>
+                        {pick.isEliminated ? (
+                          <Skull className="h-4 w-4 text-destructive shrink-0" />
+                        ) : (
+                          <Badge variant="outline" className="text-success border-success/30 text-xs shrink-0">
+                            Alive
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                {pick.isEliminated ? (
-                  <Skull className="h-5 w-5 text-destructive shrink-0" />
-                ) : (
-                  <Badge variant="outline" className="text-success border-success/30 shrink-0">
-                    Alive
-                  </Badge>
-                )}
               </div>
 
               {isAdmin && (
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={pick.isEliminated ? "outline" : "destructive"}
-                    className="flex-1"
-                    onClick={() => handleToggleElimination(pick)}
-                  >
-                    {pick.isEliminated ? "Undo Elimination" : "Eliminate"}
-                  </Button>
-                  {!pick.isEliminated && remainingContestants.length <= 2 && (
-                    <Button
-                      size="sm"
-                      variant="accent"
-                      className="gap-1"
-                      onClick={() => handleCrownWinner(pick)}
-                    >
-                      <Crown className="h-4 w-4" />
-                      Crown
-                    </Button>
-                  )}
+                <div className="mt-3 space-y-2">
+                  {picks.map(pick => (
+                    <div key={pick.id} className="flex gap-2">
+                      <span className="text-xs text-muted-foreground self-center truncate min-w-0 flex-shrink">{pick.name}</span>
+                      <Button
+                        size="sm"
+                        variant={pick.isEliminated ? "outline" : "destructive"}
+                        className="flex-1"
+                        onClick={() => handleToggleElimination(pick)}
+                      >
+                        {pick.isEliminated ? "Undo" : "Eliminate"}
+                      </Button>
+                      {!pick.isEliminated && remainingContestants.length <= 2 && (
+                        <Button
+                          size="sm"
+                          variant="accent"
+                          className="gap-1"
+                          onClick={() => handleCrownWinner(pick)}
+                        >
+                          <Crown className="h-4 w-4" />
+                          Crown
+                        </Button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>

@@ -89,7 +89,9 @@ export const DraftMode = ({
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
       <div className="text-center space-y-4">
         <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent">
-          {gameType === "winner_takes_all" ? "🎯 Pick Your Sole Survivor" : "🎯 Draft in Progress"}
+          {gameType === "winner_takes_all" 
+            ? (picksPerTeam > 1 ? "🎯 Pick Your Sole Survivor Predictions" : "🎯 Pick Your Sole Survivor") 
+            : "🎯 Draft in Progress"}
         </h1>
         
         {!isDraftComplete && currentDrafter && (
