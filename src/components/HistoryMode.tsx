@@ -42,13 +42,26 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
 
       if (data && data.length > 0) {
         setCompletedSessions(data);
-        // Default to most recent completed season
-        setSelectedSeasonNumber(String(data[0].season));
       }
     };
 
     fetchCompletedSessions();
   }, [leagueId]);
+
+  // Auto-select the most recent season when data is available
+  useEffect(() => {
+    if (selectedSeasonNumber) return; // already selected
+
+    // Gather all available season numbers from both sources
+    const allSeasons = new Set<number>();
+    completedSessions.forEach((s) => allSeasons.add(s.season));
+    archivedSeasons.forEach((s) => allSeasons.add(s.season));
+
+    if (allSeasons.size > 0) {
+      const mostRecent = Math.max(...allSeasons);
+      setSelectedSeasonNumber(String(mostRecent));
+    }
+  }, [completedSessions, archivedSeasons, selectedSeasonNumber]);
 
   // When season selection changes, find the matching archived data
   useEffect(() => {
