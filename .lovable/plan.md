@@ -1,73 +1,53 @@
 
 
-# Phase 11: Final Polish
+# Import Season 49 Data & Rename Teams
 
-## 11.1 — Season Progress Tracker
+## What We'll Do
 
-Add a compact progress bar/badge section at the top of the GameMode component (Play tab), below the header.
+1. **Rename the 4 teams** in the "Survivor Squad" league from generic names to the original player names:
+   - Team 1 -> Brad
+   - Team 2 -> Coco
+   - Team 3 -> Kalin
+   - Team 4 -> Roy
 
-**What it shows:**
-- "Episode 5 of 13" (Survivor typically has 13 episodes; we can make 13 the default total or derive it)
-- Pre-Merge / Post-Merge badge with color coding
-- "12 of 18 remaining" contestants count (non-eliminated vs total)
+2. **Update the draft order** for the current Season 50 session to use the new team names (currently references "Team 1" etc.)
 
-**Implementation:**
-- Create a new `SeasonProgressBar` component
-- Place it inside `GameMode.tsx` right after the header `div` (around line 333)
-- Uses the existing `Progress` component, `Badge` component, and simple math on contestants array
-- Total episodes defaults to 13 (standard Survivor) but could be made configurable later
+3. **Update contestant owners** in the current Season 50 session -- the 24 contestants currently have owners referencing "Team 1/2/3/4", these need to match "Brad/Coco/Kalin/Roy"
 
-**Visual design:** A single compact row with a thin progress bar and inline badges, fitting the existing glass card aesthetic.
+4. **Insert Season 49 archived data** into the `archived_seasons` table using the uploaded JSON file, linked to the Survivor Squad league
 
----
+5. **Reset the Season 50 session to setup mode** since you mentioned the season hasn't kicked off yet (it's currently set to "game" mode)
 
-## 11.2 — Empty States
+## Data Summary from Uploaded File
 
-Review and add actionable empty states to these screens:
-
-| Screen | Current State | Improvement |
-|--------|--------------|-------------|
-| **SetupMode** (no contestants) | Just an empty list | Show "No contestants added yet" message with arrow pointing to Add form and Import Cast button |
-| **GameMode** scoring events section | Shows "No events yet" text | Enhance to "No points scored yet this episode. Use the buttons above to score actions." |
-| **HistoryMode** (no archived seasons) | Already has empty state | Already good -- just verify wording matches spec |
-| **DraftMode** (no contestants to draft) | Would show empty grid | Add "Contestants need to be added in the Admin tab before drafting" message |
-| **LeagueChat** (no messages) | Likely shows empty area | Add "No messages yet. Start the conversation!" |
-| **NewsFeed** (no posts) | May show nothing | Already collapses when empty; no change needed |
-
-**Implementation:** Add conditional renders in each component checking array lengths, displaying helpful text and action buttons where possible.
-
----
-
-## 11.3 — Mobile Responsiveness Check
-
-Targeted fixes based on code review:
-
-1. **Tab navigation (LeagueDashboard):** The 4-tab bar already uses `flex gap-2` with `sm` buttons. Add `overflow-x-auto` and `flex-nowrap` to prevent wrapping on very small screens (320px). Hide icon text on xs screens.
-
-2. **LeagueInfo table:** The members table uses `<Table>` which can overflow. Wrap in a `div` with `overflow-x-auto`.
-
-3. **GameMode header:** Already has mobile layout (isMobile check). Verify button sizes meet 44px min tap target -- the `size="sm"` buttons are 36px tall. Increase to `min-h-[44px]` on mobile.
-
-4. **QR code in LeagueInfo:** Verify the QR code renders at a scannable size (min 150px). Currently uses `<QRCodeSVG>` -- check its size prop.
-
-5. **SetupMode contestant list and forms:** The grid layout uses `md:grid-cols-2` which is fine. Ensure input fields and buttons don't overflow on 320px screens.
-
-6. **Modals/Dialogs:** Check `FinalPredictionDialog` and other dialogs for max-width and padding on mobile. Add `max-h-[80vh] overflow-y-auto` to dialog content if not already present.
-
----
+- **Season 49** with 17 contestants across tribes Kele, Hina, and Uli
+- **Final Standings**: Brad (610pts, 1st), Roy (555pts, 2nd), Coco (520pts, 3rd), Kalin (300pts, 4th)
+- **Scoring Events**: Multiple episodes of scoring data (points, actions, episodes)
+- All data will be stored in the `archived_seasons` table as JSONB
 
 ## Technical Details
 
-### New File
-- `src/components/SeasonProgressBar.tsx` -- compact progress indicator component
+### Database Operations (no schema changes needed)
 
-### Modified Files
-- `src/components/GameMode.tsx` -- add SeasonProgressBar, improve empty scoring events message
-- `src/components/SetupMode.tsx` -- add empty state for no contestants
-- `src/components/DraftMode.tsx` -- add empty state when no contestants available
-- `src/components/LeagueChat.tsx` -- add empty messages state
-- `src/pages/LeagueDashboard.tsx` -- add overflow-x-auto to tab bar, mobile tap target fixes
-- `src/components/LeagueInfo.tsx` -- wrap table in overflow-x-auto container
+All changes are data updates using the existing tables:
 
-### No Database Changes Required
+**1. Rename teams** (`league_teams` table):
+```sql
+UPDATE league_teams SET name = 'Brad' WHERE id = '6efca731-...' -- position 1
+UPDATE league_teams SET name = 'Coco' WHERE id = '374066ca-...' -- position 2
+UPDATE league_teams SET name = 'Kalin' WHERE id = 'f566e612-...' -- position 3
+UPDATE league_teams SET name = 'Roy' WHERE id = 'bb7e4914-...' -- position 4
+```
+
+**2. Update draft_order** player names for session `6ee8522f-...`
+
+**3. Update contestant owners** in session `6ee8522f-...` (map Team 1->Brad, etc.)
+
+**4. Insert archived season** into `archived_seasons` with the full JSON (contestants, scoringEvents, finalStandings)
+
+**5. Reset game session** mode back to `setup`, season to 50, episode to 1
+
+### No Code Changes Required
+
+The existing `HistoryMode` component already reads from `archived_seasons` and displays the data. The team rename will propagate through the existing `useLeagueTeams` hook.
 
