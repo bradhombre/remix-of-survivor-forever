@@ -1,0 +1,2009 @@
+{
+  "season": 49,
+  "contestants": [
+    {
+      "id": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "age": 36,
+      "name": "Kristina Mills",
+      "owner": "Coco",
+      "tribe": "Hina",
+      "location": "Oklahoma",
+      "pickNumber": 10,
+      "isEliminated": true
+    },
+    {
+      "id": "b415b72c-8919-4045-8896-6f80763d852f",
+      "age": 25,
+      "name": "Rizo Velovic",
+      "owner": "Coco",
+      "tribe": "Uli",
+      "location": "Yonkers",
+      "pickNumber": 7,
+      "isEliminated": true
+    },
+    {
+      "id": "bcc410ea-b8d5-4f16-b975-c6932041232f",
+      "age": 49,
+      "name": "Kimberly \"Annie\" Davis",
+      "owner": null,
+      "tribe": "Kele",
+      "location": "Austin",
+      "pickNumber": null,
+      "isEliminated": false
+    },
+    {
+      "id": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "age": 28,
+      "name": "Savannah Louie",
+      "owner": "Brad",
+      "tribe": "Kele",
+      "location": "Seattle",
+      "pickNumber": 1,
+      "isEliminated": false
+    },
+    {
+      "id": "bb97cc92-f08d-4f06-bb43-9a3bef188211",
+      "age": 36,
+      "name": "Jake Latimer",
+      "owner": "Roy",
+      "tribe": "Kele",
+      "location": "Alberta",
+      "pickNumber": 5,
+      "isEliminated": true
+    },
+    {
+      "id": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "age": 27,
+      "name": "Sophi Balerdi",
+      "owner": "Roy",
+      "tribe": "Kele",
+      "location": "Miami",
+      "pickNumber": 4,
+      "isEliminated": false
+    },
+    {
+      "id": "0c7ebcd7-e0d5-474a-986a-b7daf7319eb1",
+      "age": 39,
+      "name": "Jeremiah Ing",
+      "owner": "Coco",
+      "tribe": "Kele",
+      "location": "Toronto",
+      "pickNumber": 15,
+      "isEliminated": true
+    },
+    {
+      "id": "6b5ad0dc-1042-410f-af2e-902d07e8ffbf",
+      "age": 52,
+      "name": "Matt Williams",
+      "owner": "Kalin",
+      "tribe": "Hina",
+      "location": "St George",
+      "pickNumber": 14,
+      "isEliminated": true
+    },
+    {
+      "id": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "age": 30,
+      "name": "Sage Ahrens-Nichols",
+      "owner": "Roy",
+      "tribe": "Uli",
+      "location": "olympia",
+      "pickNumber": 13,
+      "isEliminated": false
+    },
+    {
+      "id": "cc02e81b-6c28-4a45-a9b9-086242babbb9",
+      "age": 32,
+      "name": "Jason Treul",
+      "owner": "Kalin",
+      "tribe": "Hina",
+      "location": "Santa Ana",
+      "pickNumber": 11,
+      "isEliminated": true
+    },
+    {
+      "id": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "age": 28,
+      "name": "Shannon Fairweather",
+      "owner": "Roy",
+      "tribe": "Uli",
+      "location": "Boston",
+      "pickNumber": 12,
+      "isEliminated": true
+    },
+    {
+      "id": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "age": 26,
+      "name": "Alex Moore",
+      "owner": "Kalin",
+      "tribe": "Kele",
+      "location": "Washington DC",
+      "pickNumber": 3,
+      "isEliminated": true
+    },
+    {
+      "id": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "age": 29,
+      "name": "\"MC\" Chukwujekwu",
+      "owner": "Kalin",
+      "tribe": "Hina",
+      "location": "San Diego",
+      "pickNumber": 6,
+      "isEliminated": true
+    },
+    {
+      "id": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "age": 47,
+      "name": "Nate Moore",
+      "owner": "Brad",
+      "tribe": "Uli",
+      "location": "Hermosa Beach",
+      "pickNumber": 9,
+      "isEliminated": true
+    },
+    {
+      "id": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "age": 28,
+      "name": "Jawan Pitts",
+      "owner": "Brad",
+      "tribe": "Uli",
+      "location": "LA",
+      "pickNumber": 16,
+      "isEliminated": true
+    },
+    {
+      "id": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "age": 31,
+      "name": "Sophie Segreti",
+      "owner": "Coco",
+      "tribe": "Hina",
+      "location": "NYC",
+      "pickNumber": 2,
+      "isEliminated": true
+    },
+    {
+      "id": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "age": 35,
+      "name": "Steven Ramm",
+      "owner": "Brad",
+      "tribe": "Hina",
+      "location": "Denver",
+      "pickNumber": 8,
+      "isEliminated": true
+    }
+  ],
+  "scoringEvents": [
+    {
+      "id": "65711a24-3cea-4086-bde4-13fb829058f4",
+      "action": "Acquire Advantage (not found) 🎯",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760071196861,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "24c59377-de86-4f9f-a0cf-bc51067732cf",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760072513530,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "29cd6287-febd-48c3-b010-b00103fdaf1f",
+      "action": "Find Idol 🗿",
+      "points": 20,
+      "episode": 1,
+      "timestamp": 1760072876957,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "3526c36c-ca13-403d-b699-b830a511fc41",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073502209,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "7891bb3d-af8b-461f-b8db-ee844c64a962",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073505584,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "285e7485-521b-4443-9015-3324ebe0e916",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073506602,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "fa6a2988-7129-49a4-8a51-91abe77f24c7",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073507077,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "935602da-315b-41cf-b9ce-5dcbdfc6e3d4",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073508434,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "664bf291-bedd-497a-a8ba-9d5e3b4ffb4b",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073509906,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "98b0d6ad-c07f-4b56-af11-b53335448597",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073510394,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "f2564fce-5d1f-4222-931a-541eb52e0f13",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073510853,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "607a2ce8-47bc-434e-b9df-53dec1613552",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073511821,
+      "contestantId": "bb97cc92-f08d-4f06-bb43-9a3bef188211",
+      "contestantName": "Jake Latimer"
+    },
+    {
+      "id": "afe21749-c3ab-4ae7-ab30-002023e7990d",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073512422,
+      "contestantId": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "contestantName": "Shannon Fairweather"
+    },
+    {
+      "id": "5a095a9a-e52a-46a9-ab35-8edd9cda93f8",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073512922,
+      "contestantId": "0c7ebcd7-e0d5-474a-986a-b7daf7319eb1",
+      "contestantName": "Jeremiah Ing"
+    },
+    {
+      "id": "d1a699b0-3a79-492f-9937-13c9b3f65791",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073513661,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "410df057-a6c6-48d4-8b66-d89ee49eef71",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073613262,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "c51861e4-bba1-4e88-9398-8dbd64cddb17",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073616606,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "8364e147-edb0-4d92-87aa-5f416bbf2118",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073617787,
+      "contestantId": "cc02e81b-6c28-4a45-a9b9-086242babbb9",
+      "contestantName": "Jason Treul"
+    },
+    {
+      "id": "86347aba-58ae-4a59-87a0-a5fbc0506eb6",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760073619069,
+      "contestantId": "6b5ad0dc-1042-410f-af2e-902d07e8ffbf",
+      "contestantName": "Matt Williams"
+    },
+    {
+      "id": "e38f663c-4f1c-419c-8fae-48853c10e471",
+      "action": "Tribal Vote Correct ✅",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760074518009,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "c1da3c7f-3d04-4c48-b949-7e7b8c3dc533",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760074913274,
+      "contestantId": "0c7ebcd7-e0d5-474a-986a-b7daf7319eb1",
+      "contestantName": "Jeremiah Ing"
+    },
+    {
+      "id": "fdc44110-e3d5-4bd6-8f09-6c438c6de7b1",
+      "action": "Tribal Vote Correct ✅",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760074915524,
+      "contestantId": "0c7ebcd7-e0d5-474a-986a-b7daf7319eb1",
+      "contestantName": "Jeremiah Ing"
+    },
+    {
+      "id": "00c6dbe1-0c7d-4f2e-b7d3-1fa7aacd6038",
+      "action": "Tribal Vote Correct ✅",
+      "points": 5,
+      "episode": 1,
+      "timestamp": 1760075159576,
+      "contestantId": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "contestantName": "Shannon Fairweather"
+    },
+    {
+      "id": "6b3113f8-47e6-46b5-8c2a-77644b6a532f",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761191138931,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "caada8e6-fb28-4463-95e0-39207a2882b9",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761192222544,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "7ec18929-c892-4c03-a93e-5bef7fc08455",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761192329760,
+      "contestantId": "bb97cc92-f08d-4f06-bb43-9a3bef188211",
+      "contestantName": "Jake Latimer"
+    },
+    {
+      "id": "62a65acc-3d6e-4ddb-9206-76afd2da806f",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761192511780,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "7384e22a-9d1a-493e-8db6-e13265e6f774",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761192546100,
+      "contestantId": "0c7ebcd7-e0d5-474a-986a-b7daf7319eb1",
+      "contestantName": "Jeremiah Ing"
+    },
+    {
+      "id": "a2e40581-1d71-4eff-ba32-c8c51ae9b283",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194733920,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "c3e89c83-ce14-4c51-9636-4eb25bf3aec2",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194746838,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "c5657209-564a-4772-aabb-10c31fda8a2b",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194747790,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "35dcf816-b0e4-4718-a9d8-d651eb459eea",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194748580,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "ea1bef23-b801-4ea8-ae50-3885fe466499",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194751492,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "f7b280bf-2c53-47dc-a1c9-70f9ba8cba49",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194786770,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "bd5b12d8-808b-4e6a-a2ff-cff5d3304788",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194794492,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "6b56eadf-526c-4266-914d-870b2cf03a09",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194814239,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "f0dd87c2-a905-44cf-b6ee-a14d6de1a099",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194824850,
+      "contestantId": "cc02e81b-6c28-4a45-a9b9-086242babbb9",
+      "contestantName": "Jason Treul"
+    },
+    {
+      "id": "a01c1677-2851-49e7-a904-982bf1f3f5c4",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194826072,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "50ec6b61-0178-405c-acbe-38d683bdbdb3",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194828371,
+      "contestantId": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "contestantName": "Shannon Fairweather"
+    },
+    {
+      "id": "ffd4d906-b072-4a73-bcc6-8216c6990d3d",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194829186,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "fdaa1681-cb52-4d69-b8c9-0e6a524a26da",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761194829231,
+      "contestantId": "6b5ad0dc-1042-410f-af2e-902d07e8ffbf",
+      "contestantName": "Matt Williams"
+    },
+    {
+      "id": "d627b428-10d1-4608-a7cd-16dee2d47fd3",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761196139583,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "5a446089-6695-4559-8059-2b597c4d5682",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761196141532,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "77013d5c-4af5-48a1-b73f-7a79fef9d4c3",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 2,
+      "timestamp": 1761196144165,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "31ec5b6c-b794-402b-943e-6d436c1db602",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 2,
+      "timestamp": 1761199600104,
+      "contestantId": "bb97cc92-f08d-4f06-bb43-9a3bef188211",
+      "contestantName": "Jake Latimer"
+    },
+    {
+      "id": "fd3e53bf-14f0-4a38-9327-771e7e8afa70",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 2,
+      "timestamp": 1761795661304,
+      "contestantId": "0c7ebcd7-e0d5-474a-986a-b7daf7319eb1",
+      "contestantName": "Jeremiah Ing"
+    },
+    {
+      "id": "f6e03445-1a15-4a11-ac6f-331bb8265c3c",
+      "action": "Find Idol 🗿",
+      "points": 20,
+      "episode": 3,
+      "timestamp": 1761798103391,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "38e7d933-14cc-45c5-8230-f5e2e095d31a",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799078582,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "ea178957-0bd7-4741-93bd-831cdc871cec",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799078615,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "d08b068d-a4f0-4643-af2a-d71f77e02d82",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799078615,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "7bb44904-b942-47f4-bc3b-afb8eb7d9170",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799112143,
+      "contestantId": "cc02e81b-6c28-4a45-a9b9-086242babbb9",
+      "contestantName": "Jason Treul"
+    },
+    {
+      "id": "0f5a15c7-48a5-48fc-a6a8-dfeaa3fb3166",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799112833,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "bb167e46-9883-43c2-a6a1-7e828a01c861",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799114847,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "ed743a8e-cd29-4027-b968-68d6108cff3f",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799118259,
+      "contestantId": "cc02e81b-6c28-4a45-a9b9-086242babbb9",
+      "contestantName": "Jason Treul"
+    },
+    {
+      "id": "d1bfa511-0d73-40fb-9688-271b7300220b",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799631694,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "9a2e9194-b12d-45d2-a567-a4fad9604734",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799632509,
+      "contestantId": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "contestantName": "Shannon Fairweather"
+    },
+    {
+      "id": "3658930c-28de-4980-ab0e-7b41f5992371",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761799633249,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "3551f786-14d5-4433-986a-14f19af4a07f",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804489504,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "1a0f4bf4-c5ca-4da8-a78e-23b8372fdc47",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804491421,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "b5e9eb49-9075-4509-8b5b-6bd947be721d",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804492506,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "a44fba35-3057-4620-a6c6-ab84ffa65fa6",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804493818,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "d8bf2af3-f167-4b1d-b0fc-1e897bc6f066",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804494989,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "172296f0-414a-45d2-a97a-29ae3ed7fe58",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804496231,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "22be02ec-e00c-4056-b9c3-a0de14a787d3",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 3,
+      "timestamp": 1761804497715,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "39989425-56e0-4e0d-99e0-64158910274e",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 3,
+      "timestamp": 1761804583185,
+      "contestantId": "6b5ad0dc-1042-410f-af2e-902d07e8ffbf",
+      "contestantName": "Matt Williams"
+    },
+    {
+      "id": "4ef95d1a-3723-4e78-8633-3a1c281ff92f",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762318232618,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "f22a84c1-3cf2-46e3-95b4-0eee9ccc0aef",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320270400,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "c8baa978-2a10-4e89-adb4-2a663927615c",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320270425,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "9ddbfe71-bbb6-49f0-8bf8-8cd05018a54f",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320270741,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "404150b7-7630-41e4-b224-8a4cad312662",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320279332,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "44e2a1c0-656d-4d34-8959-2889d5752069",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320280827,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "9b69a798-0e17-4b26-8cb8-2b0e349ea8a0",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320282694,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "df3b24a7-c90b-4cf4-a950-f44038233a02",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320283618,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "1cf08aa2-3f30-40e4-b85c-66b60ff1b9d5",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320334230,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "83d1d325-7b0e-4296-b2cd-71831376ef23",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762320334941,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "19921345-a077-48dd-b73f-2f86b0e65ccb",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762321822644,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "bd2c561c-7613-4a38-b7e8-06095a1e4cab",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762321826215,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "33f66492-0ae6-4995-ac4c-aff508f77b93",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762321827150,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "fe6442e0-5aba-4130-bfef-e5c9bc4f9d62",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 4,
+      "timestamp": 1762836195253,
+      "contestantId": "cc02e81b-6c28-4a45-a9b9-086242babbb9",
+      "contestantName": "Jason Treul"
+    },
+    {
+      "id": "d2d4ba43-c889-4079-92db-49361343cca0",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762836764419,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "355521d4-dfb5-4c52-b263-51eb675b2239",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762836765681,
+      "contestantId": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "contestantName": "Shannon Fairweather"
+    },
+    {
+      "id": "10c30fc6-03b2-47de-8222-95a087089b44",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 4,
+      "timestamp": 1762836767164,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "b6dacc90-cabf-464f-8846-f311ba5b4a90",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762837403784,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "d9366f5f-eefe-4e85-8ccb-17a551b23581",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762838209848,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "e3b7eefe-cf8f-4d82-8ffd-f2f38f756046",
+      "action": "Find Advantage ⚡",
+      "points": 10,
+      "episode": 5,
+      "timestamp": 1762838415093,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "60ba0a03-7ac8-492d-9a71-898c68ddbe91",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762839980689,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "8f2a390e-0d65-4fb5-85dc-bda3b50f0ac7",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840014926,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "a07c14c0-b769-454f-93c6-51173cf6362e",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840015939,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "68389468-f5cd-410b-92a8-e8c2c2ea8c65",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840017201,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "45e4550d-7636-488a-9443-a11ff7460f3e",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840018501,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "a97e90a8-3156-4324-8399-d793e7eb099f",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 5,
+      "timestamp": 1762840059687,
+      "contestantId": "94c4a921-8a5f-4319-9540-5c1eccfca6da",
+      "contestantName": "Shannon Fairweather"
+    },
+    {
+      "id": "4a347b2c-d9cc-41b1-a6ad-8f022caa2eb7",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840071904,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "624479ad-3dc5-45ef-b784-ca7c9a278fb8",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840073080,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "5a0caf63-37a3-432f-8e54-a2dfcb687a0e",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840150196,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "55e5937e-416d-4174-979d-53c451fcc352",
+      "action": "Survive Round (Pre-Merge) 🌴",
+      "points": 5,
+      "episode": 5,
+      "timestamp": 1762840151324,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "f48e3239-62ca-410b-9d9e-4d28597dca58",
+      "action": "Acquire Advantage (not found) 🎯",
+      "points": 5,
+      "episode": 6,
+      "timestamp": 1764910520878,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "95425190-265b-49d1-948c-608d433ba178",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 6,
+      "timestamp": 1764911731593,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "31143b13-3e1d-49dd-9849-e3ad19957a63",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 6,
+      "timestamp": 1764911733432,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "7f8411a5-e27a-4f2f-aadb-62387b99c1b6",
+      "action": "Find Idol 🗿",
+      "points": 20,
+      "episode": 6,
+      "timestamp": 1764912682076,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "49383c2a-a310-41b6-a0dc-4181a152abdb",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 6,
+      "timestamp": 1764912939613,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "035b0a6c-31c9-4151-b452-ad5d153ad6da",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913221154,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "6f581329-50e5-410e-b30a-685d041aa952",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913221937,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "8a4f025e-30db-4a4b-99b3-882aeee837cc",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913223622,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "8f7adfd9-320d-4d70-9d34-b84a1320ee21",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913255899,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "0de18f67-7547-44b0-85f7-a4830c8b8884",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913257611,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "89ad7e94-1ed0-4e1d-ba01-890ca80b70aa",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 6,
+      "timestamp": 1764913311060,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "0bf8b9eb-2d57-480e-9c08-768906b03f39",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913433932,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "2a1aa042-c52e-483e-8915-65875a8b2bd5",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913435429,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "6100679b-de8a-4139-8a53-bca735c9587f",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 6,
+      "timestamp": 1764913438572,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "ba03c302-eb03-4290-867c-f64505fe38ad",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 7,
+      "timestamp": 1766465644615,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "bbd7e94a-135b-4d76-ba5c-6e21480ee683",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 7,
+      "timestamp": 1766466507179,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "6b91603a-448c-4bed-87f2-b6016669de6a",
+      "action": "Acquire Advantage (not found) 🎯",
+      "points": 5,
+      "episode": 7,
+      "timestamp": 1766466526791,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "4ae17f16-2ecb-4b53-be36-13a00fb81777",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 7,
+      "timestamp": 1766467424262,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "258aad50-a754-492f-9be6-61f4341321e1",
+      "action": "Find Idol 🗿",
+      "points": 20,
+      "episode": 7,
+      "timestamp": 1766467842864,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "e10fdea1-7624-44a0-8c3e-ec1bbaae9e80",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468654648,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "a50e169e-6cec-4e88-8f0f-e6c635eeb0f3",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468657545,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "8fc22186-2d8d-49d2-b28f-212a5492551f",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468659009,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "f92493c0-7231-4b49-8588-a27a83d47dff",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468706025,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "5406c3ce-de02-4d31-b57f-c686cd804ee1",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468707432,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "34798e36-83ba-41c0-bb75-9c13c75bc577",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468709042,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "262171b6-d70d-455e-8dd1-d23907fe716c",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468795655,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "c9be7125-f07c-46b4-bd62-116d87378c3d",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468796708,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "c8d26a64-b218-4472-a850-3c9e265ea0fc",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 7,
+      "timestamp": 1766468854619,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "2f68b548-c4ef-4a71-8ae6-186a6e54aa2b",
+      "action": "Tribal Vote Correct ✅",
+      "points": 5,
+      "episode": 6,
+      "timestamp": 1766469020376,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "cb38a6ee-53ea-40fe-8519-7559a235320b",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 8,
+      "timestamp": 1766984701867,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "89b17827-7205-4056-ac3c-f135eebff86d",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 8,
+      "timestamp": 1766985933253,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "6911896d-6c6e-4282-9393-645a20cf1553",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 8,
+      "timestamp": 1766986457728,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "c22f7bc9-9471-40a9-8e67-a9fd0d6a8b35",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 8,
+      "timestamp": 1766987198782,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "2beaed4f-269e-4342-8997-577861f51489",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 8,
+      "timestamp": 1766987198782,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "fd4257c5-fe5f-4e04-84af-5af2fdc2b248",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 8,
+      "timestamp": 1766987201099,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "a98a9330-8ec8-4044-a06a-bcf11af0a896",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 8,
+      "timestamp": 1766987201948,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "152e48e6-30b9-4034-9554-fdac23c6e012",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 8,
+      "timestamp": 1766987210611,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "da95e5e4-433f-4b73-a8fa-e0845c0a76ec",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 8,
+      "timestamp": 1766987210615,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "8012414f-0331-4a04-9a87-93fc0264077c",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 8,
+      "timestamp": 1766987210620,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "469dac68-d154-4a17-a1fd-acefc493348a",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 8,
+      "timestamp": 1766987210695,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "16fd243f-939d-47ba-9517-e1bfb5f053e7",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 9,
+      "timestamp": 1767070249507,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "f5b8c8e2-c118-4725-9c31-3a8ccfe74f78",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 9,
+      "timestamp": 1767071473785,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "7547e65b-d768-44bc-bf6b-20a31c2a9eb5",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 9,
+      "timestamp": 1767072578204,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "f97f4d02-21c2-46f6-ad51-7f78bd0cd142",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 9,
+      "timestamp": 1767073438248,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "021b9939-742a-435b-8fbf-0c86e134eee9",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767073969652,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "436d6355-f344-4ed0-aa23-dc34200de9ad",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767073971369,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "bcbd58e7-bae8-476e-b16c-fcc32764a015",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 9,
+      "timestamp": 1767074003596,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "a33ebfe5-9cc3-4a93-ac1c-f0d75b802945",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767074009333,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "6466c1ef-7a43-4594-a678-1c6175510670",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767074009974,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "9aac8a1c-e7f6-4a8b-be33-04774e62011d",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767074415688,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "d106f5e6-640b-441f-a8fa-0690ed314b75",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767074417922,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "bf393bd8-98b0-4472-ab72-5ee1d604020f",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 9,
+      "timestamp": 1767074423009,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "c86c1b81-99c6-47de-a4a1-04abff74a1cc",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 8,
+      "timestamp": 1767074448816,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "de263c9f-7297-4f00-bc51-4cba512c597a",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 8,
+      "timestamp": 1767074452876,
+      "contestantId": "e05a4566-21b5-4dce-9613-4be87a0cac07",
+      "contestantName": "Alex Moore"
+    },
+    {
+      "id": "e96311e5-1cb9-4203-b22d-29ca1592acf1",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 7,
+      "timestamp": 1767074489427,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "41c02b3e-bb00-4ed8-84ff-e94640303e29",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 7,
+      "timestamp": 1767074494122,
+      "contestantId": "9f1ba3e2-60c9-43d7-aaeb-c5994d87ae31",
+      "contestantName": "\"MC\" Chukwujekwu"
+    },
+    {
+      "id": "80a558a7-46c1-422f-8a56-b947a9963f92",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 6,
+      "timestamp": 1767074525152,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "57f54fd6-204a-44ff-a8ef-088a19070956",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 6,
+      "timestamp": 1767074530892,
+      "contestantId": "e60e11df-7e3e-4213-bfb5-eb65d5915465",
+      "contestantName": "Nate Moore"
+    },
+    {
+      "id": "bec7603a-5913-4337-84f6-f7a73f403a19",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074583300,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "1896c100-fa67-4885-bf2f-14b8dfe492ac",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 9,
+      "timestamp": 1767074587154,
+      "contestantId": "d182e1e4-8aa0-40ac-b1af-8e4157bc31f8",
+      "contestantName": "Jawan Pitts"
+    },
+    {
+      "id": "e23a09de-246f-4ca9-bf0d-1ae066050b26",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074637396,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "cf922b82-eaac-4431-9714-6beea43cae96",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074643552,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "d8d30c71-c6ad-4565-9769-78ebc6074a1a",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074652076,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "b30e0134-0f04-4e7f-b290-c2978672e18e",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074657849,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "48a6d2a5-f63d-4b04-92e4-354dd479557e",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074662960,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "e9fa95f6-369b-4f51-9fb2-ab1fa4cce391",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074669085,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "59c361f8-7317-41a0-bf01-91f128c033df",
+      "action": "Make Jury ⚖️",
+      "points": 50,
+      "episode": 9,
+      "timestamp": 1767074673397,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "0f093cd3-06d1-440f-b440-a72ab1d08288",
+      "action": "Acquire Advantage (not found) 🎯",
+      "points": 5,
+      "episode": 10,
+      "timestamp": 1767155440812,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "cffea460-f140-4143-b563-27142712ff59",
+      "action": "Acquire Advantage (not found) 🎯",
+      "points": 5,
+      "episode": 10,
+      "timestamp": 1767155904556,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "3c4c1d3a-ba52-4764-8044-37c9da478bef",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 10,
+      "timestamp": 1767156390703,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "415353c9-cc2c-4329-b6b2-cffa59d63bd1",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 10,
+      "timestamp": 1767157067807,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "e4308574-744b-4e19-a58e-f7c44b2b7d6b",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 10,
+      "timestamp": 1767158264807,
+      "contestantId": "cb44a653-eaa9-4a5e-9e3b-9ef61bf40c8a",
+      "contestantName": "Sophie Segreti"
+    },
+    {
+      "id": "18c3473c-dee3-42e5-8425-b412ac933c52",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 10,
+      "timestamp": 1767158289311,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "80b86db7-7e9a-4cf2-8077-0c5a34c8c75f",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 10,
+      "timestamp": 1767158289320,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "42abae43-ab28-483f-a72c-842e7231ef35",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 10,
+      "timestamp": 1767158289323,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "a830839b-5e7a-4f1f-b0e5-921ee7ea318e",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 10,
+      "timestamp": 1767158289328,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "76f6948c-bf18-4596-a5e6-bac0cf1a5091",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 10,
+      "timestamp": 1767158289339,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "25467307-cd5e-4db1-bbfc-611c878080bb",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 10,
+      "timestamp": 1767158289342,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "8e4a1d30-36c1-4f25-8bba-7733c6ecaf66",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 11,
+      "timestamp": 1767159149776,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "e0b7dd5d-5e14-47ed-a54d-07161fb3d5c1",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 11,
+      "timestamp": 1767161335462,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "65803cf5-30be-4723-ac24-bb700a6e9ae8",
+      "action": "Episode Title 📺",
+      "points": 5,
+      "episode": 11,
+      "timestamp": 1767161378569,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "f286a252-17f5-44a6-a0f0-c3d099558ce2",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 11,
+      "timestamp": 1767161390282,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "4e96eb21-d873-421c-ac6a-7cb1cbcf79d7",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 11,
+      "timestamp": 1767162265275,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "494e2a99-4f1a-41ad-84d6-bdab7907c3a2",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 11,
+      "timestamp": 1767162265308,
+      "contestantId": "8b5b7a24-da05-49d0-a157-f33e4233b81b",
+      "contestantName": "Steven Ramm"
+    },
+    {
+      "id": "ed3087bf-ddeb-4e46-9011-5e31e93d1ebc",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 11,
+      "timestamp": 1767162265329,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "d29e1e88-fdd2-4afa-b8e0-bc24dbf2f4ba",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 11,
+      "timestamp": 1767162296312,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "37b5419f-f523-473e-a6d1-581cf88a4711",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 11,
+      "timestamp": 1767162296312,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "1ac88f15-278f-4583-9ddc-21b4a87e54a8",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 11,
+      "timestamp": 1767162296312,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "5ee5ee29-1e8d-4a8c-98fa-f4186c6e2ad2",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 11,
+      "timestamp": 1767162296312,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "bd519c79-f7e7-4272-852c-c87f23431e71",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 11,
+      "timestamp": 1767162296312,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "1922e5be-25d8-4879-bb5a-6ad13441490a",
+      "action": "Find Advantage ⚡",
+      "points": 10,
+      "episode": 12,
+      "timestamp": 1767328506475,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "739824dd-3a66-4f3b-8e9f-c4732765c850",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 12,
+      "timestamp": 1767329940256,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "5599a9a4-93ec-432a-8212-e574b4d017a2",
+      "action": "Tribal Vote Correct",
+      "points": 5,
+      "episode": 12,
+      "timestamp": 1767330501088,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "245e6a7f-6393-4b96-995e-3f4c23a0295b",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 12,
+      "timestamp": 1767330501091,
+      "contestantId": "22c02502-ac5a-4adb-9171-b2a23a3bec0c",
+      "contestantName": "Kristina Mills"
+    },
+    {
+      "id": "96b9e380-15dd-4b93-8370-3c6cbc9e1aea",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 12,
+      "timestamp": 1767330561708,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "22a915ce-9cda-4185-9f11-6331a84a9ab4",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 12,
+      "timestamp": 1767330561711,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "8ae8cf55-359b-40db-b0a5-b77410ac46ae",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 12,
+      "timestamp": 1767330561722,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "53b65335-f1d1-4dfe-8f00-96ef5c428b65",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 12,
+      "timestamp": 1767330561724,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "61c39b43-9c88-4dcc-b616-e6beee594e32",
+      "action": "Win Individual Immunity 🏆",
+      "points": 15,
+      "episode": 13,
+      "timestamp": 1767331210871,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "359ba5e1-5797-4418-a30d-ab90b3602647",
+      "action": "Cry (limit 1/week) 😭",
+      "points": 5,
+      "episode": 13,
+      "timestamp": 1767331211441,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "0a0ebe8c-62eb-4ed9-8e7f-75af5ae4dfac",
+      "action": "Make Final Tribal 🎭",
+      "points": 75,
+      "episode": 13,
+      "timestamp": 1767331456567,
+      "contestantId": "6947f658-075c-4629-8b84-6cd4b4387f5e",
+      "contestantName": "Sophi Balerdi"
+    },
+    {
+      "id": "dab1b694-05f4-4606-87fd-2b80472c15b8",
+      "action": "Make Final Tribal 🎭",
+      "points": 75,
+      "episode": 13,
+      "timestamp": 1767332107642,
+      "contestantId": "4ecbdf9b-1c30-4859-821f-ddd04f187894",
+      "contestantName": "Sage Ahrens-Nichols"
+    },
+    {
+      "id": "76e5e80d-6879-488b-a2c3-22483f85bc6b",
+      "action": "Survive Round (Post-Merge) 🔥",
+      "points": 10,
+      "episode": 13,
+      "timestamp": 1767332388469,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "8ef9cc7e-323e-4e53-978a-2e6e651291f0",
+      "action": "Make Final Tribal 🎭",
+      "points": 75,
+      "episode": 13,
+      "timestamp": 1767332408391,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    },
+    {
+      "id": "f5d88132-8cab-4ca1-ae89-41b633e89140",
+      "action": "Voted Out 💀",
+      "points": 0,
+      "episode": 13,
+      "timestamp": 1767332482390,
+      "contestantId": "b415b72c-8919-4045-8896-6f80763d852f",
+      "contestantName": "Rizo Velovic"
+    },
+    {
+      "id": "bb78e6a7-17d7-4e53-b644-2e0d92e50abe",
+      "action": "Win Survivor 👑",
+      "points": 100,
+      "episode": 13,
+      "timestamp": 1767334435220,
+      "contestantId": "37f42937-0a40-45f1-b23a-e426e1ee245c",
+      "contestantName": "Savannah Louie"
+    }
+  ],
+  "finalStandings": [
+    {
+      "score": 795,
+      "player": "Brad",
+      "activeCount": 1
+    },
+    {
+      "score": 555,
+      "player": "Roy",
+      "activeCount": 2
+    },
+    {
+      "score": 520,
+      "player": "Coco",
+      "activeCount": 0
+    },
+    {
+      "score": 300,
+      "player": "Kalin",
+      "activeCount": 0
+    }
+  ],
+  "archivedAt": 1771479401291
+}
