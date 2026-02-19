@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Users, LogOut, Crown, Shield, User, Settings, Trophy, Target } from 'lucide-react';
 import { CreateLeagueDialog } from '@/components/CreateLeagueDialog';
 import { JoinLeagueDialog } from '@/components/JoinLeagueDialog';
+import { DonateButton } from '@/components/DonateButton';
 import { toast } from 'sonner';
 
 interface LeagueMembership {
@@ -271,6 +272,10 @@ export default function Leagues() {
           </div>
         )}
       </main>
+
+      <footer className="container mx-auto px-4 py-6 flex justify-center border-t border-border">
+        <DonateButton />
+      </footer>
 
       <CreateLeagueDialog 
         open={createOpen} 
