@@ -178,6 +178,12 @@ export const DraftMode = ({
         <Card className="glass p-6 space-y-4">
           <h2 className="text-2xl font-bold">Available Contestants</h2>
           
+          {availableContestants.length === 0 && contestants.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <p className="text-muted-foreground">No contestants have been added yet.</p>
+              <p className="text-sm text-muted-foreground">Contestants need to be added in the <strong>Admin</strong> tab before drafting can begin.</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {availableContestants.map((contestant) => (
               <Button
@@ -196,6 +202,7 @@ export const DraftMode = ({
               </Button>
             ))}
           </div>
+          )}
         </Card>
       )}
 

@@ -401,7 +401,7 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
               <div className="bg-white p-3 rounded-lg">
                 <QRCodeSVG 
                   value={`${window.location.origin}/join/${league.invite_code}`}
-                  size={128}
+                  size={160}
                   level="M"
                 />
               </div>
@@ -422,6 +422,7 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -495,6 +496,7 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

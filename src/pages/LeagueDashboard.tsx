@@ -162,41 +162,45 @@ const LeagueDashboard = () => {
       <div className="glass-strong border-b border-border sticky top-0 z-50 backdrop-blur-xl">
         <div className="container max-w-7xl mx-auto p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold hidden sm:block">🔥 Survivor Fantasy</h1>
-              <div className="flex gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl font-bold hidden sm:block shrink-0">🔥 Survivor Fantasy</h1>
+              <div className="flex gap-1.5 sm:gap-2 overflow-x-auto flex-nowrap">
                 <Button
                   onClick={() => setViewMode("play")}
                   variant={viewMode === "play" ? "accent" : "ghost"}
                   size="sm"
+                  className="min-h-[44px] shrink-0"
                 >
-                  <Trophy className="h-4 w-4 mr-2" />
-                  Play
+                  <Trophy className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Play</span>
                 </Button>
                 <Button
                   onClick={() => setViewMode("history")}
                   variant={viewMode === "history" ? "accent" : "ghost"}
                   size="sm"
+                  className="min-h-[44px] shrink-0"
                 >
-                  <History className="h-4 w-4 mr-2" />
-                  History
+                  <History className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">History</span>
                 </Button>
                 <Button
                   onClick={() => setViewMode("league")}
                   variant={viewMode === "league" ? "accent" : "ghost"}
                   size="sm"
+                  className="min-h-[44px] shrink-0"
                 >
-                  <Users className="h-4 w-4 mr-2" />
-                  League
+                  <Users className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">League</span>
                 </Button>
                 {isLeagueAdmin && (
                   <Button
                     onClick={() => setViewMode("admin")}
                     variant={viewMode === "admin" ? "accent" : "ghost"}
                     size="sm"
+                    className="min-h-[44px] shrink-0"
                   >
-                    <Shield className="h-4 w-4 mr-2" />
-                    Admin
+                    <Shield className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Admin</span>
                   </Button>
                 )}
               </div>

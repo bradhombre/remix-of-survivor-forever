@@ -13,6 +13,7 @@ import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
 import { TeamAvatarUpload } from "./TeamAvatarUpload";
 import { ContestantAvatar } from "./ContestantAvatar";
+import { SeasonProgressBar } from "./SeasonProgressBar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -329,6 +330,13 @@ export const GameMode = ({
   return (
     <TooltipProvider>
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+      {/* Season Progress */}
+      <SeasonProgressBar
+        episode={episode}
+        isPostMerge={isPostMerge}
+        contestants={contestants}
+      />
+
       {/* Header */}
       <div className="glass-strong p-6 rounded-2xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1224,7 +1232,7 @@ export const GameMode = ({
         <h2 className="text-2xl font-bold">📜 Episode {episode} Events</h2>
         
         {episodeEvents.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No events yet this episode</p>
+          <p className="text-muted-foreground text-center py-8">No points scored yet this episode. Use the buttons above to score actions.</p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {[...episodeEvents].reverse().map((event) => (
