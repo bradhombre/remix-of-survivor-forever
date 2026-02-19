@@ -177,7 +177,7 @@ const LeagueDashboard = () => {
         <div className="container max-w-7xl mx-auto p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-xl font-bold hidden sm:block shrink-0">🔥 Survivor Fantasy</h1>
+              <img src="/logo.png" alt="Survivors Ready" className="h-8 w-auto hidden sm:block shrink-0" />
               <div className="flex gap-1.5 sm:gap-2 overflow-x-auto flex-nowrap">
                 <Button
                   onClick={() => setViewMode("play")}

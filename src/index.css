@@ -8,50 +8,50 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 30% 10%;
-    --foreground: 0 0% 98%;
+    --background: 25 20% 12%;
+    --foreground: 40 30% 90%;
 
-    --card: 0 0% 100% / 0.05;
-    --card-foreground: 0 0% 98%;
+    --card: 25 15% 16%;
+    --card-foreground: 40 30% 90%;
 
-    --popover: 220 30% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 25 20% 10%;
+    --popover-foreground: 40 30% 90%;
 
-    --primary: 280 85% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 33 55% 45%;
+    --primary-foreground: 40 30% 92%;
 
-    --secondary: 217 80% 55%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 25 35% 22%;
+    --secondary-foreground: 40 30% 90%;
 
-    --muted: 0 0% 100% / 0.08;
-    --muted-foreground: 0 0% 65%;
+    --muted: 25 10% 20%;
+    --muted-foreground: 30 15% 55%;
 
-    --accent: 45 95% 58%;
-    --accent-foreground: 220 30% 10%;
+    --accent: 38 70% 50%;
+    --accent-foreground: 25 20% 12%;
 
-    --success: 142 70% 50%;
+    --success: 142 55% 42%;
     --success-foreground: 0 0% 100%;
 
-    --destructive: 0 75% 58%;
+    --destructive: 0 55% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 45 95% 50%;
-    --warning-foreground: 220 30% 10%;
+    --warning: 38 70% 50%;
+    --warning-foreground: 25 20% 12%;
 
-    --border: 0 0% 100% / 0.12;
-    --input: 0 0% 100% / 0.08;
-    --ring: 280 85% 65%;
+    --border: 25 15% 22%;
+    --input: 25 15% 18%;
+    --ring: 33 55% 45%;
 
     --radius: 0.75rem;
 
-    --gradient-start: 220 40% 12%;
-    --gradient-mid: 280 50% 15%;
-    --gradient-end: 250 45% 18%;
+    --gradient-start: 25 25% 10%;
+    --gradient-mid: 30 20% 14%;
+    --gradient-end: 20 25% 12%;
 
-    --glass-bg: 0 0% 100% / 0.06;
-    --glass-border: 0 0% 100% / 0.15;
+    --glass-bg: 30 20% 50% / 0.08;
+    --glass-border: 30 20% 50% / 0.15;
 
-    --gold: 45 95% 58%;
+    --gold: 38 70% 50%;
     --silver: 0 0% 75%;
     --bronze: 25 70% 52%;
 
