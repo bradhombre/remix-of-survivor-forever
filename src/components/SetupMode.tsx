@@ -406,9 +406,9 @@ export const SetupMode = ({
     <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent">
-          🔥 Survivor Fantasy League
+          🔥 Survivors Ready
         </h1>
-        <p className="text-muted-foreground text-lg">Setup your season and draft</p>
+        <p className="text-muted-foreground text-lg">Survivor Fantasy League — Setup your season and draft</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
