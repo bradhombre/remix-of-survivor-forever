@@ -266,6 +266,7 @@ export type Database = {
           is_post_merge: boolean
           league_id: string | null
           mode: string
+          picks_per_team: number | null
           season: number
           status: string
           updated_at: string
@@ -280,6 +281,7 @@ export type Database = {
           is_post_merge?: boolean
           league_id?: string | null
           mode?: string
+          picks_per_team?: number | null
           season?: number
           status?: string
           updated_at?: string
@@ -294,6 +296,7 @@ export type Database = {
           is_post_merge?: boolean
           league_id?: string | null
           mode?: string
+          picks_per_team?: number | null
           season?: number
           status?: string
           updated_at?: string

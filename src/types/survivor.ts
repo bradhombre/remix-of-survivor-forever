@@ -49,6 +49,7 @@ export interface GameState {
   playerProfiles: Record<Player, { avatar?: string }>;
   archivedSeasons: ArchivedSeason[];
   gameType: GameType;
+  picksPerTeam?: number | null;
 }
 
 // Default players are no longer hardcoded - they come from league_teams table

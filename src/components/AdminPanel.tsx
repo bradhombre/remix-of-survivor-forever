@@ -49,6 +49,8 @@ type AdminPanelProps = {
   onImport: (data: string) => void;
   onExport: () => void;
   onSetContestants: (contestants: Contestant[]) => void;
+  picksPerTeam?: number | null;
+  onSetPicksPerTeam?: (picks: number | null) => void;
   // Data management props
   onClearScores?: () => void;
   onClearEpisodeScores?: (episode: number) => void;
@@ -75,6 +77,8 @@ export function AdminPanel({
   onImport,
   onExport,
   onSetContestants,
+  picksPerTeam,
+  onSetPicksPerTeam,
   onClearScores, 
   onClearEpisodeScores, 
   onClearHistory, 
@@ -355,6 +359,8 @@ export function AdminPanel({
             onImport={onImport}
             onExport={onExport}
             onSetContestants={onSetContestants}
+            picksPerTeam={picksPerTeam}
+            onSetPicksPerTeam={onSetPicksPerTeam}
           />
         </TabsContent>
 

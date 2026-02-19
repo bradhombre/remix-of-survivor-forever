@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getPicksPerTeam } from "@/lib/picksPerTeam";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,8 @@ interface SetupModeProps {
   onImport: (data: string) => void;
   onExport: () => void;
   onSetContestants: (contestants: Contestant[]) => void;
+  picksPerTeam?: number | null;
+  onSetPicksPerTeam?: (picks: number | null) => void;
 }
 
 export const SetupMode = ({
@@ -47,6 +50,8 @@ export const SetupMode = ({
   onImport,
   onExport,
   onSetContestants,
+  picksPerTeam: explicitPicks,
+  onSetPicksPerTeam,
 }: SetupModeProps) => {
   const [name, setName] = useState("");
   const [tribe, setTribe] = useState("");
@@ -278,7 +283,11 @@ export const SetupMode = ({
     reader.readAsText(file);
   };
 
-  const canStartDraft = contestants.length >= 16 && !contestants.some((c) => c.owner);
+  const teamCount = teams.length || 1;
+  const computedPicks = getPicksPerTeam(explicitPicks, "full", contestants.length, teamCount);
+  const minContestants = computedPicks * teamCount;
+  const canStartDraft = contestants.length >= minContestants && !contestants.some((c) => c.owner);
+  const suggestedPicks = teamCount > 0 ? Math.max(1, Math.floor(contestants.length / teamCount)) : 1;
 
   // Import official cast from master_contestants table
   const handleImportOfficialCast = async () => {
@@ -645,6 +654,38 @@ export const SetupMode = ({
               </Button>
             </div>
           </div>
+
+          {/* Picks Per Team */}
+          <div className="space-y-2">
+            <Label>Picks Per Team</Label>
+            <p className="text-xs text-muted-foreground">
+              Suggested: {suggestedPicks} ({contestants.length} contestants / {teamCount} teams)
+            </p>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min={1}
+                max={Math.max(1, suggestedPicks)}
+                value={explicitPicks ?? suggestedPicks}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (!isNaN(val) && val >= 1) {
+                    onSetPicksPerTeam?.(val);
+                  }
+                }}
+                className="w-24"
+              />
+              {explicitPicks !== null && explicitPicks !== undefined && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onSetPicksPerTeam?.(null)}
+                >
+                  Reset to auto
+                </Button>
+              )}
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -860,13 +901,13 @@ export const SetupMode = ({
           size="lg"
         >
           <Play className="mr-2 h-6 w-6" />
-          {contestants.length >= 16
+          {contestants.length >= minContestants
             ? `Start Draft (${contestants.length} contestants ready)`
-            : `Start Draft (${contestants.length}/16 contestants added)`}
+            : `Start Draft (${contestants.length}/${minContestants} contestants added)`}
         </Button>
         {!canStartDraft && (
           <p className="text-center text-muted-foreground mt-2">
-            Add at least 16 contestants to start the draft
+            Add at least {minContestants} contestants ({computedPicks} picks × {teamCount} teams) to start the draft
           </p>
         )}
       </Card>
