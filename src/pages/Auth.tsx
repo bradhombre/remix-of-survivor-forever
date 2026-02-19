@@ -85,7 +85,7 @@ export default function Auth() {
       <img src="/logo.png" alt="Survivors Ready" className="h-20 w-auto mb-6" />
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{isLogin ? 'Sign In' : 'Create Account'}</CardTitle>
+          <CardTitle>Survivors Ready</CardTitle>
           <CardDescription>
             {isLogin
               ? 'Sign in to Survivors Ready'

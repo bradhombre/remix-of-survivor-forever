@@ -34,6 +34,7 @@ const Index = () => {
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground">
             Survivors Ready
           </h1>
+          <p className="text-sm font-medium uppercase tracking-widest text-primary mb-2">Survivor Fantasy League</p>
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
             Draft contestants, score points, and compete with friends to prove who has the best Survivor instincts.
           </p>
