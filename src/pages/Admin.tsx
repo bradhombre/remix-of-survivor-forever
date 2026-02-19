@@ -27,7 +27,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NewsManager } from "@/components/admin/NewsManager";
 import { CastManager } from "@/components/admin/CastManager";
-import { ArrowLeft, Users, Eye, Trash2, Newspaper, UserCircle } from "lucide-react";
+import { AdminSettings } from "@/components/admin/AdminSettings";
+import { ArrowLeft, Users, Eye, Trash2, Newspaper, UserCircle, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -181,6 +182,10 @@ export default function Admin() {
               <Newspaper className="h-4 w-4" />
               News
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="leagues">
@@ -275,6 +280,10 @@ export default function Admin() {
 
           <TabsContent value="news">
             <NewsManager />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <AdminSettings />
           </TabsContent>
         </Tabs>
       </div>
