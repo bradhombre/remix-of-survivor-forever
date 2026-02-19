@@ -196,6 +196,19 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
     
     setImportingCast(true);
     try {
+      // Guard against double import
+      const { count: existingCount } = await supabase
+        .from('contestants')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', sessionId);
+
+      if (existingCount && existingCount > 0) {
+        setImportedCount(existingCount);
+        toast.info('Cast already imported!');
+        setImportingCast(false);
+        return;
+      }
+
       const { data: masterCast, error } = await supabase
         .from('master_contestants')
         .select('name, tribe, age, occupation, image_url')
