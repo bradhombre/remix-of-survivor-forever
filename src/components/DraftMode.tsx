@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Player, Contestant, DraftType } from "@/types/survivor";
+import { Player, Contestant, DraftType, GameType } from "@/types/survivor";
 import { ArrowRight, Undo2 } from "lucide-react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
@@ -14,6 +14,7 @@ interface DraftModeProps {
   draftOrder: Player[];
   draftType: DraftType;
   currentDraftIndex: number;
+  gameType?: GameType;
   onDraftContestant: (contestantId: string) => void;
   onUndoPick: () => void;
   onStartGame: () => void;
@@ -25,6 +26,7 @@ export const DraftMode = ({
   draftOrder,
   draftType,
   currentDraftIndex,
+  gameType = "full",
   onDraftContestant,
   onUndoPick,
   onStartGame,
@@ -41,7 +43,7 @@ export const DraftMode = ({
     return map;
   }, [teams]);
   const teamCount = draftOrder.length;
-  const picksPerTeam = 4;
+  const picksPerTeam = gameType === "winner_takes_all" ? 1 : 4;
   const totalPicks = teamCount * picksPerTeam;
   const availableContestants = contestants.filter((c) => !c.owner);
   const draftedContestants = contestants.filter((c) => c.owner);
@@ -84,7 +86,7 @@ export const DraftMode = ({
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
       <div className="text-center space-y-4">
         <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent">
-          🎯 Draft in Progress
+          {gameType === "winner_takes_all" ? "🎯 Pick Your Sole Survivor" : "🎯 Draft in Progress"}
         </h1>
         
         {!isDraftComplete && currentDrafter && (

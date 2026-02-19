@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, LogOut, Crown, Shield, User, Settings } from 'lucide-react';
+import { Plus, Users, LogOut, Crown, Shield, User, Settings, Trophy, Target } from 'lucide-react';
 import { CreateLeagueDialog } from '@/components/CreateLeagueDialog';
 import { JoinLeagueDialog } from '@/components/JoinLeagueDialog';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ interface LeagueMembership {
 
 export default function Leagues() {
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
+  const [gameTypes, setGameTypes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
@@ -64,6 +65,29 @@ export default function Leagues() {
       console.error(error);
     } else {
       setMemberships((data as LeagueMembership[]) || []);
+      
+      // Fetch game types for each league
+      const leagueIds = (data as LeagueMembership[])
+        .filter(m => m.leagues)
+        .map(m => m.leagues!.id);
+      
+      if (leagueIds.length > 0) {
+        const { data: sessions } = await supabase
+          .from('game_sessions')
+          .select('league_id, game_type')
+          .in('league_id', leagueIds)
+          .order('created_at', { ascending: false });
+        
+        if (sessions) {
+          const typeMap: Record<string, string> = {};
+          sessions.forEach((s: any) => {
+            if (s.league_id && !typeMap[s.league_id]) {
+              typeMap[s.league_id] = s.game_type || 'full';
+            }
+          });
+          setGameTypes(typeMap);
+        }
+      }
     }
     setLoading(false);
   };
@@ -219,10 +243,19 @@ export default function Leagues() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{membership.leagues.name}</CardTitle>
-                      <Badge variant={getRoleVariant(membership.role)} className="flex items-center gap-1">
-                        {getRoleIcon(membership.role)}
-                        {getRoleLabel(membership.role)}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant={getRoleVariant(membership.role)} className="flex items-center gap-1">
+                          {getRoleIcon(membership.role)}
+                          {getRoleLabel(membership.role)}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs flex items-center gap-1">
+                          {gameTypes[membership.leagues.id] === 'winner_takes_all' ? (
+                            <><Target className="h-3 w-3" />WTA</>
+                          ) : (
+                            <><Trophy className="h-3 w-3" />Fantasy</>
+                          )}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>

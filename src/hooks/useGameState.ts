@@ -21,6 +21,7 @@ const initialState: GameState = {
     Roy: {},
   },
   archivedSeasons: [],
+  gameType: "full",
 };
 
 export const useGameState = () => {

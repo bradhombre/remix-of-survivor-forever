@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { TeamAvatarUpload } from './TeamAvatarUpload';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Trophy, Target } from 'lucide-react';
+import { GameType } from '@/types/survivor';
 
 const leagueSchema = z.object({
   name: z.string().trim().min(1, 'League name is required').max(50, 'League name must be 50 characters or less'),
@@ -28,6 +29,7 @@ interface CreateLeagueDialogProps {
 export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeagueDialogProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState('');
+  const [gameType, setGameType] = useState<GameType>('full');
   const [loading, setLoading] = useState(false);
   
   // Step 2 state
@@ -42,6 +44,7 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
     if (!open) {
       setStep(1);
       setName('');
+      setGameType('full');
       setLeagueId(null);
       setTeamId(null);
       setTeamName('');
@@ -73,7 +76,25 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
     if (data?.id) {
       setLeagueId(data.id);
       
-      // Fetch the user's team (they're assigned to Team 1)
+      // If winner_takes_all, update the game session
+      if (gameType === 'winner_takes_all') {
+        const { data: sessionData } = await supabase
+          .from('game_sessions')
+          .select('id')
+          .eq('league_id', data.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (sessionData) {
+          await supabase
+            .from('game_sessions')
+            .update({ game_type: gameType } as any)
+            .eq('id', sessionData.id);
+        }
+      }
+
+      // Fetch the user's team
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: teamData } = await supabase
@@ -148,6 +169,41 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
                   maxLength={50}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Game Type</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setGameType('full')}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                      gameType === 'full'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Trophy className="h-4 w-4 text-primary" />
+                      <span className="font-semibold text-sm">Full Fantasy</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Track points every episode</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGameType('winner_takes_all')}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                      gameType === 'winner_takes_all'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Target className="h-4 w-4 text-accent" />
+                      <span className="font-semibold text-sm">Winner Takes All</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Just pick who wins</p>
+                  </button>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

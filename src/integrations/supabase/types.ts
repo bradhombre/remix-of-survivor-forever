@@ -243,6 +243,7 @@ export type Database = {
           current_draft_index: number
           draft_type: string
           episode: number
+          game_type: string
           id: string
           is_post_merge: boolean
           league_id: string | null
@@ -256,6 +257,7 @@ export type Database = {
           current_draft_index?: number
           draft_type?: string
           episode?: number
+          game_type?: string
           id?: string
           is_post_merge?: boolean
           league_id?: string | null
@@ -269,6 +271,7 @@ export type Database = {
           current_draft_index?: number
           draft_type?: string
           episode?: number
+          game_type?: string
           id?: string
           is_post_merge?: boolean
           league_id?: string | null

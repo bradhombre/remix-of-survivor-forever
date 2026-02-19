@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { GameState, Player, Contestant, ScoringEvent, DraftType } from "@/types/survivor";
+import { GameState, Player, Contestant, ScoringEvent, DraftType, GameType } from "@/types/survivor";
 import { toast } from "sonner";
 
 const LOCAL_MODE_KEY = "survivor-local-mode";
@@ -33,6 +33,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     cryingThisEpisode: new Set(),
     playerProfiles: {},
     archivedSeasons: [],
+    gameType: "full",
   });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string>("active");
@@ -202,6 +203,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         season: session.season,
         episode: session.episode,
         isPostMerge: session.is_post_merge,
+        gameType: ((session as any).game_type as GameType) || "full",
       contestants: contestants.map((c) => ({
           id: c.id,
           name: c.name,
@@ -445,9 +447,9 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   const draftContestant = async (contestantId: string) => {
     if (!sessionId) return;
     
-    const { draftOrder, currentDraftIndex, draftType } = state;
+    const { draftOrder, currentDraftIndex, draftType, gameType } = state;
     const teamCount = draftOrder.length;
-    const picksPerTeam = 4; // Could be made configurable
+    const picksPerTeam = gameType === "winner_takes_all" ? 1 : 4;
     const totalPicks = teamCount * picksPerTeam;
 
     if (currentDraftIndex >= totalPicks || teamCount === 0) return;
@@ -794,5 +796,10 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     clearEpisodeScores,
     clearHistory,
     resetAll,
+    setGameType: async (gameType: GameType) => {
+      if (!sessionId) return;
+      await supabase.from("game_sessions").update({ game_type: gameType } as any).eq("id", sessionId);
+      setState((prev) => ({ ...prev, gameType }));
+    },
   };
 };

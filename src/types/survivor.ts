@@ -1,6 +1,8 @@
 // Player is now dynamic per league - it's a string representing the team name
 export type Player = string;
 
+export type GameType = "full" | "winner_takes_all";
+
 export interface Contestant {
   id: string;
   name: string;
@@ -46,6 +48,7 @@ export interface GameState {
   cryingThisEpisode: Set<string>;
   playerProfiles: Record<Player, { avatar?: string }>;
   archivedSeasons: ArchivedSeason[];
+  gameType: GameType;
 }
 
 // Default players are no longer hardcoded - they come from league_teams table
