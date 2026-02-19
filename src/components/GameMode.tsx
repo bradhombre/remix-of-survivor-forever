@@ -330,13 +330,6 @@ export const GameMode = ({
   return (
     <TooltipProvider>
     <div className="container max-w-7xl mx-auto p-4 md:p-8 space-y-6">
-      {/* Season Progress */}
-      <SeasonProgressBar
-        episode={episode}
-        isPostMerge={isPostMerge}
-        contestants={contestants}
-      />
-
       {/* Header */}
       <div className="glass-strong p-6 rounded-2xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -623,6 +616,13 @@ export const GameMode = ({
             </div>
           )}
         </div>
+
+        {/* Season Progress */}
+        <SeasonProgressBar
+          episode={episode}
+          isPostMerge={isPostMerge}
+          contestants={contestants}
+        />
       </div>
 
       {/* AlertDialogs for Mobile - need to be outside dropdown */}
