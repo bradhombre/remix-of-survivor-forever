@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Player, Contestant, DraftType, GameType } from "@/types/survivor";
+import { getPicksPerTeam } from "@/lib/picksPerTeam";
 import { ArrowRight, Undo2 } from "lucide-react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
@@ -15,6 +16,7 @@ interface DraftModeProps {
   draftType: DraftType;
   currentDraftIndex: number;
   gameType?: GameType;
+  picksPerTeam?: number | null;
   onDraftContestant: (contestantId: string) => void;
   onUndoPick: () => void;
   onStartGame: () => void;
@@ -27,6 +29,7 @@ export const DraftMode = ({
   draftType,
   currentDraftIndex,
   gameType = "full",
+  picksPerTeam: explicitPicks,
   onDraftContestant,
   onUndoPick,
   onStartGame,
@@ -43,7 +46,7 @@ export const DraftMode = ({
     return map;
   }, [teams]);
   const teamCount = draftOrder.length;
-  const picksPerTeam = gameType === "winner_takes_all" ? 1 : 4;
+  const picksPerTeam = getPicksPerTeam(explicitPicks, gameType, contestants.length, teamCount);
   const totalPicks = teamCount * picksPerTeam;
   const availableContestants = contestants.filter((c) => !c.owner);
   const draftedContestants = contestants.filter((c) => c.owner);

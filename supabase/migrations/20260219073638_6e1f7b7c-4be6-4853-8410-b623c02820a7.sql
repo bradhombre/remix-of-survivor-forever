@@ -1,0 +1,1 @@
+ALTER TABLE game_sessions ADD COLUMN picks_per_team integer DEFAULT NULL;

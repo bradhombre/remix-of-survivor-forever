@@ -9,6 +9,7 @@ import { DraftMode } from "@/components/DraftMode";
 import { GameMode } from "@/components/GameMode";
 import { HistoryMode } from "@/components/HistoryMode";
 import { AdminPanel } from "@/components/AdminPanel";
+import { getPicksPerTeam } from "@/lib/picksPerTeam";
 import { LeagueInfo } from "@/components/LeagueInfo";
 import { SeasonCompleteBanner } from "@/components/SeasonCompleteBanner";
 import { WinnerTakesAllMode } from "@/components/WinnerTakesAllMode";
@@ -47,6 +48,7 @@ const LeagueDashboard = () => {
     draftContestant,
     undoDraftPick,
     setGameType,
+    setPicksPerTeam,
     addScoringEvent,
     undoLastEvent,
     undoEvent,
@@ -117,23 +119,25 @@ const LeagueDashboard = () => {
   }
 
   const handleStartDraft = () => {
-    if (state.contestants.length >= 16 && !state.contestants.some((c) => c.owner)) {
+    const ppt = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
+    const minContestants = ppt * state.draftOrder.length;
+    if (state.contestants.length >= minContestants && !state.contestants.some((c) => c.owner)) {
       setMode("draft");
     }
   };
 
   const handleStartGame = () => {
-    const picksPerTeam = state.gameType === "winner_takes_all" ? 1 : 4;
-    const totalPicks = state.draftOrder.length * picksPerTeam;
+    const ppt = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
+    const totalPicks = state.draftOrder.length * ppt;
     if (state.currentDraftIndex >= totalPicks) {
       setMode("game");
     }
   };
 
   // Determine if we show Game or Draft in Play tab
-  const picksPerTeam = state.gameType === "winner_takes_all" ? 1 : 4;
-  const totalPicks = state.draftOrder.length * picksPerTeam;
-  const isInDraftPhase = state.mode === "draft" || (state.mode === "setup" && state.contestants.length >= (state.gameType === "winner_takes_all" ? 1 : 16));
+  const computedPicksPerTeam = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
+  const totalPicks = state.draftOrder.length * computedPicksPerTeam;
+  const isInDraftPhase = state.mode === "draft" || (state.mode === "setup" && state.contestants.length >= (state.gameType === "winner_takes_all" ? 1 : computedPicksPerTeam * state.draftOrder.length));
   const canShowGame = state.currentDraftIndex >= totalPicks;
 
   return (
@@ -278,6 +282,7 @@ const LeagueDashboard = () => {
               draftType={state.draftType}
               currentDraftIndex={state.currentDraftIndex}
               gameType={state.gameType}
+              picksPerTeam={state.picksPerTeam}
               onDraftContestant={draftContestant}
               onUndoPick={undoDraftPick}
               onStartGame={handleStartGame}
@@ -321,6 +326,8 @@ const LeagueDashboard = () => {
             onImport={importData}
             onExport={exportData}
             onSetContestants={setContestants}
+            picksPerTeam={state.picksPerTeam}
+            onSetPicksPerTeam={setPicksPerTeam}
             onClearScores={clearScores}
             onClearEpisodeScores={clearEpisodeScores}
             onClearHistory={clearHistory}

@@ -34,6 +34,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     playerProfiles: {},
     archivedSeasons: [],
     gameType: "full",
+    picksPerTeam: null,
   });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string>("active");
@@ -204,6 +205,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         episode: session.episode,
         isPostMerge: session.is_post_merge,
         gameType: ((session as any).game_type as GameType) || "full",
+        picksPerTeam: (session as any).picks_per_team ?? null,
       contestants: contestants.map((c) => ({
           id: c.id,
           name: c.name,
@@ -447,9 +449,10 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   const draftContestant = async (contestantId: string) => {
     if (!sessionId) return;
     
-    const { draftOrder, currentDraftIndex, draftType, gameType } = state;
+    const { draftOrder, currentDraftIndex, draftType, gameType, picksPerTeam: explicitPicks } = state;
     const teamCount = draftOrder.length;
-    const picksPerTeam = gameType === "winner_takes_all" ? 1 : 4;
+    const { getPicksPerTeam } = await import("@/lib/picksPerTeam");
+    const picksPerTeam = getPicksPerTeam(explicitPicks, gameType, state.contestants.length, teamCount);
     const totalPicks = teamCount * picksPerTeam;
 
     if (currentDraftIndex >= totalPicks || teamCount === 0) return;
@@ -800,6 +803,11 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       if (!sessionId) return;
       await supabase.from("game_sessions").update({ game_type: gameType } as any).eq("id", sessionId);
       setState((prev) => ({ ...prev, gameType }));
+    },
+    setPicksPerTeam: async (picksPerTeam: number | null) => {
+      if (!sessionId) return;
+      await supabase.from("game_sessions").update({ picks_per_team: picksPerTeam } as any).eq("id", sessionId);
+      setState((prev) => ({ ...prev, picksPerTeam }));
     },
   };
 };
