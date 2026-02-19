@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { DonateButton } from "@/components/DonateButton";
-import { Trophy, Zap, Users, Settings } from "lucide-react";
+import { Zap, Users, Settings } from "lucide-react";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -23,17 +23,16 @@ const Index = () => {
     );
   }
 
-  // Logged-out landing page
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="max-w-2xl text-center space-y-8">
         {/* Hero */}
         <div className="space-y-4">
           <div className="flex justify-center">
-            <Trophy className="h-16 w-16 text-primary" />
+            <img src="/logo.png" alt="Survivors Ready logo" className="h-32 w-auto" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground">
-            Survivor Fantasy Leagues
+            Survivors Ready
           </h1>
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
             Draft contestants, score points, and compete with friends to prove who has the best Survivor instincts.

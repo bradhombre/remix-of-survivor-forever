@@ -149,7 +149,10 @@ export default function Leagues() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">My Leagues</h1>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Survivors Ready" className="h-8 w-auto" />
+            <h1 className="text-2xl font-bold text-foreground">My Leagues</h1>
+          </div>
           <div className="flex gap-2">
             {isSuperAdmin && (
               <Button variant="outline" size="sm" asChild>
@@ -182,7 +185,7 @@ export default function Leagues() {
         {memberships.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-foreground mb-3">Welcome to Survivor Fantasy!</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-3">Welcome to Survivors Ready!</h2>
               <p className="text-muted-foreground text-lg max-w-md mx-auto">
                 Draft contestants, earn points, and compete with friends to see who has the best Survivor instincts.
               </p>

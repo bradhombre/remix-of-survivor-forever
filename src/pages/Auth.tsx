@@ -81,14 +81,15 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      <img src="/logo.png" alt="Survivors Ready" className="h-20 w-auto mb-6" />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{isLogin ? 'Sign In' : 'Create Account'}</CardTitle>
           <CardDescription>
             {isLogin
-              ? 'Enter your credentials to access the app'
-              : 'Create a new account to get started'}
+              ? 'Sign in to Survivors Ready'
+              : 'Create your Survivors Ready account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
