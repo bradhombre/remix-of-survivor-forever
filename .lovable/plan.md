@@ -1,96 +1,62 @@
 
 
-# Configurable Picks Per Team
+# Setup Wizard + WTA Picks + Scoring Tab Treatment
 
-## Overview
-Currently, picks per team is hardcoded: 4 for "full fantasy" and 1 for "winner takes all." This doesn't adapt when a league has fewer teams (e.g., 2 teams with 18 contestants could mean 9 picks each) or when the admin wants a custom number. We need to make this configurable.
+## 1. Allow configurable picks per team for Winner Takes All
 
-## Approach
-
-### 1. Add `picks_per_team` column to `game_sessions` table
-
-Add a new nullable integer column `picks_per_team` with a default of `NULL`. When `NULL`, the app calculates a sensible default automatically; when set, it uses the admin's override.
-
-```text
-game_sessions
-  + picks_per_team  INTEGER  DEFAULT NULL
+Update `src/lib/picksPerTeam.ts` to respect explicit overrides for WTA instead of always returning 1:
+```
+if (gameType === "winner_takes_all") return explicit || 1;
 ```
 
-### 2. Auto-calculate a smart default
+Update `src/components/SetupMode.tsx` to pass the actual game type (not hardcoded "full") to `getPicksPerTeam`, and show the picks-per-team control for both game types. For WTA, add a note like "Each player picks N Sole Survivor prediction(s)."
 
-When `picks_per_team` is not explicitly set, the app will compute it as:
+Update `src/components/WinnerTakesAllMode.tsx` to handle multiple picks per player -- use `filter` instead of `find` when grouping contestants by owner, and display all of a player's picks in each card.
 
-```text
-floor(contestant_count / team_count)
-```
+Update `src/components/DraftMode.tsx` title to say "Pick Your Sole Survivor Predictions" (plural) when WTA picks > 1.
 
-For example: 18 contestants / 4 teams = 4 picks each. 18 / 2 teams = 9 picks each. Winner-takes-all always defaults to 1.
+## 2. Expand CreateLeagueDialog into a 4-step setup wizard
 
-### 3. Add a "Picks Per Team" setting in the Admin Setup tab
+Expand `src/components/CreateLeagueDialog.tsx` from 2 steps to 4:
 
-In `SetupMode.tsx`, add a new section (near the draft type selector) where the league admin can:
-- See the auto-calculated suggestion (e.g., "Suggested: 4 based on 18 contestants / 4 teams")
-- Override with a custom number using a number input or slider (range: 1 to `floor(contestants / teams)`)
-- Reset back to auto
+| Step | Title | Content |
+|------|-------|---------|
+| 1 | Name + Game Type | Same as current |
+| 2 | League Settings | League size (2-20, +/- buttons), picks per team (with auto-suggestion), season number. Saves via `resize_league` RPC, updates `game_sessions.picks_per_team` and `game_sessions.season` |
+| 3 | Import Cast | "Import Season N Cast" button (fetches from `master_contestants`), or "Skip" to add manually later |
+| 4 | Customize Team | Same as current step 2 (team name + avatar) |
 
-### 4. Update all hardcoded `picksPerTeam` references
+Each step includes a note: "You can always change these later in Settings."
 
-Replace the hardcoded `gameType === "winner_takes_all" ? 1 : 4` pattern across these files:
+Visual additions:
+- Step indicator dots at top of dialog
+- "Back" button on steps 2-4
+- The league is created after step 1 (same as today); steps 2-4 modify the already-created league
 
-| File | What changes |
-|------|-------------|
-| `src/hooks/useGameStateDB.ts` | Read `picks_per_team` from session; use it in `draftContestant()` logic |
-| `src/pages/LeagueDashboard.tsx` | Use the stored/computed value instead of hardcoded 4/1 |
-| `src/components/DraftMode.tsx` | Use the stored value for total picks calculation and per-team display |
-| `src/components/GameMode.tsx` | Use stored value for leaderboard "active count" display |
-| `src/components/SetupMode.tsx` | Update `canStartDraft` to use dynamic minimum (`picksPerTeam * teamCount`) instead of hardcoded 16; add the new admin UI |
+Props needed: `gameType` is already tracked in state. New state variables: `leagueSize` (default 4), `picksPerTeamOverride` (null = auto), `seasonNumber` (default 50), `importingCast` (boolean), `sessionId` (fetched after creation).
 
-### 5. Update the "Start Draft" validation
+For WTA leagues, the picks-per-team control in step 2 defaults to 1 but can be increased.
 
-Instead of `contestants.length >= 16`, the check becomes:
+## 3. Gray out Scoring tab for Winner Takes All leagues
 
-```text
-contestants.length >= (picksPerTeam * teamCount)
-```
+Update `src/components/AdminPanel.tsx`:
+- Add `gameType` prop
+- When `gameType === 'winner_takes_all'`, wrap `ScoringSettings` in a relative container with `opacity-40 pointer-events-none`, and overlay a message: "Custom scoring doesn't apply to Winner Takes All leagues. Switch to Full Fantasy to customize scoring."
 
-And the button text updates accordingly: "Start Draft (18/20 contestants added)" where 20 = 5 teams x 4 picks.
-
-### 6. Flow through the state
-
-The `useGameStateDB` hook already loads the game session. We add `picks_per_team` to the `GameState` type and load/save it alongside other session fields. A new `setPicksPerTeam` action saves it to the DB.
-
----
+Update `src/pages/LeagueDashboard.tsx`:
+- Pass `gameType={state.gameType}` to `AdminPanel`
 
 ## Technical Details
 
-**Database migration:**
-```sql
-ALTER TABLE game_sessions 
-ADD COLUMN picks_per_team integer DEFAULT NULL;
-```
-
-**Types change (`src/types/survivor.ts`):**
-Add `picksPerTeam?: number | null` to `GameState`.
+**No database changes needed** -- all required columns (`picks_per_team`, `season`, `game_type`) and RPCs (`resize_league`) already exist.
 
 **Files to modify:**
-- `src/types/survivor.ts` -- add field to GameState
-- `src/hooks/useGameStateDB.ts` -- load/save/expose `picksPerTeam`; update `draftContestant`; add `setPicksPerTeam` action
-- `src/components/SetupMode.tsx` -- add UI control; update validation and button text
-- `src/components/DraftMode.tsx` -- use dynamic value
-- `src/components/GameMode.tsx` -- use dynamic value  
-- `src/pages/LeagueDashboard.tsx` -- use dynamic value from state
+- `src/lib/picksPerTeam.ts` -- Allow WTA overrides
+- `src/components/CreateLeagueDialog.tsx` -- Major rewrite: 4-step wizard
+- `src/components/AdminPanel.tsx` -- Add `gameType` prop, gray out scoring for WTA
+- `src/components/SetupMode.tsx` -- Pass actual game type, show picks control for both types
+- `src/components/WinnerTakesAllMode.tsx` -- Handle multiple picks per player
+- `src/components/DraftMode.tsx` -- Plural title for WTA with multiple picks
+- `src/pages/LeagueDashboard.tsx` -- Pass `gameType` to AdminPanel, pass `gameType` to SetupMode
 
-**Computed default helper (shared):**
-```typescript
-function getPicksPerTeam(
-  explicit: number | null, 
-  gameType: string, 
-  contestantCount: number, 
-  teamCount: number
-): number {
-  if (gameType === "winner_takes_all") return 1;
-  if (explicit) return explicit;
-  return Math.max(1, Math.floor(contestantCount / teamCount));
-}
-```
-
+**SetupMode needs `gameType` prop** -- currently it doesn't receive the game type. Add it to `SetupModeProps` and pass it from `AdminPanel` (which gets it from `LeagueDashboard`).
