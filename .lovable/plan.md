@@ -1,35 +1,33 @@
 
 
-# Fix: Prevent Double Import of Cast
+# Branding Consistency: "Survivors Ready" with Subtitle "Survivor Fantasy League"
 
-## Problem
-Clicking "Import Cast" multiple times (or navigating back then forward to step 3) inserts duplicate contestants because there's no guard checking whether contestants already exist for this session.
+The app already uses "Survivors Ready" branding in most places. Here are the refinements:
 
-## Solution
-Two simple fixes in `src/components/CreateLeagueDialog.tsx`:
+## Changes
 
-1. **Early guard in `handleImportCast`**: Before inserting, check if contestants already exist for this session. If they do, skip the insert and just set the count.
+### 1. `src/components/SetupMode.tsx`
+- Change the setup heading from "Survivor Fantasy League" to "Survivors Ready" with "Survivor Fantasy League" as a smaller subtitle beneath it
 
-2. **Disable the button immediately**: Add `importedCount !== null` as a disable condition on the import button (this already happens via the conditional render, but the early guard protects against race conditions).
+### 2. `src/pages/NotFound.tsx`
+- Restyle to match the app's dark theme (use `bg-background`, `text-foreground`, etc.)
+- Add the logo at the top
+- Change the heading to "Lost on the Island" or similar on-brand 404 message
+- Update the link styling to use the app's primary color
 
-### Technical change in `handleImportCast`:
+### 3. `src/pages/Auth.tsx`
+- Update CardTitle to say "Survivors Ready" instead of generic "Welcome back" / "Create account"
+- Keep CardDescription as-is ("Sign in to Survivors Ready" / "Create your Survivors Ready account")
 
-Before fetching from `master_contestants`, query the `contestants` table for this session. If rows already exist, set `importedCount` to that count and return early without inserting.
+### 4. `src/pages/Index.tsx`
+- Add "Survivor Fantasy League" as a small subtitle/badge above or below the main "Survivors Ready" heading (it currently only has the descriptive paragraph)
 
-```typescript
-// Add at the top of handleImportCast, after the sessionId check:
-const { count: existingCount } = await supabase
-  .from('contestants')
-  .select('id', { count: 'exact', head: true })
-  .eq('session_id', sessionId);
+### 5. `index.html`
+- Already correct — no changes needed
 
-if (existingCount && existingCount > 0) {
-  setImportedCount(existingCount);
-  toast.info('Cast already imported!');
-  return;
-}
-```
-
-### File modified:
-- `src/components/CreateLeagueDialog.tsx` -- add the duplicate check at the start of `handleImportCast`
+## Summary of files
+- `src/components/SetupMode.tsx` — Update heading hierarchy
+- `src/pages/NotFound.tsx` — Restyle with branding
+- `src/pages/Auth.tsx` — Branded card title
+- `src/pages/Index.tsx` — Add subtitle
 
