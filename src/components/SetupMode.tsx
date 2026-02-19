@@ -860,11 +860,13 @@ export const SetupMode = ({
           size="lg"
         >
           <Play className="mr-2 h-6 w-6" />
-          Start Draft ({contestants.length}/16 contestants)
+          {contestants.length >= 16
+            ? `Start Draft (${contestants.length} contestants ready)`
+            : `Start Draft (${contestants.length}/16 contestants added)`}
         </Button>
         {!canStartDraft && (
           <p className="text-center text-muted-foreground mt-2">
-            Need at least 16 contestants to start the draft
+            Add at least 16 contestants to start the draft
           </p>
         )}
       </Card>
