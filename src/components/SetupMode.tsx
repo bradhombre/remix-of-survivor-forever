@@ -5,12 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Shuffle, Upload, Download, Trash2, Play, List, GripVertical, Pencil, Check, X, Plus, Minus, Users, Copy } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Shuffle, Upload, Download, Trash2, Play, List, GripVertical, Pencil, Check, X, Plus, Minus, Users, Copy, UserPlus } from "lucide-react";
 import { Player, Contestant, DraftType } from "@/types/survivor";
 import { useToast } from "@/hooks/use-toast";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { useLeagueRole } from "@/hooks/useLeagueRole";
 import { supabase } from "@/integrations/supabase/client";
 import { TeamAvatar } from "./TeamAvatar";
+
+interface LeagueMember {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+}
 
 interface SetupModeProps {
   leagueId: string;
@@ -73,12 +81,36 @@ export const SetupMode = ({
   const [isResizing, setIsResizing] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [isImportingCast, setIsImportingCast] = useState(false);
+  const [leagueMembers, setLeagueMembers] = useState<LeagueMember[]>([]);
+  const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null);
+  const { isLeagueAdmin } = useLeagueRole(leagueId);
 
   const teamByName = useMemo(() => {
     const map = new Map<string, (typeof teams)[number]>();
     teams.forEach((t) => map.set(t.name, t));
     return map;
   }, [teams]);
+
+  // Fetch league members for assignment dropdown
+  useEffect(() => {
+    if (!leagueId || !isLeagueAdmin) return;
+    const fetchMembers = async () => {
+      const { data: memberships } = await supabase
+        .from('league_memberships')
+        .select('user_id')
+        .eq('league_id', leagueId);
+      if (!memberships) return;
+      const userIds = memberships.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, display_name')
+        .in('id', userIds);
+      if (profiles) {
+        setLeagueMembers(profiles.map(p => ({ user_id: p.id, email: p.email, display_name: p.display_name })));
+      }
+    };
+    fetchMembers();
+  }, [leagueId, isLeagueAdmin, teams]);
 
   // Fetch invite code
   useState(() => {
@@ -174,6 +206,31 @@ export const SetupMode = ({
     const link = `${window.location.origin}/join/${inviteCode}`;
     navigator.clipboard.writeText(link);
     toast({ title: "Invite link copied!" });
+  };
+
+  const handleAssignMember = async (teamId: string, userId: string | null) => {
+    try {
+      // If assigning a user, first clear them from any other team in this league
+      if (userId) {
+        const existingTeam = teams.find(t => t.user_id === userId);
+        if (existingTeam && existingTeam.id !== teamId) {
+          await supabase
+            .from('league_teams')
+            .update({ user_id: null })
+            .eq('id', existingTeam.id);
+        }
+      }
+      // Update the target team
+      await supabase
+        .from('league_teams')
+        .update({ user_id: userId })
+        .eq('id', teamId);
+      
+      setAssigningTeamId(null);
+      toast({ title: userId ? "Member assigned!" : "Slot unassigned" });
+    } catch (err: any) {
+      toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const handleAddContestant = () => {
@@ -522,7 +579,7 @@ export const SetupMode = ({
                         </div>
                       ) : (
                         <>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <span className="font-medium">{team.name}</span>
                             {isFilled ? (
                               <span className="text-xs text-muted-foreground ml-2">
@@ -534,18 +591,40 @@ export const SetupMode = ({
                               </span>
                             )}
                           </div>
-                          {!isFilled && (
-                            <Button
-                              onClick={() => {
-                                setEditingTeamId(team.id);
-                                setEditTeamName(team.name);
-                              }}
-                              size="sm"
-                              variant="ghost"
+                          {isLeagueAdmin && (
+                            <Select
+                              value={team.user_id || "__unassigned__"}
+                              onValueChange={(val) => handleAssignMember(team.id, val === "__unassigned__" ? null : val)}
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                              <SelectTrigger className="w-[140px] h-8 text-xs">
+                                <SelectValue placeholder="Assign" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__unassigned__">
+                                  <span className="italic text-muted-foreground">Unassign</span>
+                                </SelectItem>
+                                {leagueMembers.map((member) => {
+                                  const assignedElsewhere = teams.find(t => t.user_id === member.user_id && t.id !== team.id);
+                                  return (
+                                    <SelectItem key={member.user_id} value={member.user_id} disabled={!!assignedElsewhere}>
+                                      {member.display_name || member.email}
+                                      {assignedElsewhere ? ` (${assignedElsewhere.name})` : ''}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
                           )}
+                          <Button
+                            onClick={() => {
+                              setEditingTeamId(team.id);
+                              setEditTeamName(team.name);
+                            }}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </>
                       )}
                     </div>
