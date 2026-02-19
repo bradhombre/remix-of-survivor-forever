@@ -284,6 +284,7 @@ export const SetupMode = ({
   };
 
   const teamCount = teams.length || 1;
+  // Use a passed gameType or default to "full" for picks calculation
   const computedPicks = getPicksPerTeam(explicitPicks, "full", contestants.length, teamCount);
   const minContestants = computedPicks * teamCount;
   const canStartDraft = contestants.length >= minContestants && !contestants.some((c) => c.owner);

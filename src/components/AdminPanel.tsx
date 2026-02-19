@@ -33,6 +33,7 @@ type ContestantRow = {
 type AdminPanelProps = {
   leagueId: string;
   currentEpisode: number;
+  gameType?: string;
   // Setup mode props
   season: number;
   contestants: Contestant[];
@@ -61,7 +62,8 @@ type AdminPanelProps = {
 
 export function AdminPanel({ 
   leagueId,
-  currentEpisode, 
+  currentEpisode,
+  gameType = 'full',
   season,
   contestants,
   draftOrder,
@@ -366,7 +368,24 @@ export function AdminPanel({
 
         <TabsContent value="scoring" className="mt-6">
           <div className="container max-w-4xl mx-auto">
-            <ScoringSettings leagueId={leagueId} />
+            {gameType === 'winner_takes_all' ? (
+              <div className="relative">
+                <div className="opacity-40 pointer-events-none">
+                  <ScoringSettings leagueId={leagueId} />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Card className="p-6 text-center max-w-md shadow-lg">
+                    <Scale className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="font-semibold text-lg mb-2">Scoring Not Applicable</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Custom scoring rules don't apply to Winner Takes All leagues. Switch to Full Fantasy to use custom scoring.
+                    </p>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <ScoringSettings leagueId={leagueId} />
+            )}
           </div>
         </TabsContent>
 

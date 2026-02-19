@@ -311,6 +311,7 @@ const LeagueDashboard = () => {
           <AdminPanel 
             leagueId={leagueId}
             currentEpisode={state.episode}
+            gameType={state.gameType}
             season={state.season}
             contestants={state.contestants}
             draftOrder={state.draftOrder}
