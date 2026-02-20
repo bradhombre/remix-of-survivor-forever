@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FinalPredictionDialog } from "./FinalPredictionDialog";
 import { getPoints, isActionEnabled, getCustomActions, CustomScoringAction, ScoringConfig } from "@/lib/scoring";
+import { updateLastActive } from "@/lib/customerio";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
@@ -245,6 +246,7 @@ export const GameMode = ({
     }
 
     onAddScoringEvent(contestant.id, contestant.name, action, points);
+    if (currentUserId) updateLastActive(currentUserId);
     toast({
       title: points > 0 ? "Points Added! ✅" : "Points Deducted! ⚠️",
       description: `${contestant.name}: ${action} (${points > 0 ? "+" : ""}${points})`,

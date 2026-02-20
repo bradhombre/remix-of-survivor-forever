@@ -13,6 +13,7 @@ import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { useLeagueRole } from "@/hooks/useLeagueRole";
 import { supabase } from "@/integrations/supabase/client";
 import { TeamAvatar } from "./TeamAvatar";
+import { trackEvent } from "@/lib/customerio";
 
 interface LeagueMember {
   user_id: string;
@@ -206,6 +207,10 @@ export const SetupMode = ({
     const link = `${window.location.origin}/join/${inviteCode}`;
     navigator.clipboard.writeText(link);
     toast({ title: "Invite link copied!" });
+    trackEvent('league_invite_sent', {
+      league_name: leagueId,
+      invite_url: link,
+    });
   };
 
   const handleAssignMember = async (teamId: string, userId: string | null) => {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -8,6 +8,8 @@ import { ArrowRight, Undo2 } from "lucide-react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
 import { ContestantAvatar } from "./ContestantAvatar";
+import { updateLastActive } from "@/lib/customerio";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DraftModeProps {
   leagueId?: string;
@@ -36,6 +38,12 @@ export const DraftMode = ({
 }: DraftModeProps) => {
   // Get league teams for avatars
   const { teams } = useLeagueTeams({ leagueId });
+  const { user } = useAuth();
+
+  const handleDraftContestant = useCallback((contestantId: string) => {
+    if (user) updateLastActive(user.id);
+    onDraftContestant(contestantId);
+  }, [user, onDraftContestant]);
   
   // Map team names to their avatar URLs
   const teamAvatarMap = useMemo(() => {
@@ -195,7 +203,7 @@ export const DraftMode = ({
             {availableContestants.map((contestant) => (
               <Button
                 key={contestant.id}
-                onClick={() => onDraftContestant(contestant.id)}
+                onClick={() => handleDraftContestant(contestant.id)}
                 variant="glass"
                 className="h-auto py-4 flex-col items-center hover:scale-105 transition-transform gap-2"
               >

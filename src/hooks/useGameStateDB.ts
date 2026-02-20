@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GameState, Player, Contestant, ScoringEvent, DraftType, GameType } from "@/types/survivor";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/customerio";
 
 const LOCAL_MODE_KEY = "survivor-local-mode";
 
@@ -712,6 +713,14 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         final_standings: leaderboard as any,
         archived_at: Date.now(),
         league_id: leagueId,
+      });
+
+      // Track season_ended event
+      trackEvent('season_ended', {
+        league_name: leagueId,
+        winner_name: leaderboard[0]?.player || 'Unknown',
+        season: state.season,
+        total_rounds: state.episode,
       });
     }
 

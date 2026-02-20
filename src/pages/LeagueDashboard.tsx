@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useGameStateDB } from "@/hooks/useGameStateDB";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, History, Users, Shield, LogOut, ArrowLeft, Target } from "lucide-react";
 import { toast } from "sonner";
+import { updateLastActive, trackEvent } from "@/lib/customerio";
 
 type ViewMode = "play" | "history" | "league" | "admin";
 
@@ -75,7 +76,13 @@ const LeagueDashboard = () => {
   const myTeam = getMyTeam(user?.id);
   const userTeamName = myTeam?.name;
 
+  // Track last_active_at on dashboard mount
+  const hasTrackedActive = useRef(false);
   useEffect(() => {
+    if (!loading && user && !hasTrackedActive.current) {
+      updateLastActive(user.id);
+      hasTrackedActive.current = true;
+    }
     if (!loading && !user) {
       navigate('/auth');
     }
@@ -126,6 +133,10 @@ const LeagueDashboard = () => {
     const minContestants = ppt * state.draftOrder.length;
     if (state.contestants.length >= minContestants && !state.contestants.some((c) => c.owner)) {
       setMode("draft");
+      trackEvent('draft_started', {
+        league_name: leagueName,
+        draft_time: Math.floor(Date.now() / 1000),
+      });
     }
   };
 
