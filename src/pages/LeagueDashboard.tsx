@@ -9,6 +9,9 @@ import { DraftMode } from "@/components/DraftMode";
 import { GameMode } from "@/components/GameMode";
 import { HistoryMode } from "@/components/HistoryMode";
 import { AdminPanel } from "@/components/AdminPanel";
+import { CommissionerChecklist } from "@/components/CommissionerChecklist";
+import { OnboardingTour } from "@/components/OnboardingTour";
+import { GameplayTips } from "@/components/GameplayTips";
 import { getPicksPerTeam } from "@/lib/picksPerTeam";
 import { LeagueInfo } from "@/components/LeagueInfo";
 import { SeasonCompleteBanner } from "@/components/SeasonCompleteBanner";
@@ -184,6 +187,7 @@ const LeagueDashboard = () => {
               <img src="/logo.png" alt="Survivors Ready" className="h-8 w-auto hidden sm:block shrink-0" />
               <div className="flex gap-1.5 sm:gap-2 overflow-x-auto flex-nowrap">
                 <Button
+                  data-tour="play"
                   onClick={() => setViewMode("play")}
                   variant={viewMode === "play" ? "accent" : "ghost"}
                   size="sm"
@@ -193,6 +197,7 @@ const LeagueDashboard = () => {
                   <span className="hidden sm:inline">Play</span>
                 </Button>
                 <Button
+                  data-tour="history"
                   onClick={() => setViewMode("history")}
                   variant={viewMode === "history" ? "accent" : "ghost"}
                   size="sm"
@@ -202,6 +207,7 @@ const LeagueDashboard = () => {
                   <span className="hidden sm:inline">History</span>
                 </Button>
                 <Button
+                  data-tour="league"
                   onClick={() => setViewMode("league")}
                   variant={viewMode === "league" ? "accent" : "ghost"}
                   size="sm"
@@ -212,6 +218,7 @@ const LeagueDashboard = () => {
                 </Button>
                 {isLeagueAdmin && (
                   <Button
+                    data-tour="admin"
                     onClick={() => setViewMode("admin")}
                     variant={viewMode === "admin" ? "accent" : "ghost"}
                     size="sm"
@@ -236,11 +243,24 @@ const LeagueDashboard = () => {
         </div>
       </div>
 
+      {/* Commissioner Checklist */}
+      {isLeagueAdmin && state.mode === "setup" && viewMode === "play" && (
+        <CommissionerChecklist
+          leagueId={leagueId!}
+          contestantCount={state.contestants.length}
+          filledTeamCount={teams.filter(t => t.user_id).length}
+          mode={state.mode}
+          onNavigate={setViewMode}
+        />
+      )}
+
       {/* Play Tab - Game or Draft */}
       {viewMode === "play" && (
         <>
         {canShowGame ? (
-            state.gameType === "winner_takes_all" ? (
+          <>
+            <GameplayTips leagueId={leagueId!} />
+            {state.gameType === "winner_takes_all" ? (
               <WinnerTakesAllMode
                 leagueId={leagueId}
                 contestants={state.contestants}
@@ -273,8 +293,9 @@ const LeagueDashboard = () => {
                 onExport={exportData}
                 onUpdatePlayerAvatar={updatePlayerAvatar}
               />
-            )
-          ) : (
+            )}
+          </>
+        ) : (
             <DraftMode
               leagueId={leagueId}
               contestants={state.contestants}
@@ -368,6 +389,11 @@ const LeagueDashboard = () => {
         userTeamName={userTeamName}
         teams={teams}
       />
+
+      {/* Onboarding Tour */}
+      {leagueId && (
+        <OnboardingTour leagueId={leagueId} isLeagueAdmin={isLeagueAdmin} />
+      )}
     </div>
   );
 };

@@ -172,6 +172,7 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName, teams }:
       {/* Collapsed FAB */}
       {!isExpanded && (
         <Button
+          data-tour="chat"
           onClick={() => setIsExpanded(true)}
           size="lg"
           className="rounded-full h-14 w-14 shadow-lg relative"
