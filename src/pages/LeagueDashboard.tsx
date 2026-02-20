@@ -244,7 +244,7 @@ const LeagueDashboard = () => {
       </div>
 
       {/* Commissioner Checklist - show during setup and early draft */}
-      {isLeagueAdmin && viewMode === "play" && (
+      {isLeagueAdmin && viewMode === "play" && (state.mode === "setup" || state.mode === "draft") && (
         <CommissionerChecklist
           leagueId={leagueId!}
           contestantCount={state.contestants.length}
