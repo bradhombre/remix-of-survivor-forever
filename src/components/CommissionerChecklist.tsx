@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,14 @@ export function CommissionerChecklist({
     return localStorage.getItem(storageKey) === "true";
   });
 
+  // Auto-dismiss when game starts
+  useEffect(() => {
+    if (mode === "game" && !dismissed) {
+      localStorage.setItem(storageKey, "true");
+      setDismissed(true);
+    }
+  }, [mode, dismissed, storageKey]);
+
   if (dismissed) return null;
 
   const completionMap: Record<string, boolean> = {
@@ -68,11 +76,6 @@ export function CommissionerChecklist({
 
   const completedCount = Object.values(completionMap).filter(Boolean).length;
   const allDone = completedCount >= 3; // scoring is optional, so 3/4 is effectively "done"
-
-  // Auto-dismiss when all done
-  if (allDone && !dismissed) {
-    // Don't auto-dismiss, just show the celebration state
-  }
 
   const handleDismiss = () => {
     localStorage.setItem(storageKey, "true");
@@ -122,7 +125,9 @@ export function CommissionerChecklist({
                   className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-all ${
                     done
                       ? "border-success/30 bg-success/5"
-                      : "border-border hover:bg-muted/50 hover:border-primary/30"
+                      : step.id === "scoring"
+                        ? "border-dashed border-border hover:bg-muted/50 hover:border-primary/30"
+                        : "border-border hover:bg-muted/50 hover:border-primary/30"
                   }`}
                 >
                   {done ? (
@@ -136,6 +141,9 @@ export function CommissionerChecklist({
                       <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>
                         {step.label}
                       </span>
+                      {step.id === "scoring" && !done && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">Optional</Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {done ? "✓ Done" : step.description}
