@@ -62,12 +62,17 @@ export function CommissionerChecklist({
   const completionMap: Record<string, boolean> = {
     cast: contestantCount > 0,
     invite: filledTeamCount > 1,
-    scoring: false, // always shown as actionable
+    scoring: false, // always shown as actionable (optional step)
     draft: mode !== "setup",
   };
 
   const completedCount = Object.values(completionMap).filter(Boolean).length;
-  const allDone = completedCount >= 3; // scoring can't auto-complete, so 3/4 is effectively "done"
+  const allDone = completedCount >= 3; // scoring is optional, so 3/4 is effectively "done"
+
+  // Auto-dismiss when all done
+  if (allDone && !dismissed) {
+    // Don't auto-dismiss, just show the celebration state
+  }
 
   const handleDismiss = () => {
     localStorage.setItem(storageKey, "true");
@@ -114,21 +119,27 @@ export function CommissionerChecklist({
                 <button
                   key={step.id}
                   onClick={() => onNavigate(step.target)}
-                  className="flex items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50"
+                  className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-all ${
+                    done
+                      ? "border-success/30 bg-success/5"
+                      : "border-border hover:bg-muted/50 hover:border-primary/30"
+                  }`}
                 >
                   {done ? (
                     <CheckCircle className="h-5 w-5 text-success shrink-0 mt-0.5" />
                   ) : (
                     <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Icon className={`h-3.5 w-3.5 ${done ? "text-success" : "text-muted-foreground"}`} />
                       <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>
                         {step.label}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {done ? "✓ Done" : step.description}
+                    </p>
                   </div>
                 </button>
               );
