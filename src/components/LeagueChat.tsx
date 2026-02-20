@@ -228,12 +228,30 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName, teams }:
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <MessageCircle className="h-12 w-12 mb-2 opacity-50" />
-                <p className="text-sm">No messages yet</p>
-                <p className="text-xs mt-1">
-                  Try @jeffbot followed by a Survivor question!
+            <div className="flex flex-col items-center justify-center h-full text-center px-2">
+                <div className="text-3xl mb-2">🏝️</div>
+                <p className="font-semibold text-sm">Meet JeffBot</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  Your Survivor encyclopedia! Tag <span className="font-mono text-foreground">@jeffbot</span> with any question.
                 </p>
+                <div className="flex flex-col gap-1.5 w-full max-w-[250px]">
+                  {[
+                    "Who won Season 45?",
+                    "Best blindsides ever?",
+                    "Explain the idol rules",
+                  ].map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => {
+                        setInputValue(`@jeffbot ${prompt}`);
+                        setTimeout(() => inputRef.current?.focus(), 50);
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-border bg-muted/50 hover:bg-accent hover:text-accent-foreground transition-colors text-left truncate"
+                    >
+                      💬 {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
