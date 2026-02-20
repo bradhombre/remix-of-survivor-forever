@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
+import { identifyUser, trackEvent } from '@/lib/customerio';
 
 export type UserRole = 'admin' | 'user';
 
@@ -44,6 +45,12 @@ export function useAuth() {
         if (session?.user) {
           setTimeout(() => {
             fetchUserData(session.user.id);
+            // Identify user in Customer.io on every auth state change
+            identifyUser(
+              session.user.id,
+              session.user.email || '',
+              session.user.created_at || new Date().toISOString()
+            );
           }, 0);
         } else {
           setUserRole(null);
@@ -101,6 +108,9 @@ export function useAuth() {
         emailRedirectTo: redirectUrl
       }
     });
+    if (!error) {
+      trackEvent('user_signed_up');
+    }
     return { error };
   };
 

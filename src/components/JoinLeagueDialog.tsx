@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { TeamAvatarUpload } from './TeamAvatarUpload';
 import { CheckCircle2 } from 'lucide-react';
+import { identifyUser } from '@/lib/customerio';
 
 const inviteCodeSchema = z.object({
   code: z.string().trim().length(6, 'Invite code must be 6 characters'),
@@ -103,6 +104,12 @@ export function JoinLeagueDialog({ open, onOpenChange, onSuccess }: JoinLeagueDi
       
       setStep(2);
       toast.success('Successfully joined the league!');
+
+      // Mark user as having an active league in Customer.io
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        identifyUser(authUser.id, authUser.email || '', authUser.created_at || '', { has_active_league: true });
+      }
     }
     setLoading(false);
   };

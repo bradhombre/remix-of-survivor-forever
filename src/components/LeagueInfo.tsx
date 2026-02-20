@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Copy, Save, Users, Link2, Pencil, Trash2, ShieldPlus, ExternalLink, LogOut, UserCircle, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/customerio";
 import { QRCodeSVG } from "qrcode.react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatarUpload } from "./TeamAvatarUpload";
@@ -166,6 +167,10 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
     if (league?.invite_code) {
       navigator.clipboard.writeText(league.invite_code);
       toast.success("Invite code copied to clipboard");
+      trackEvent('league_invite_sent', {
+        league_name: league.name,
+        invite_url: `${window.location.origin}/join/${league.invite_code}`,
+      });
     }
   };
 
@@ -174,6 +179,10 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
       const link = `${window.location.origin}/join/${league.invite_code}`;
       navigator.clipboard.writeText(link);
       toast.success("Invite link copied to clipboard");
+      trackEvent('league_invite_sent', {
+        league_name: league.name,
+        invite_url: link,
+      });
     }
   };
 

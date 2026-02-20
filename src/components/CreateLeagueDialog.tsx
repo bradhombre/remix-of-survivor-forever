@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { TeamAvatarUpload } from './TeamAvatarUpload';
 import { CheckCircle2, Trophy, Target, Plus, Minus, Users, Download, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { GameType } from '@/types/survivor';
+import { identifyUser } from '@/lib/customerio';
 
 const leagueSchema = z.object({
   name: z.string().trim().min(1, 'League name is required').max(50, 'League name must be 50 characters or less'),
@@ -156,6 +157,12 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
       
       setStep(2);
       toast.success('League created!');
+
+      // Mark user as having an active league in Customer.io
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        identifyUser(authUser.id, authUser.email || '', authUser.created_at || '', { has_active_league: true });
+      }
     }
     setLoading(false);
   };
