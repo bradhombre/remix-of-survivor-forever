@@ -117,7 +117,21 @@ Deno.serve(async (req) => {
     // 6. Delete from profiles
     await supabaseAdmin.from("profiles").delete().eq("id", userId);
 
-    // 7. Delete from auth.users
+    // 7. Delete contact from Customer.io
+    const cioSiteId = "87d8fe6f98e8d1f436f8";
+    const cioApiKey = Deno.env.get("CIO_TRACK_API_KEY");
+    if (cioApiKey) {
+      const cioCredentials = btoa(`${cioSiteId}:${cioApiKey}`);
+      await fetch(`https://track.customer.io/api/v1/customers/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Basic ${cioCredentials}`,
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
+    // 8. Delete from auth.users
     const { error: deleteError } =
       await supabaseAdmin.auth.admin.deleteUser(userId);
     if (deleteError) throw deleteError;

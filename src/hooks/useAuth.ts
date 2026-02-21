@@ -50,9 +50,10 @@ export function useAuth() {
               session.user.email || '',
               session.user.created_at || new Date().toISOString()
             );
-            // Fire signup event only for newly created users (created within last 60s)
+            // Fire signup event only for newly created users (created within last 24 hours)
+            // 24 hours gives enough time for users to confirm their email
             const createdAt = new Date(session.user.created_at || 0).getTime();
-            if (event === 'SIGNED_IN' && Date.now() - createdAt < 60_000) {
+            if (event === 'SIGNED_IN' && Date.now() - createdAt < 86_400_000) {
               trackEvent('user_signed_up');
             }
           }, 0);

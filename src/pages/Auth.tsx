@@ -54,7 +54,6 @@ export default function Auth() {
       } else {
         if (!isLogin) {
           toast.success('Account created! Please check your email.');
-          window._cio?.track('user_signed_up');
         } else {
           toast.success('Welcome back!');
         }
