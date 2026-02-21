@@ -45,12 +45,16 @@ export function useAuth() {
         if (session?.user) {
           setTimeout(() => {
             fetchUserData(session.user.id);
-            // Identify user in Customer.io on every auth state change
             identifyUser(
               session.user.id,
               session.user.email || '',
               session.user.created_at || new Date().toISOString()
             );
+            // Fire signup event only for newly created users (created within last 60s)
+            const createdAt = new Date(session.user.created_at || 0).getTime();
+            if (event === 'SIGNED_IN' && Date.now() - createdAt < 60_000) {
+              trackEvent('user_signed_up');
+            }
           }, 0);
         } else {
           setUserRole(null);
@@ -108,9 +112,6 @@ export function useAuth() {
         emailRedirectTo: redirectUrl
       }
     });
-    if (!error) {
-      trackEvent('user_signed_up');
-    }
     return { error };
   };
 
