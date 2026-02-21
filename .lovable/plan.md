@@ -1,33 +1,41 @@
 
-# Fix Home Screen Icon (iPhone + Android)
+
+# Fix Customer.io `user_signed_up` Event Ordering and Deduplication
 
 ## Problem
-When saving the app to a phone's home screen, there's no proper icon. On iPhone it shows just the letter "S." Android would have a similar issue.
+1. The `trackEvent('user_signed_up')` in the `signUp` function fires **before** `identifyUser()` runs (which happens in the `onAuthStateChange` callback via `setTimeout`). Customer.io needs to know who the user is before it can attribute the event.
+2. The event could also fire on regular logins since `onAuthStateChange` doesn't distinguish signups from sign-ins.
 
-## Changes
+## Changes (single file: `src/hooks/useAuth.ts`)
 
-### 1. Update `index.html`
-Add these tags inside `<head>`:
-- `<link rel="apple-touch-icon" href="/logo.png">` -- iPhone home screen icon
-- `<link rel="manifest" href="/manifest.json">` -- Android + browser PWA support
-- `<meta name="apple-mobile-web-app-capable" content="yes">` -- full-screen on iPhone
-- `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">` -- dark status bar
-- `<meta name="apple-mobile-web-app-title" content="Survivors Ready">` -- name under icon
-- `<meta name="theme-color" content="#1a1a2e">` -- browser toolbar color on Android
+### 1. Move `trackEvent('user_signed_up')` into the `onAuthStateChange` callback
+Place it inside the `setTimeout`, right after `identifyUser()`, so identity is established first.
 
-### 2. Create `public/manifest.json` (new file)
-Standard web app manifest with:
-- App name: "Survivors Ready"
-- Short name: "Survivors"
-- Icons referencing the existing `logo.png` (192x192 and 512x512 entries)
-- Display: "standalone" (opens like a native app)
-- Theme and background colors matching the app
+### 2. Only fire on new signups
+Check `event === 'SIGNED_UP'` inside `onAuthStateChange` to distinguish a fresh signup from a regular `SIGNED_IN`. This is the Supabase auth event type that fires only when a new account is created.
 
-### Files
-| File | Change |
-|------|--------|
-| `index.html` | Add icon, manifest, and mobile meta tags |
-| `public/manifest.json` | New file -- web app manifest |
+### 3. Remove the duplicate `trackEvent` from `signUp()`
+Delete the `trackEvent('user_signed_up')` call on line 112 since it will now live in the auth state listener.
 
-### Note
-The existing `logo.png` is used for icons. If it appears blurry on high-res screens, we can generate properly sized icon files (192px and 512px) later.
+### Resulting code in the `onAuthStateChange` callback
+
+```text
+setTimeout(() => {
+  fetchUserData(session.user.id);
+  identifyUser(
+    session.user.id,
+    session.user.email || '',
+    session.user.created_at || new Date().toISOString()
+  );
+  if (event === 'SIGNED_UP') {
+    trackEvent('user_signed_up');
+  }
+}, 0);
+```
+
+### Lines affected
+| Lines | What changes |
+|-------|-------------|
+| 46-54 | Add `trackEvent` after `identifyUser`, guarded by `event === 'SIGNED_UP'` |
+| 111-113 | Remove standalone `trackEvent('user_signed_up')` from `signUp()` |
+
