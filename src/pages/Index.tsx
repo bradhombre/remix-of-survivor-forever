@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { DonateButton } from "@/components/DonateButton";
+
 import { Zap, Users, Settings } from "lucide-react";
 
 const Index = () => {
@@ -70,10 +70,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Footer with donate */}
-        <div className="pt-6">
-          <DonateButton />
-        </div>
       </div>
     </div>
   );
