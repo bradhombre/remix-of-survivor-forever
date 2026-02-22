@@ -10,6 +10,7 @@ import LeagueDashboard from "./pages/LeagueDashboard";
 import Admin from "./pages/Admin";
 import JoinByLink from "./pages/JoinByLink";
 import NotFound from "./pages/NotFound";
+import { AppFooter } from "./components/AppFooter";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <AppFooter />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
