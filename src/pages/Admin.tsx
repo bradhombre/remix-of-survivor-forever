@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NewsManager } from "@/components/admin/NewsManager";
 import { CastManager } from "@/components/admin/CastManager";
 import { AdminSettings } from "@/components/admin/AdminSettings";
-import { ArrowLeft, Users, Eye, Trash2, Newspaper, UserCircle, Settings } from "lucide-react";
+import { ArrowLeft, Users, Eye, Trash2, Newspaper, UserCircle, Settings, Bug } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +40,16 @@ interface LeagueWithDetails {
   member_count: number;
 }
 
+interface BugReport {
+  id: string;
+  user_id: string;
+  description: string;
+  page_url: string | null;
+  status: string;
+  created_at: string;
+  user_email?: string;
+}
+
 export default function Admin() {
   const { isSuperAdmin, loading: roleLoading } = useIsSuperAdmin();
   const { user, loading: authLoading } = useAuth();
@@ -48,6 +58,7 @@ export default function Admin() {
   const [leagues, setLeagues] = useState<LeagueWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bugs, setBugs] = useState<BugReport[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -63,7 +74,30 @@ export default function Admin() {
     if (!isSuperAdmin || roleLoading) return;
 
     fetchLeagues();
+    fetchBugs();
   }, [isSuperAdmin, roleLoading]);
+
+  const fetchBugs = async () => {
+    const { data } = await supabase
+      .from("bug_reports")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!data) return;
+    const userIds = [...new Set(data.map((b: any) => b.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", userIds);
+    const emailMap = new Map(profiles?.map((p) => [p.id, p.email]) || []);
+    setBugs(
+      data.map((b: any) => ({ ...b, user_email: emailMap.get(b.user_id) || "Unknown" }))
+    );
+  };
+
+  const handleUpdateBugStatus = async (id: string, status: string) => {
+    await supabase.from("bug_reports").update({ status }).eq("id", id);
+    setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+  };
 
   const fetchLeagues = async () => {
     // Fetch all leagues with owner profiles
@@ -182,6 +216,10 @@ export default function Admin() {
               <Newspaper className="h-4 w-4" />
               News
             </TabsTrigger>
+            <TabsTrigger value="bugs" className="gap-2">
+              <Bug className="h-4 w-4" />
+              Bugs ({bugs.length})
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
               Settings
@@ -280,6 +318,56 @@ export default function Admin() {
 
           <TabsContent value="news">
             <NewsManager />
+          </TabsContent>
+
+          <TabsContent value="bugs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bug className="h-5 w-5" />
+                  Bug Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {bugs.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No bug reports yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Page</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bugs.map((bug) => (
+                        <TableRow key={bug.id}>
+                          <TableCell className="text-muted-foreground text-xs">{bug.user_email}</TableCell>
+                          <TableCell className="max-w-xs truncate">{bug.description}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{bug.page_url}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">{format(new Date(bug.created_at), "MMM d, yyyy")}</TableCell>
+                          <TableCell>
+                            <select
+                              value={bug.status}
+                              onChange={(e) => handleUpdateBugStatus(bug.id, e.target.value)}
+                              className="text-xs rounded border border-input bg-background px-2 py-1"
+                            >
+                              <option value="open">Open</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="resolved">Resolved</option>
+                              <option value="closed">Closed</option>
+                            </select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="settings">

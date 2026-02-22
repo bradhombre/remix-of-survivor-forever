@@ -73,6 +73,33 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          page_url: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          page_url?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          page_url?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
