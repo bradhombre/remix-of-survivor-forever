@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CreateLeagueDialog } from '@/components/CreateLeagueDialog';
 import { JoinLeagueDialog } from '@/components/JoinLeagueDialog';
-import { DonateButton } from '@/components/DonateButton';
+
 import { toast } from 'sonner';
 
 interface LeagueMembership {
@@ -338,9 +338,6 @@ export default function Leagues() {
         )}
       </main>
 
-      <footer className="container mx-auto px-4 py-6 flex justify-center border-t border-border">
-        <DonateButton />
-      </footer>
 
       <CreateLeagueDialog 
         open={createOpen} 
