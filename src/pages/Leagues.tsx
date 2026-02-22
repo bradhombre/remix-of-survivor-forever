@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, LogOut, Crown, Shield, User, Settings, Trophy, Target, Trash2, MoreVertical, Bug } from 'lucide-react';
+import { Plus, Users, LogOut, Crown, Shield, User, Settings, Trophy, Target, Trash2, MoreVertical } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,6 @@ import {
 import { CreateLeagueDialog } from '@/components/CreateLeagueDialog';
 import { JoinLeagueDialog } from '@/components/JoinLeagueDialog';
 import { DonateButton } from '@/components/DonateButton';
-import { BugReportDialog } from '@/components/BugReportDialog';
 import { toast } from 'sonner';
 
 interface LeagueMembership {
@@ -47,7 +46,6 @@ export default function Leagues() {
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [bugOpen, setBugOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { user, signOut, loading: authLoading } = useAuth();
   const { isSuperAdmin } = useIsSuperAdmin();
@@ -223,10 +221,6 @@ export default function Leagues() {
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBugOpen(true)}>
-                  <Bug className="h-4 w-4 mr-2" />
-                  Report a Bug
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -379,8 +373,6 @@ export default function Leagues() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <BugReportDialog open={bugOpen} onOpenChange={setBugOpen} />
     </div>
   );
 }
