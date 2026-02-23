@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Circle, X, PartyPopper, Users, Sliders, Play, UserPlus } from "lucide-react";
 
-type ViewMode = "play" | "history" | "league" | "admin";
+type ViewMode = "draft" | "game" | "history" | "league" | "admin";
 
 interface CommissionerChecklistProps {
   leagueId: string;
