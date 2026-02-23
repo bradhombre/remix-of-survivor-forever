@@ -1,41 +1,41 @@
 
 
-## Split "Play" Tab into "Draft" and "Game" Tabs
+## Fix Tips Text, Improve Draft Banner, and Explore Scoring Ease-of-Use
 
-Instead of hiding the game view until the draft completes, show both tabs side by side so new players can explore the leaderboard/scoring UI at any time -- even before drafting starts.
+Three changes addressing your feedback:
 
-### What Changes
+### 1. Fix "How the Game Works" - Scoring Events Text
 
-**Current behavior:** A single "Play" tab that conditionally shows either the Draft or Game view based on draft completion.
+Update the Scoring Events tip from "Commissioners tap..." to "Commissioners or players tap a contestant to score actions..."
 
-**New behavior:** Two separate tabs:
-- **Draft** tab (visible during setup/draft phases; hidden once the game starts)
-- **Game** tab (always visible, even during setup/draft)
+**File:** `src/components/GameplayTips.tsx` (line 33)
 
-During setup/draft, the Game tab shows the real leaderboard with zero scores and a subtle banner like "The game begins after the draft completes" so players understand they're previewing the experience.
+### 2. Improve Draft-in-Progress Banner and Gray Out the Game Tab
 
-Once the draft completes, the Draft tab disappears and Game becomes the default -- exactly as it works today, just without the confusion.
+- Change the banner text to: **"This page will be active once the draft is complete. Take a look around to see how scoring works!"**
+- Wrap the game content below the banner in a semi-transparent overlay with `opacity-50 pointer-events-none` so it looks visually inaccessible but still previews the layout
 
-### User Experience
+**File:** `src/pages/LeagueDashboard.tsx` (lines 307-348)
 
-- New players can tap "Game" at any time to see the leaderboard, scoring UI, and contestant cards
-- They immediately understand what the post-draft experience looks like
-- No fake mockups needed -- it's the real UI with real (zeroed) data
-- The GameplayTips card still appears on the Game tab to explain mechanics
+### 3. About Automated Scoring
+
+Unfortunately, there's no public real-time Survivor data API (CBS/Paramount doesn't offer one), so fully automated scoring isn't possible. However, there are ways to make scoring **much faster and less tedious**:
+
+**Already available:** Bulk actions like "Mark All Survivors" and "Award Jury Points" that score many contestants in one tap.
+
+**Potential future improvements (not in this plan, but options to consider):**
+- **Episode Score Card:** A single form where the commissioner checks off everything that happened in an episode (who won immunity, who found an idol, who cried, who was voted out) and submits it all at once instead of tapping individual contestants
+- **Player Self-Scoring:** Let all league members submit scoring events (with commissioner approval/review) so the work is shared
+- **Score Import:** Allow pasting a simple list of events from a recap site
+
+Would you like me to build the Episode Score Card as a follow-up?
 
 ### Technical Details
 
-**Edit: `src/pages/LeagueDashboard.tsx`**
+**`src/components/GameplayTips.tsx`**
+- Update the `TIPS` array entry for "Scoring Events" to say "Commissioners or players tap..."
 
-1. Update `ViewMode` type from `"play" | "history" | "league" | "admin"` to `"draft" | "game" | "history" | "league" | "admin"`
-2. Default tab logic:
-   - If draft is complete (`canShowGame`), default to `"game"` and hide the Draft tab
-   - If still in setup/draft, default to `"draft"` and show both Draft and Game tabs
-3. Replace the single "Play" button in the nav with two buttons:
-   - **Draft** button (with a target/clipboard icon) -- only shown when `!canShowGame`
-   - **Game** button (with the Trophy icon) -- always shown
-4. In the Game tab content, when `!canShowGame`, wrap the existing GameMode/WinnerTakesAllMode in a container that adds a small info banner at the top: "Draft in progress -- scores will update once the draft is complete"
-5. Move `CommissionerChecklist` to show on the Draft tab instead of the old Play tab
-6. Move `GameplayTips` to show on the Game tab regardless of draft state
+**`src/pages/LeagueDashboard.tsx`**
+- Update the info banner text inside the `!canShowGame` block
+- Add a wrapper `div` with `opacity-50 pointer-events-none` around the game content (GameMode/WinnerTakesAllMode) when `!canShowGame` is true, so the preview appears grayed out and non-interactive
 
-**No new files needed.** This is a restructure of the existing tab logic in `LeagueDashboard.tsx` only.
