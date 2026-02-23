@@ -30,7 +30,7 @@ const TIPS = [
     icon: Flame,
     title: "Scoring Events",
     description:
-      'Commissioners tap a contestant to score actions like "Find Idol", "Win Immunity", "Cry", and more during each episode.',
+      'Commissioners or players tap a contestant to score actions like "Find Idol", "Win Immunity", "Cry", and more during each episode.',
   },
 ];
 
