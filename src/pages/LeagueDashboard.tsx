@@ -308,10 +308,11 @@ const LeagueDashboard = () => {
             <div className="container max-w-7xl mx-auto px-4 mt-4">
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                 <Info className="h-4 w-4 shrink-0" />
-                <span>Draft in progress — scores will update once the draft is complete.</span>
+                <span>This page will be active once the draft is complete. Take a look around to see how scoring works!</span>
               </div>
             </div>
           )}
+          <div className={!canShowGame ? "opacity-50 pointer-events-none" : ""}>
           {state.gameType === "winner_takes_all" ? (
             <WinnerTakesAllMode
               leagueId={leagueId}
@@ -346,6 +347,7 @@ const LeagueDashboard = () => {
               onUpdatePlayerAvatar={updatePlayerAvatar}
             />
           )}
+          </div>
         </>
       )}
 
