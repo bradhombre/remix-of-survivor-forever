@@ -20,17 +20,17 @@ import { NewsFeed } from "@/components/NewsFeed";
 import { LeagueChat } from "@/components/LeagueChat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, History, Users, Shield, LogOut, ArrowLeft, Target } from "lucide-react";
+import { Trophy, History, Users, Shield, LogOut, ArrowLeft, Target, ClipboardList, Info } from "lucide-react";
 import { toast } from "sonner";
 import { updateLastActive, trackEvent } from "@/lib/customerio";
 
-type ViewMode = "play" | "history" | "league" | "admin";
+type ViewMode = "draft" | "game" | "history" | "league" | "admin";
 
 const LeagueDashboard = () => {
   const { id: leagueId } = useParams<{ id: string }>();
   const [leagueName, setLeagueName] = useState<string>("");
   const [leagueLoading, setLeagueLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>("play");
+  const [viewMode, setViewMode] = useState<ViewMode>("draft"); // will be corrected by effect
 
   const {
     state,
@@ -111,6 +111,19 @@ const LeagueDashboard = () => {
   }, [leagueId, navigate]);
 
 
+  // Determine draft/game state (must be before early returns for hooks)
+  const computedPicksPerTeam = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
+  const totalPicks = state.draftOrder.length * computedPicksPerTeam;
+  const isInDraftPhase = state.mode === "draft" || (state.mode === "setup" && state.contestants.length >= (state.gameType === "winner_takes_all" ? 1 : computedPicksPerTeam * state.draftOrder.length));
+  const canShowGame = state.currentDraftIndex >= totalPicks;
+
+  // Set default viewMode based on game state
+  useEffect(() => {
+    if (canShowGame) {
+      setViewMode((prev) => prev === "draft" ? "game" : prev);
+    }
+  }, [canShowGame]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -142,17 +155,11 @@ const LeagueDashboard = () => {
 
   const handleStartGame = () => {
     const ppt = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
-    const totalPicks = state.draftOrder.length * ppt;
-    if (state.currentDraftIndex >= totalPicks) {
+    const totalPicksCalc = state.draftOrder.length * ppt;
+    if (state.currentDraftIndex >= totalPicksCalc) {
       setMode("game");
     }
   };
-
-  // Determine if we show Game or Draft in Play tab
-  const computedPicksPerTeam = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
-  const totalPicks = state.draftOrder.length * computedPicksPerTeam;
-  const isInDraftPhase = state.mode === "draft" || (state.mode === "setup" && state.contestants.length >= (state.gameType === "winner_takes_all" ? 1 : computedPicksPerTeam * state.draftOrder.length));
-  const canShowGame = state.currentDraftIndex >= totalPicks;
 
   return (
     <div className="min-h-screen">
@@ -197,15 +204,27 @@ const LeagueDashboard = () => {
             <div className="flex items-center gap-2 min-w-0">
               <img src="/logo.png" alt="Survivors Ready" className="h-8 w-auto hidden sm:block shrink-0" />
               <div className="flex gap-1.5 sm:gap-2 overflow-x-auto flex-nowrap">
+                {!canShowGame && (
+                  <Button
+                    data-tour="draft"
+                    onClick={() => setViewMode("draft")}
+                    variant={viewMode === "draft" ? "accent" : "ghost"}
+                    size="sm"
+                    className="min-h-[44px] shrink-0"
+                  >
+                    <ClipboardList className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Draft</span>
+                  </Button>
+                )}
                 <Button
-                  data-tour="play"
-                  onClick={() => setViewMode("play")}
-                  variant={viewMode === "play" ? "accent" : "ghost"}
+                  data-tour="game"
+                  onClick={() => setViewMode("game")}
+                  variant={viewMode === "game" ? "accent" : "ghost"}
                   size="sm"
                   className="min-h-[44px] shrink-0"
                 >
                   <Trophy className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Play</span>
+                  <span className="hidden sm:inline">Game</span>
                 </Button>
                 <Button
                   data-tour="history"
@@ -254,8 +273,8 @@ const LeagueDashboard = () => {
         </div>
       </div>
 
-      {/* Commissioner Checklist - show during setup and early draft */}
-      {isLeagueAdmin && viewMode === "play" && (state.mode === "setup" || state.mode === "draft") && (
+      {/* Commissioner Checklist - show on Draft tab during setup/draft */}
+      {isLeagueAdmin && viewMode === "draft" && (state.mode === "setup" || state.mode === "draft") && (
         <CommissionerChecklist
           leagueId={leagueId!}
           contestantCount={state.contestants.length}
@@ -265,59 +284,66 @@ const LeagueDashboard = () => {
         />
       )}
 
-      {/* Play Tab - Game or Draft */}
-      {viewMode === "play" && (
+      {/* Draft Tab */}
+      {viewMode === "draft" && !canShowGame && (
+        <DraftMode
+          leagueId={leagueId}
+          contestants={state.contestants}
+          draftOrder={state.draftOrder}
+          draftType={state.draftType}
+          currentDraftIndex={state.currentDraftIndex}
+          gameType={state.gameType}
+          picksPerTeam={state.picksPerTeam}
+          onDraftContestant={draftContestant}
+          onUndoPick={undoDraftPick}
+          onStartGame={handleStartGame}
+        />
+      )}
+
+      {/* Game Tab */}
+      {viewMode === "game" && (
         <>
-        {canShowGame ? (
-          <>
-            <GameplayTips leagueId={leagueId!} />
-            {state.gameType === "winner_takes_all" ? (
-              <WinnerTakesAllMode
-                leagueId={leagueId}
-                contestants={state.contestants}
-                draftOrder={state.draftOrder}
-                isAdmin={isLeagueAdmin}
-                sessionId={sessionId || undefined}
-                sessionStatus={sessionStatus}
-              />
-            ) : (
-              <GameMode
-                leagueId={leagueId}
-                currentUserId={user?.id}
-                season={state.season}
-                episode={state.episode}
-                isPostMerge={state.isPostMerge}
-                contestants={state.contestants}
-                scoringEvents={state.scoringEvents}
-                cryingThisEpisode={state.cryingThisEpisode}
-                playerProfiles={state.playerProfiles}
-                scoringConfig={scoringConfig}
-                draftOrder={state.draftOrder}
-                isAdmin={isLeagueAdmin}
-                playerName={playerName}
-                sessionId={sessionId || undefined}
-                onEpisodeChange={setEpisode}
-                onTogglePostMerge={togglePostMerge}
-                onAddScoringEvent={addScoringEvent}
-                onUndo={undoLastEvent}
-                onUndoEvent={undoEvent}
-                onExport={exportData}
-                onUpdatePlayerAvatar={updatePlayerAvatar}
-              />
-            )}
-          </>
-        ) : (
-            <DraftMode
+          <GameplayTips leagueId={leagueId!} />
+          {!canShowGame && (
+            <div className="container max-w-7xl mx-auto px-4 mt-4">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                <Info className="h-4 w-4 shrink-0" />
+                <span>Draft in progress — scores will update once the draft is complete.</span>
+              </div>
+            </div>
+          )}
+          {state.gameType === "winner_takes_all" ? (
+            <WinnerTakesAllMode
               leagueId={leagueId}
               contestants={state.contestants}
               draftOrder={state.draftOrder}
-              draftType={state.draftType}
-              currentDraftIndex={state.currentDraftIndex}
-              gameType={state.gameType}
-              picksPerTeam={state.picksPerTeam}
-              onDraftContestant={draftContestant}
-              onUndoPick={undoDraftPick}
-              onStartGame={handleStartGame}
+              isAdmin={isLeagueAdmin}
+              sessionId={sessionId || undefined}
+              sessionStatus={sessionStatus}
+            />
+          ) : (
+            <GameMode
+              leagueId={leagueId}
+              currentUserId={user?.id}
+              season={state.season}
+              episode={state.episode}
+              isPostMerge={state.isPostMerge}
+              contestants={state.contestants}
+              scoringEvents={state.scoringEvents}
+              cryingThisEpisode={state.cryingThisEpisode}
+              playerProfiles={state.playerProfiles}
+              scoringConfig={scoringConfig}
+              draftOrder={state.draftOrder}
+              isAdmin={isLeagueAdmin}
+              playerName={playerName}
+              sessionId={sessionId || undefined}
+              onEpisodeChange={setEpisode}
+              onTogglePostMerge={togglePostMerge}
+              onAddScoringEvent={addScoringEvent}
+              onUndo={undoLastEvent}
+              onUndoEvent={undoEvent}
+              onExport={exportData}
+              onUpdatePlayerAvatar={updatePlayerAvatar}
             />
           )}
         </>
