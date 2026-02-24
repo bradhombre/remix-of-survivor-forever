@@ -116,7 +116,7 @@ const LeagueDashboard = () => {
   const computedPicksPerTeam = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
   const totalPicks = state.draftOrder.length * computedPicksPerTeam;
   const isInDraftPhase = state.mode === "draft" || (state.mode === "setup" && state.contestants.length >= (state.gameType === "winner_takes_all" ? 1 : computedPicksPerTeam * state.draftOrder.length));
-  const canShowGame = state.currentDraftIndex >= totalPicks;
+  const canShowGame = totalPicks > 0 && state.currentDraftIndex >= totalPicks;
 
   // Set default viewMode based on game state
   useEffect(() => {
