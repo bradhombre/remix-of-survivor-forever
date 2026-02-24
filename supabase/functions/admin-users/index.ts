@@ -30,15 +30,10 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check if user is admin
-    const { data: roleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .single()
+    // Check if user is super_admin
+    const { data: isAdmin } = await supabaseAdmin.rpc('is_super_admin', { _user_id: user.id })
 
-    if (!roleData) {
+    if (!isAdmin) {
       console.error('User is not admin')
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
