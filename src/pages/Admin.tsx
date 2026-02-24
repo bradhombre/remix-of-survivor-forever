@@ -346,7 +346,12 @@ export default function Admin() {
                       {bugs.map((bug) => (
                         <TableRow key={bug.id}>
                           <TableCell className="text-muted-foreground text-xs">{bug.user_email}</TableCell>
-                          <TableCell className="max-w-xs truncate">{bug.description}</TableCell>
+                          <TableCell className="max-w-xs">
+                            <details className="cursor-pointer">
+                              <summary className="truncate max-w-xs">{bug.description}</summary>
+                              <p className="mt-2 text-sm whitespace-pre-wrap">{bug.description}</p>
+                            </details>
+                          </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{bug.page_url}</TableCell>
                           <TableCell className="text-muted-foreground text-xs">{format(new Date(bug.created_at), "MMM d, yyyy")}</TableCell>
                           <TableCell>
