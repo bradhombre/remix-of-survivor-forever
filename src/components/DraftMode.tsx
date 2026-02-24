@@ -40,11 +40,6 @@ export const DraftMode = ({
   const { teams } = useLeagueTeams({ leagueId });
   const { user } = useAuth();
 
-  const handleDraftContestant = useCallback((contestantId: string) => {
-    if (user) updateLastActive(user.id);
-    onDraftContestant(contestantId);
-  }, [user, onDraftContestant]);
-  
   // Map team names to their avatar URLs
   const teamAvatarMap = useMemo(() => {
     const map: Record<string, string | null> = {};
@@ -58,7 +53,7 @@ export const DraftMode = ({
   const totalPicks = teamCount * picksPerTeam;
   const availableContestants = contestants.filter((c) => !c.owner);
   const draftedContestants = contestants.filter((c) => c.owner);
-  
+
   const getCurrentDrafter = () => {
     if (currentDraftIndex >= totalPicks || teamCount === 0) return null;
     
@@ -72,6 +67,19 @@ export const DraftMode = ({
   };
 
   const currentDrafter = getCurrentDrafter();
+
+  const handleDraftContestant = useCallback((contestantId: string) => {
+    // Enforce per-team pick limit before allowing the pick
+    if (currentDrafter) {
+      const owned = draftedContestants.filter(c => c.owner === currentDrafter).length;
+      if (owned >= picksPerTeam) {
+        return; // team is full, skip
+      }
+    }
+    if (user) updateLastActive(user.id);
+    onDraftContestant(contestantId);
+  }, [user, onDraftContestant, currentDrafter, draftedContestants, picksPerTeam]);
+  
   const progress = totalPicks > 0 ? (currentDraftIndex / totalPicks) * 100 : 0;
   const isDraftComplete = currentDraftIndex >= totalPicks;
 
