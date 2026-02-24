@@ -1,41 +1,82 @@
 
 
-## Fix Tips Text, Improve Draft Banner, and Explore Scoring Ease-of-Use
+## Fix Draft Premature Start + Add "Revert to Setup" for Commissioners
 
-Three changes addressing your feedback:
+### Problem Analysis
 
-### 1. Fix "How the Game Works" - Scoring Events Text
+After investigating the database, the pattern is clear:
 
-Update the Scoring Events tip from "Commissioners tap..." to "Commissioners or players tap a contestant to score actions..."
+- Most leagues have only **1 filled team** (just the commissioner) when drafts are being started
+- Several leagues show drafted contestants but low `current_draft_index`, meaning commissioners started drafting alone
+- There is **no way to revert** a started draft back to setup mode
+- The `mode` field in the database is never updated (it stays "setup" forever) -- mode is only stored in localStorage per browser
 
-**File:** `src/components/GameplayTips.tsx` (line 33)
+### Two Changes
 
-### 2. Improve Draft-in-Progress Banner and Gray Out the Game Tab
+#### 1. Warn commissioners before starting a draft with unfilled team slots
 
-- Change the banner text to: **"This page will be active once the draft is complete. Take a look around to see how scoring works!"**
-- Wrap the game content below the banner in a semi-transparent overlay with `opacity-50 pointer-events-none` so it looks visually inaccessible but still previews the layout
+Add a confirmation dialog when the commissioner clicks "Start Draft" and there are empty team slots. Something like:
 
-**File:** `src/pages/LeagueDashboard.tsx` (lines 307-348)
+> "Only 1 of 4 team slots are filled. Players who haven't joined yet won't be able to draft. Are you sure you want to start?"
 
-### 3. About Automated Scoring
+This doesn't block them (they may want to draft for absent friends), but makes the consequence obvious.
 
-Unfortunately, there's no public real-time Survivor data API (CBS/Paramount doesn't offer one), so fully automated scoring isn't possible. However, there are ways to make scoring **much faster and less tedious**:
+**File: `src/components/SetupMode.tsx`**
+- Add a prop for `filledTeamCount` (or derive it from existing `teams` data already available)
+- Wrap `onStartDraft` with a confirmation check when `filledCount < teams.length`
 
-**Already available:** Bulk actions like "Mark All Survivors" and "Award Jury Points" that score many contestants in one tap.
+**File: `src/pages/LeagueDashboard.tsx`**
+- Update `handleStartDraft` to pass through the warning logic, or pass `filledTeamCount` to SetupMode
 
-**Potential future improvements (not in this plan, but options to consider):**
-- **Episode Score Card:** A single form where the commissioner checks off everything that happened in an episode (who won immunity, who found an idol, who cried, who was voted out) and submits it all at once instead of tapping individual contestants
-- **Player Self-Scoring:** Let all league members submit scoring events (with commissioner approval/review) so the work is shared
-- **Score Import:** Allow pasting a simple list of events from a recap site
+#### 2. Add a "Revert to Setup" button for commissioners
 
-Would you like me to build the Episode Score Card as a follow-up?
+Allow league admins to undo a draft and return to setup mode. This clears all draft picks (contestant owners and pick numbers) and resets `current_draft_index` to 0.
+
+**File: `src/hooks/useGameStateDB.ts`**
+- Add a `revertToSetup` function that:
+  - Resets `current_draft_index` to 0 in `game_sessions`
+  - Clears `owner` and `pick_number` on all contestants for that session
+  - Sets localStorage mode back to "setup"
+  - Reloads the game state
+
+**File: `src/pages/LeagueDashboard.tsx`**
+- Show a "Revert to Setup" button on the **Draft tab** (visible to league admins only) when the draft is in progress but not complete
+- Include a double-confirmation dialog since this is destructive
+
+**File: `src/components/AdminPanel.tsx`**
+- Also add a "Revert to Setup" option in the Admin > Data tab as a safety net
 
 ### Technical Details
 
-**`src/components/GameplayTips.tsx`**
-- Update the `TIPS` array entry for "Scoring Events" to say "Commissioners or players tap..."
+**SetupMode.tsx changes:**
+- The component already has access to `teams` via `useLeagueTeams` and computes `filledCount` at line 129
+- Add a `window.confirm()` before calling `onStartDraft` when `filledCount < leagueSize`
 
-**`src/pages/LeagueDashboard.tsx`**
-- Update the info banner text inside the `!canShowGame` block
-- Add a wrapper `div` with `opacity-50 pointer-events-none` around the game content (GameMode/WinnerTakesAllMode) when `!canShowGame` is true, so the preview appears grayed out and non-interactive
+**useGameStateDB.ts -- new `revertToSetup` function:**
+```text
+const revertToSetup = async () => {
+  if (!sessionId) return;
+  // Reset draft index
+  await supabase.from("game_sessions")
+    .update({ current_draft_index: 0 })
+    .eq("id", sessionId);
+  // Clear all draft assignments
+  await supabase.from("contestants")
+    .update({ owner: null, pick_number: null })
+    .eq("session_id", sessionId);
+  // Reset local mode
+  localStorage.setItem(LOCAL_MODE_KEY, "setup");
+  // Reload state
+  await loadGameState(sessionId);
+};
+```
+
+**LeagueDashboard.tsx -- Revert button placement:**
+- On the Draft tab, when `isLeagueAdmin` and draft is in progress (contestants have owners but draft isn't complete), show a small "Revert to Setup" button with a warning icon
+- Uses double `confirm()` dialogs to prevent accidental clicks
+
+### Files to Edit
+- `src/components/SetupMode.tsx` -- add unfilled-slots warning before starting draft
+- `src/hooks/useGameStateDB.ts` -- add `revertToSetup` function
+- `src/pages/LeagueDashboard.tsx` -- add Revert to Setup button on Draft tab, pass through new function
 
