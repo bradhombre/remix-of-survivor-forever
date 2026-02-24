@@ -20,7 +20,7 @@ import { NewsFeed } from "@/components/NewsFeed";
 import { LeagueChat } from "@/components/LeagueChat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, History, Users, Shield, LogOut, ArrowLeft, Target, ClipboardList, Info } from "lucide-react";
+import { Trophy, History, Users, Shield, LogOut, ArrowLeft, Target, ClipboardList, Info, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateLastActive, trackEvent } from "@/lib/customerio";
 
@@ -60,6 +60,7 @@ const LeagueDashboard = () => {
     importData,
     resetState,
     startNewSeason,
+    revertToSetup,
     updatePlayerAvatar,
     clearScores,
     clearEpisodeScores,
@@ -286,18 +287,41 @@ const LeagueDashboard = () => {
 
       {/* Draft Tab */}
       {viewMode === "draft" && !canShowGame && (
-        <DraftMode
-          leagueId={leagueId}
-          contestants={state.contestants}
-          draftOrder={state.draftOrder}
-          draftType={state.draftType}
-          currentDraftIndex={state.currentDraftIndex}
-          gameType={state.gameType}
-          picksPerTeam={state.picksPerTeam}
-          onDraftContestant={draftContestant}
-          onUndoPick={undoDraftPick}
-          onStartGame={handleStartGame}
-        />
+        <>
+          {isLeagueAdmin && state.contestants.some(c => c.owner) && (
+            <div className="container max-w-7xl mx-auto px-4 mt-4">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+                <Undo2 className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-muted-foreground flex-1">Draft in progress — need to start over?</span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    const first = confirm("⚠️ REVERT TO SETUP?\n\nThis will clear ALL draft picks and let you re-draft. Are you sure?");
+                    if (!first) return;
+                    const second = confirm("🚨 FINAL CONFIRMATION\n\nAll contestant assignments will be removed. This cannot be undone.\n\nClick OK to revert.");
+                    if (second) revertToSetup();
+                  }}
+                >
+                  <Undo2 className="h-4 w-4 mr-1" />
+                  Revert to Setup
+                </Button>
+              </div>
+            </div>
+          )}
+          <DraftMode
+            leagueId={leagueId}
+            contestants={state.contestants}
+            draftOrder={state.draftOrder}
+            draftType={state.draftType}
+            currentDraftIndex={state.currentDraftIndex}
+            gameType={state.gameType}
+            picksPerTeam={state.picksPerTeam}
+            onDraftContestant={draftContestant}
+            onUndoPick={undoDraftPick}
+            onStartGame={handleStartGame}
+          />
+        </>
       )}
 
       {/* Game Tab */}
@@ -393,6 +417,7 @@ const LeagueDashboard = () => {
             onClearEpisodeScores={clearEpisodeScores}
             onClearHistory={clearHistory}
             onResetAll={resetAll}
+            onRevertToSetup={revertToSetup}
             onNewSeason={() => {
               const firstConfirm = confirm(
                 `⚠️ START NEW SEASON?\n\n` +

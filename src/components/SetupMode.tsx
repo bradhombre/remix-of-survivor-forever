@@ -980,7 +980,15 @@ export const SetupMode = ({
       {/* Start Draft */}
       <Card className="glass p-6">
         <Button
-          onClick={onStartDraft}
+          onClick={() => {
+            if (filledCount < leagueSize) {
+              const proceed = window.confirm(
+                `Only ${filledCount} of ${leagueSize} team slots are filled. Players who haven't joined yet won't be able to draft.\n\nAre you sure you want to start?`
+              );
+              if (!proceed) return;
+            }
+            onStartDraft();
+          }}
           disabled={!canStartDraft}
           className="w-full py-6 text-xl font-bold"
           size="lg"

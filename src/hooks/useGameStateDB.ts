@@ -776,6 +776,29 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     toast.success(`Season ${state.season + 1} started!`);
   };
 
+  const revertToSetup = async () => {
+    if (!sessionId) return;
+
+    // Reset draft index
+    await supabase
+      .from("game_sessions")
+      .update({ current_draft_index: 0 })
+      .eq("id", sessionId);
+
+    // Clear all draft assignments
+    await supabase
+      .from("contestants")
+      .update({ owner: null, pick_number: null })
+      .eq("session_id", sessionId);
+
+    // Reset local mode
+    localStorage.setItem(LOCAL_MODE_KEY, "setup");
+
+    // Reload state
+    await loadGameState(sessionId);
+    toast.success("Draft reverted to setup. All picks have been cleared.");
+  };
+
   return {
     state,
     loading,
@@ -785,6 +808,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     setState,
     resetState,
     startNewSeason,
+    revertToSetup,
     setMode,
     setSeason,
     setEpisode,
