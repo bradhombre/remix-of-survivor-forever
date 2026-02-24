@@ -58,6 +58,7 @@ type AdminPanelProps = {
   onClearHistory?: () => void;
   onResetAll?: () => void;
   onNewSeason?: () => void;
+  onRevertToSetup?: () => void;
 };
 
 export function AdminPanel({ 
@@ -85,7 +86,8 @@ export function AdminPanel({
   onClearEpisodeScores, 
   onClearHistory, 
   onResetAll, 
-  onNewSeason 
+  onNewSeason,
+  onRevertToSetup,
 }: AdminPanelProps) {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -567,6 +569,34 @@ export function AdminPanel({
               </CardHeader>
               <CardContent>
                 <UserPlayerMappingSection users={users} onMappingUpdate={loadUsers} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 text-primary" />
+                  Draft Management
+                </CardTitle>
+                <CardDescription>
+                  Revert the draft back to setup mode if needed
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    const first = confirm("⚠️ REVERT TO SETUP?\n\nThis will clear ALL draft picks and let you re-draft. Are you sure?");
+                    if (!first) return;
+                    const second = confirm("🚨 FINAL CONFIRMATION\n\nAll contestant assignments will be removed. This cannot be undone.\n\nClick OK to revert.");
+                    if (second) onRevertToSetup?.();
+                  }}
+                  disabled={!contestants.some(c => c.owner)}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Revert Draft to Setup
+                </Button>
               </CardContent>
             </Card>
 
