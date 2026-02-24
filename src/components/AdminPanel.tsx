@@ -129,12 +129,16 @@ export function AdminPanel({
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    const { data, error } = await supabase.functions.invoke('admin-users', {
-      body: { action: 'listUsers' }
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'listUsers' }
+      });
 
-    if (!error && data?.data) {
-      setUsers(data.data);
+      if (!error && data?.data) {
+        setUsers(data.data);
+      }
+    } catch {
+      // Silently skip if user lacks platform admin permissions
     }
   };
 
