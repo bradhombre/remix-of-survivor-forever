@@ -99,8 +99,18 @@ export function AdminPanel({
   const [editingContestant, setEditingContestant] = useState<string | null>(null);
 
   useEffect(() => {
-    loadUsers();
-    loadContestants();
+    // Only load platform users if the current user is a platform super_admin
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { _user_id: user.id });
+        if (isSuperAdmin) {
+          loadUsers();
+        }
+      }
+      loadContestants();
+    };
+    init();
   }, []);
 
   const loadContestants = async () => {
