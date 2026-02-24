@@ -14,6 +14,7 @@ import { UserPlayerMappingSection } from './UserPlayerMappingSection';
 import { ScoringSettings } from './ScoringSettings';
 import { SetupMode } from './SetupMode';
 import { Contestant, DraftType, Player } from '@/types/survivor';
+import { getPicksPerTeam } from '@/lib/picksPerTeam';
 
 type UserWithRole = {
   id: string;
@@ -227,6 +228,17 @@ export function AdminPanel({
   };
 
   const updateContestantOwner = async (contestantId: string, owner: string | null) => {
+    // Enforce picks_per_team limit when assigning an owner
+    if (owner) {
+      const teamCount = draftOrder.length || 1;
+      const maxPicks = getPicksPerTeam(picksPerTeam, gameType, contestants.length, teamCount);
+      const currentOwned = contestantRows.filter(c => c.owner === owner && c.id !== contestantId).length;
+      if (currentOwned >= maxPicks) {
+        toast.error(`${owner} already has ${currentOwned} picks (limit: ${maxPicks})`);
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('contestants')
       .update({ owner })
