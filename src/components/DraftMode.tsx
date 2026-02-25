@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -68,7 +68,10 @@ export const DraftMode = ({
 
   const currentDrafter = getCurrentDrafter();
 
-  const handleDraftContestant = useCallback((contestantId: string) => {
+  const [isDrafting, setIsDrafting] = useState(false);
+
+  const handleDraftContestant = useCallback(async (contestantId: string) => {
+    if (isDrafting) return;
     // Enforce per-team pick limit before allowing the pick
     if (currentDrafter) {
       const owned = draftedContestants.filter(c => c.owner === currentDrafter).length;
@@ -76,9 +79,15 @@ export const DraftMode = ({
         return; // team is full, skip
       }
     }
-    if (user) updateLastActive(user.id);
-    onDraftContestant(contestantId);
-  }, [user, onDraftContestant, currentDrafter, draftedContestants, picksPerTeam]);
+    setIsDrafting(true);
+    try {
+      if (user) updateLastActive(user.id);
+      await onDraftContestant(contestantId);
+    } finally {
+      // Small delay to let realtime update propagate before re-enabling
+      setTimeout(() => setIsDrafting(false), 500);
+    }
+  }, [isDrafting, user, onDraftContestant, currentDrafter, draftedContestants, picksPerTeam]);
   
   const progress = totalPicks > 0 ? (currentDraftIndex / totalPicks) * 100 : 0;
   const isDraftComplete = currentDraftIndex >= totalPicks;
@@ -212,6 +221,7 @@ export const DraftMode = ({
               <Button
                 key={contestant.id}
                 onClick={() => handleDraftContestant(contestant.id)}
+                disabled={isDrafting}
                 variant="glass"
                 className="h-auto py-4 flex-col items-center hover:scale-105 transition-transform gap-2"
               >
