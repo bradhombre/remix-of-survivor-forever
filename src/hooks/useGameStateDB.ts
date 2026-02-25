@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GameState, Player, Contestant, ScoringEvent, DraftType, GameType } from "@/types/survivor";
 import { toast } from "sonner";
@@ -447,37 +447,45 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     }
   };
 
+  const isDraftingRef = useRef(false);
+
   const draftContestant = async (contestantId: string) => {
     if (!sessionId) return;
-    
-    const { draftOrder, currentDraftIndex, draftType, gameType, picksPerTeam: explicitPicks } = state;
-    const teamCount = draftOrder.length;
-    const { getPicksPerTeam } = await import("@/lib/picksPerTeam");
-    const picksPerTeam = getPicksPerTeam(explicitPicks, gameType, state.contestants.length, teamCount);
-    const totalPicks = teamCount * picksPerTeam;
+    if (isDraftingRef.current) return;
+    isDraftingRef.current = true;
 
-    if (currentDraftIndex >= totalPicks || teamCount === 0) return;
+    try {
+      const { draftOrder, currentDraftIndex, draftType, gameType, picksPerTeam: explicitPicks } = state;
+      const teamCount = draftOrder.length;
+      const { getPicksPerTeam } = await import("@/lib/picksPerTeam");
+      const picksPerTeam = getPicksPerTeam(explicitPicks, gameType, state.contestants.length, teamCount);
+      const totalPicks = teamCount * picksPerTeam;
 
-    // Determine owner using snake draft logic
-    let owner: Player;
-    if (draftType === "snake") {
-      const round = Math.floor(currentDraftIndex / teamCount);
-      const posInRound = currentDraftIndex % teamCount;
-      owner = round % 2 === 0 ? draftOrder[posInRound] : draftOrder[teamCount - 1 - posInRound];
-      console.log(`Snake draft - Pick ${currentDraftIndex + 1}: Round ${round}, Pos ${posInRound}, Owner: ${owner}`);
-    } else {
-      owner = draftOrder[currentDraftIndex % teamCount];
+      if (currentDraftIndex >= totalPicks || teamCount === 0) return;
+
+      // Determine owner using snake draft logic
+      let owner: Player;
+      if (draftType === "snake") {
+        const round = Math.floor(currentDraftIndex / teamCount);
+        const posInRound = currentDraftIndex % teamCount;
+        owner = round % 2 === 0 ? draftOrder[posInRound] : draftOrder[teamCount - 1 - posInRound];
+        console.log(`Snake draft - Pick ${currentDraftIndex + 1}: Round ${round}, Pos ${posInRound}, Owner: ${owner}`);
+      } else {
+        owner = draftOrder[currentDraftIndex % teamCount];
+      }
+
+      const pickNumber = currentDraftIndex + 1;
+      const nextIndex = currentDraftIndex + 1;
+
+      console.log(`Drafting contestant ${contestantId} to ${owner} as pick #${pickNumber}`);
+
+      await Promise.all([
+        supabase.from("contestants").update({ owner, pick_number: pickNumber }).eq("id", contestantId),
+        supabase.from("game_sessions").update({ current_draft_index: nextIndex }).eq("id", sessionId),
+      ]);
+    } finally {
+      isDraftingRef.current = false;
     }
-
-    const pickNumber = currentDraftIndex + 1;
-    const nextIndex = currentDraftIndex + 1;
-
-    console.log(`Drafting contestant ${contestantId} to ${owner} as pick #${pickNumber}`);
-
-    await Promise.all([
-      supabase.from("contestants").update({ owner, pick_number: pickNumber }).eq("id", contestantId),
-      supabase.from("game_sessions").update({ current_draft_index: nextIndex }).eq("id", sessionId),
-    ]);
   };
 
   const undoDraftPick = async () => {
