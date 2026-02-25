@@ -66,6 +66,8 @@ const LeagueDashboard = () => {
     clearEpisodeScores,
     clearHistory,
     resetAll,
+    manualAssign,
+    manualFinalize,
   } = useGameStateDB({ leagueId });
   
   const { user, isAdmin, playerName, loading, signOut } = useAuth();
@@ -320,6 +322,8 @@ const LeagueDashboard = () => {
             onDraftContestant={draftContestant}
             onUndoPick={undoDraftPick}
             onStartGame={handleStartGame}
+            onManualAssign={manualAssign}
+            onManualFinalize={manualFinalize}
           />
         </>
       )}

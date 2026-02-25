@@ -475,14 +475,31 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       }
 
       const pickNumber = currentDraftIndex + 1;
-      const nextIndex = currentDraftIndex + 1;
 
       console.log(`Drafting contestant ${contestantId} to ${owner} as pick #${pickNumber}`);
 
-      await Promise.all([
-        supabase.from("contestants").update({ owner, pick_number: pickNumber }).eq("id", contestantId),
-        supabase.from("game_sessions").update({ current_draft_index: nextIndex }).eq("id", sessionId),
-      ]);
+      // Use atomic RPC to prevent race conditions
+      const { data: success, error } = await supabase.rpc('execute_draft_pick', {
+        _session_id: sessionId,
+        _contestant_id: contestantId,
+        _owner: owner,
+        _pick_number: pickNumber,
+        _expected_index: currentDraftIndex,
+      });
+
+      if (error) {
+        console.error("Draft pick RPC error:", error);
+        toast.error("Failed to make pick. Please try again.");
+        await loadGameState(sessionId);
+        return;
+      }
+
+      if (!success) {
+        console.warn("Draft pick conflict - index mismatch, reloading state");
+        toast.error("Pick conflict — someone else picked at the same time. Please try again.");
+        await loadGameState(sessionId);
+        return;
+      }
     } finally {
       isDraftingRef.current = false;
     }
@@ -849,6 +866,40 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       if (!sessionId) return;
       await supabase.from("game_sessions").update({ picks_per_team: picksPerTeam } as any).eq("id", sessionId);
       setState((prev) => ({ ...prev, picksPerTeam }));
+    },
+    manualAssign: async (contestantId: string, teamName: string) => {
+      if (!sessionId) return;
+      if (teamName) {
+        await supabase.from("contestants").update({ owner: teamName }).eq("id", contestantId);
+      } else {
+        await supabase.from("contestants").update({ owner: null, pick_number: null }).eq("id", contestantId);
+      }
+    },
+    manualFinalize: async () => {
+      if (!sessionId) return;
+      // Count assigned contestants and set draft index to that count
+      const { data: assigned } = await supabase
+        .from("contestants")
+        .select("id")
+        .eq("session_id", sessionId)
+        .not("owner", "is", null);
+      const totalAssigned = assigned?.length || 0;
+      // Set pick_number for all assigned contestants
+      const { data: allContestants } = await supabase
+        .from("contestants")
+        .select("*")
+        .eq("session_id", sessionId)
+        .not("owner", "is", null)
+        .order("created_at", { ascending: true });
+      if (allContestants) {
+        for (let i = 0; i < allContestants.length; i++) {
+          if (!allContestants[i].pick_number) {
+            await supabase.from("contestants").update({ pick_number: i + 1 }).eq("id", allContestants[i].id);
+          }
+        }
+      }
+      await supabase.from("game_sessions").update({ current_draft_index: totalAssigned }).eq("id", sessionId);
+      await loadGameState(sessionId);
     },
   };
 };

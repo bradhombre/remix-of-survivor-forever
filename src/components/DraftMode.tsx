@@ -4,10 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Player, Contestant, DraftType, GameType } from "@/types/survivor";
 import { getPicksPerTeam } from "@/lib/picksPerTeam";
-import { ArrowRight, Undo2 } from "lucide-react";
+import { ArrowRight, Undo2, Settings2 } from "lucide-react";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { useLeagueRole } from "@/hooks/useLeagueRole";
 import { TeamAvatar } from "./TeamAvatar";
 import { ContestantAvatar } from "./ContestantAvatar";
+import { ManualAssignment } from "./ManualAssignment";
 import { updateLastActive } from "@/lib/customerio";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -22,6 +24,8 @@ interface DraftModeProps {
   onDraftContestant: (contestantId: string) => void;
   onUndoPick: () => void;
   onStartGame: () => void;
+  onManualAssign?: (contestantId: string, teamName: string) => Promise<void>;
+  onManualFinalize?: () => Promise<void>;
 }
 
 export const DraftMode = ({
@@ -35,10 +39,14 @@ export const DraftMode = ({
   onDraftContestant,
   onUndoPick,
   onStartGame,
+  onManualAssign,
+  onManualFinalize,
 }: DraftModeProps) => {
   // Get league teams for avatars
   const { teams } = useLeagueTeams({ leagueId });
   const { user } = useAuth();
+  const { isLeagueAdmin } = useLeagueRole(leagueId);
+  const [manualMode, setManualMode] = useState(false);
 
   // Map team names to their avatar URLs
   const teamAvatarMap = useMemo(() => {
@@ -152,8 +160,32 @@ export const DraftMode = ({
             {currentDraftIndex} / {totalPicks} picks complete
           </p>
         </div>
+
+        {/* Commissioner manual assignment toggle */}
+        {isLeagueAdmin && !isDraftComplete && onManualAssign && onManualFinalize && (
+          <Button
+            onClick={() => setManualMode((v) => !v)}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Settings2 className="h-4 w-4" />
+            {manualMode ? "Switch to Draft" : "Commissioner: Assign Teams Manually"}
+          </Button>
+        )}
       </div>
 
+      {/* Manual Assignment Mode */}
+      {manualMode && onManualAssign && onManualFinalize ? (
+        <ManualAssignment
+          contestants={contestants}
+          draftOrder={draftOrder}
+          picksPerTeam={picksPerTeam}
+          onAssign={onManualAssign}
+          onFinalize={onManualFinalize}
+        />
+      ) : (
+      <>
       {/* Team Display */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {draftOrder.map((player, index) => {
@@ -252,6 +284,8 @@ export const DraftMode = ({
             <ArrowRight className="ml-2 h-6 w-6" />
           </Button>
         </div>
+      )}
+      </>
       )}
     </div>
   );
