@@ -729,6 +729,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      execute_draft_pick: {
+        Args: {
+          _contestant_id: string
+          _expected_index: number
+          _owner: string
+          _pick_number: number
+          _session_id: string
+        }
+        Returns: boolean
+      }
       generate_invite_code: { Args: never; Returns: string }
       get_available_teams: {
         Args: { league_uuid: string }
