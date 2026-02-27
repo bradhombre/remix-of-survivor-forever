@@ -152,7 +152,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       let draftOrder: string[];
       
       if (draftData.data && draftData.data.length > 0) {
-        const dbOrder = draftData.data.map((d) => d.player_name);
+        const dbOrder = [...new Set(draftData.data.map((d) => d.player_name))];
         // Keep only teams that still exist, preserving their order
         const validOrder = dbOrder.filter(name => teamSet.has(name));
         // Add any new teams that aren't in the draft order
@@ -418,27 +418,42 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     // Optimistic UI update so buttons feel responsive even if realtime isn't firing
     setState((prev) => ({ ...prev, draftOrder }));
 
-    const { error: deleteError } = await supabase
-      .from("draft_order")
-      .delete()
-      .eq("session_id", sessionId);
-
-    if (deleteError) {
-      console.error("Failed to clear draft order:", deleteError);
-      toast.error("Failed to save draft order");
-      return;
-    }
-
+    // Delete teams no longer in the order
     if (draftOrder.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("draft_order")
+        .delete()
+        .eq("session_id", sessionId)
+        .not("player_name", "in", `(${draftOrder.map(p => `"${p}"`).join(",")})`);
+
+      if (deleteError) {
+        console.error("Failed to clean draft order:", deleteError);
+      }
+
+      // Upsert current order (atomic, idempotent)
       const rows = draftOrder.map((player, index) => ({
         session_id: sessionId,
         player_name: player,
         position: index,
       }));
 
-      const { error: insertError } = await supabase.from("draft_order").insert(rows);
-      if (insertError) {
-        console.error("Failed to insert draft order:", insertError);
+      const { error: upsertError } = await supabase
+        .from("draft_order")
+        .upsert(rows, { onConflict: "session_id,player_name" });
+
+      if (upsertError) {
+        console.error("Failed to upsert draft order:", upsertError);
+        toast.error("Failed to save draft order");
+      }
+    } else {
+      // Empty order: delete all
+      const { error: deleteError } = await supabase
+        .from("draft_order")
+        .delete()
+        .eq("session_id", sessionId);
+
+      if (deleteError) {
+        console.error("Failed to clear draft order:", deleteError);
         toast.error("Failed to save draft order");
       }
     }
