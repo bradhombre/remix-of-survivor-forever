@@ -1,55 +1,63 @@
 
 
-# Post Fix Notification to Affected League Chats
+# Data Repair: Fix Mismatched Contestant Owners
 
-## What We're Doing
+## Overview
+Execute the data repair that was planned earlier but never run. This will fix the "0/4 active players" issue across all affected leagues by updating `contestants.owner` to match the current team names.
 
-Inserting a friendly JeffBot announcement into the chat of every league that had mismatched contestant owners due to the team rename bug. The message will inform league members that the issue has been fixed and provide instructions on how to correct any remaining errors using the built-in Contestant Management tool.
+## Step 1: Fix leagues WITH draft_order (snake draft math)
 
-## Message Content
-
-A JeffBot-style message like:
-
-> Hey everyone! We fixed a bug where renaming your team could cause your players to show as "0/4 active" and stop earning points. Your team's contestants should now be properly linked to your current team name.
->
-> If you notice any contestants still assigned to the wrong team, your league commissioner can fix it: go to the Admin Panel (gear icon) -> Data tab -> Contestant Management, then click the edit button next to any contestant to reassign them to the correct team.
->
-> Sorry for the inconvenience, and thanks for your patience!
-
-## Technical Steps
-
-### 1. Database migration to insert chat messages
-
-Run a single INSERT statement that posts the JeffBot message into all affected leagues' chats. The message will:
-
-- Use `is_bot = true` so it renders as a JeffBot message
-- Use the league's `owner_id` as the `user_id` (required by the table schema)
-- Target only the leagues identified with mismatched contestant data (~45 leagues)
+For leagues that completed their draft and then renamed teams, use snake draft logic to compute the correct owner from each contestant's `pick_number`:
 
 ```sql
-INSERT INTO chat_messages (league_id, user_id, content, is_bot)
-SELECT DISTINCT gs.league_id, l.owner_id,
-  E'Hey everyone! \U0001F527 We fixed a bug where renaming your team could cause your players to show as "0/4 active" and stop earning points. Your team''s contestants should now be properly linked to your current team name.\n\nIf you notice any contestants still assigned to the wrong team, your league commissioner can fix it: open the Admin Panel (gear icon) \u2192 Data tab \u2192 Contestant Management, then click the edit button next to any contestant to reassign them to the correct team.\n\nSorry for the inconvenience!',
-  true
-FROM contestants c
-JOIN game_sessions gs ON c.session_id = gs.id
-JOIN leagues l ON gs.league_id = l.id
-WHERE c.owner IS NOT NULL
+UPDATE contestants c
+SET owner = d.player_name
+FROM (
+  SELECT c2.id AS contestant_id,
+         d2.player_name,
+         c2.session_id
+  FROM contestants c2
+  JOIN game_sessions gs ON c2.session_id = gs.id
+  JOIN draft_order d2 ON d2.session_id = c2.session_id
+  WHERE c2.owner IS NOT NULL
+    AND c2.pick_number IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM draft_order dx
+      WHERE dx.session_id = c2.session_id AND dx.player_name = c2.owner
+    )
+    AND d2.position = (
+      CASE
+        WHEN ((c2.pick_number - 1) / (SELECT COUNT(*) FROM draft_order dd WHERE dd.session_id = c2.session_id))::int % 2 = 0
+        THEN (c2.pick_number - 1) % (SELECT COUNT(*) FROM draft_order dd WHERE dd.session_id = c2.session_id) + 1
+        ELSE (SELECT COUNT(*) FROM draft_order dd WHERE dd.session_id = c2.session_id) - (c2.pick_number - 1) % (SELECT COUNT(*) FROM draft_order dd WHERE dd.session_id = c2.session_id)
+      END
+    )
+) d
+WHERE c.id = d.contestant_id;
+```
+
+## Step 2: Fix leagues WITHOUT draft_order (position-based mapping)
+
+For leagues still in setup mode where teams were renamed from "Team N" to custom names:
+
+```sql
+UPDATE contestants c
+SET owner = lt.name
+FROM game_sessions gs, league_teams lt
+WHERE c.session_id = gs.id
+  AND lt.league_id = gs.league_id
+  AND c.owner ~ '^Team [0-9]+$'
+  AND lt.position = CAST(substring(c.owner FROM 'Team ([0-9]+)') AS integer)
   AND NOT EXISTS (
     SELECT 1 FROM draft_order d
-    WHERE d.session_id = c.session_id
-      AND d.player_name = c.owner
+    WHERE d.session_id = c.session_id AND d.player_name = c.owner
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM league_teams lt2
+    WHERE lt2.league_id = gs.league_id AND lt2.name = c.owner
   );
 ```
 
-### 2. No code changes needed
-
-The existing chat system will display these messages automatically as JeffBot messages via the real-time subscription. No frontend changes are required.
-
-## Summary
-
-| Change | Detail |
-|--------|--------|
-| Database migration | Insert JeffBot notification into ~45 affected league chats |
-| Code changes | None |
+## No code changes needed
+The frontend will automatically reflect the corrected data on next page load.
 
