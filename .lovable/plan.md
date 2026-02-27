@@ -1,53 +1,36 @@
 
 
-# Fix: Draft Picks Vanishing Due to Race Condition
+# Fix: Draft Pick Always Showing "Pick Conflict"
 
 ## Problem
-
-When you make a draft pick, the atomic RPC (`execute_draft_pick`) succeeds -- it updates both the contestant's owner AND increments the draft index in a single transaction. However, the UI has **no optimistic update**. It relies entirely on realtime subscriptions to refresh the state.
-
-When the RPC commits, it triggers **two** simultaneous realtime events (one for `game_sessions` table change, one for `contestants` table change). Both independently call `loadGameState()`, which does a full database reload and calls `setState()`. These two concurrent reloads race against each other -- if they overlap, the second `setState` can overwrite the first with data from a slightly different read timing, causing the pick to appear to vanish while the draft index has already advanced.
+The `draftContestant` function reads `currentDraftIndex` from React state, which can become stale after undos, debounced reloads, or race conditions. When this stale value doesn't match the actual database value, the `execute_draft_pick` RPC returns `false` and shows "Pick conflict" every time.
 
 ## Solution
+Fetch the **fresh** `current_draft_index` directly from the database at the start of `draftContestant`, instead of relying on React state. This guarantees the `_expected_index` sent to the RPC always matches what's actually in the DB.
 
-Two changes to `src/hooks/useGameStateDB.ts`:
+## Changes
 
-### 1. Add optimistic UI update after successful draft pick
-After the RPC returns `success = true`, immediately update local state to show the pick without waiting for realtime. This makes the pick appear instantly and prevents any flicker.
+**File: `src/hooks/useGameStateDB.ts`** -- modify `draftContestant` function
 
-### 2. Debounce realtime `loadGameState` calls
-Add a debounce mechanism so that when multiple realtime events fire within a short window (e.g., 300ms), only one `loadGameState` call executes. This prevents the concurrent reload race condition.
+Replace the state destructuring with a fresh DB read:
 
-## Technical Details
-
-**File: `src/hooks/useGameStateDB.ts`**
-
-**Change 1 -- Optimistic update (inside `draftContestant`, after successful RPC):**
-After `success` is confirmed (line 502), add:
 ```typescript
-// Optimistic UI update
-setState((prev) => ({
-  ...prev,
-  currentDraftIndex: currentDraftIndex + 1,
-  contestants: prev.contestants.map((c) =>
-    c.id === contestantId ? { ...c, owner, pickNumber } : c
-  ),
-}));
+// Instead of reading from potentially stale React state:
+// const { draftOrder, currentDraftIndex, ... } = state;
+
+// Read fresh draft index from DB
+const { data: freshSession } = await supabase
+  .from("game_sessions")
+  .select("current_draft_index")
+  .eq("id", sessionId)
+  .single();
+
+if (!freshSession) return;
+
+const currentDraftIndex = freshSession.current_draft_index;
+// Keep other values from state (draftOrder, draftType, etc.) since those don't change during drafting
+const { draftOrder, draftType, gameType, picksPerTeam: explicitPicks } = state;
 ```
 
-**Change 2 -- Debounce realtime reloads:**
-Add a `reloadTimerRef` and wrap the realtime callbacks so multiple events within 300ms coalesce into a single `loadGameState` call:
-```typescript
-const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+This ensures the `_expected_index` always matches the DB, eliminating false "pick conflict" errors. The draft order, draft type, and other settings can still come from React state since those don't change mid-draft.
 
-const debouncedReload = useCallback(() => {
-  if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
-  reloadTimerRef.current = setTimeout(() => {
-    if (sessionId) loadGameState(sessionId);
-  }, 300);
-}, [sessionId]);
-```
-
-Then replace all `() => loadGameState(sessionId)` callbacks in the realtime subscription with `debouncedReload`.
-
-These two changes together ensure picks appear instantly and prevent concurrent reloads from overwriting each other.
