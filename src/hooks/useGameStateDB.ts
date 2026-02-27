@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GameState, Player, Contestant, ScoringEvent, DraftType, GameType } from "@/types/survivor";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/customerio";
+import { ScoringConfig } from "@/lib/scoring";
 
 const LOCAL_MODE_KEY = "survivor-local-mode";
 
@@ -40,7 +41,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string>("active");
   const [loading, setLoading] = useState(true);
-  const [scoringConfig, setScoringConfig] = useState<Record<string, number> | null>(null);
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfig | null>(null);
 
   // Fetch league teams
   const fetchLeagueTeams = useCallback(async () => {
@@ -103,7 +104,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
             .maybeSingle();
           
           if (leagueData?.scoring_config) {
-            setScoringConfig(leagueData.scoring_config as Record<string, number>);
+            setScoringConfig(leagueData.scoring_config as ScoringConfig);
           }
           
           setLoading(false);
