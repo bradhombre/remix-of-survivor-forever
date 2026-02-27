@@ -729,6 +729,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_league: { Args: { league_uuid: string }; Returns: undefined }
       execute_draft_pick: {
         Args: {
           _contestant_id: string
