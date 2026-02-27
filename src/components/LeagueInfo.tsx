@@ -51,6 +51,7 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
   const [saving, setSaving] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // My Team state
   const { teams, getMyTeam, updateTeam } = useLeagueTeams({ leagueId });
@@ -259,6 +260,19 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
       setIsLeaving(false);
     } else {
       toast.success("You have left the league");
+      navigate("/leagues");
+    }
+  };
+
+  const handleDeleteLeague = async () => {
+    setIsDeleting(true);
+    const { error } = await supabase.rpc("delete_league", { league_uuid: leagueId });
+
+    if (error) {
+      toast.error("Failed to delete league: " + error.message);
+      setIsDeleting(false);
+    } else {
+      toast.success("League deleted successfully");
       navigate("/leagues");
     }
   };
@@ -540,6 +554,45 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleLeaveLeague}>
                     Leave
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Delete League Section - Only for owners */}
+      {isOwner && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete League
+            </CardTitle>
+            <CardDescription>
+              Permanently delete this league and all associated data
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={isDeleting}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isDeleting ? "Deleting..." : "Delete League"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete League</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to permanently delete "{league?.name}"? This will remove all members, teams, game data, chat messages, and scoring history. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteLeague}>
+                    Delete Permanently
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
