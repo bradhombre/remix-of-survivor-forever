@@ -1,32 +1,21 @@
 
-# Fix: Remove Hard Cap on Picks Per Team
+# Add "Delete League" Option for League Owners
 
 ## Problem
-You're limited to 4 picks per team because of two issues:
-
-1. The auto-calculation formula has a hard cap: `Math.min(4, ...)` that prevents more than 4 picks regardless of your league setup.
-2. The picks-per-team input on the Setup page has its maximum value tied to the same capped formula, so you physically can't type a number higher than 4.
+As a league owner, there's no way to delete a league you created. The "Leave League" button only shows for non-owners, and "Delete League" only exists in the super admin panel.
 
 ## Solution
+Add a "Delete League" section to the League Info/Settings page (`LeagueInfo.tsx`) that appears only for league owners, replacing the "Leave League" section they currently don't see.
 
-### 1. Remove the hard cap in `src/lib/picksPerTeam.ts`
-Change the auto-calculation from `Math.min(4, ...)` to simply `Math.floor(contestantCount / teamCount)`. This way, with 24 contestants and 2 teams, the auto value will correctly be 12.
+### Changes
 
-### 2. Fix the input max in `src/components/SetupMode.tsx`
-Change the `max` attribute on the picks-per-team input from `Math.max(1, suggestedPicks)` to the actual contestant count (or a reasonable upper bound like `contestants.length`), so you can freely set any valid number.
+**File: `src/components/LeagueInfo.tsx`**
 
-Also update the `suggestedPicks` calculation on the same page to remove its own `Math.min(4, ...)` cap.
+1. Add a `isDeleting` state variable
+2. Add a `handleDeleteLeague` function that:
+   - Deletes related data (game_sessions, contestants, scoring_events, league_teams, chat_messages, scoring_templates, archived_seasons, league_memberships) for the league
+   - Deletes the league itself
+   - Navigates back to `/leagues` on success
+3. Add a "Delete League" card section (visible only to the owner) after the Members card, styled with destructive colors and a confirmation dialog warning that all league data will be permanently removed
 
-### 3. Update the Create League wizard in `src/components/CreateLeagueDialog.tsx`
-The `defaultPicks` calculation on line 231 also uses `Math.floor(18 / leagueSize)` without capping at 4 -- this is fine, but for consistency it should use the shared `getPicksPerTeam` helper.
-
-## Technical Details
-
-**File: `src/lib/picksPerTeam.ts`** (line 10)
-- Change: `Math.min(4, Math.max(1, Math.floor(contestantCount / teamCount)))` to `Math.max(1, Math.floor(contestantCount / teamCount))`
-
-**File: `src/components/SetupMode.tsx`**
-- Line 353: Remove `Math.min(4, ...)` from `suggestedPicks`
-- Line 753: Change `max={Math.max(1, suggestedPicks)}` to `max={contestants.length || 20}`
-
-These are small, targeted changes across 2 files.
+The delete will cascade through related tables in the correct order to avoid foreign key issues, similar to how the `delete-my-account` edge function handles it.
