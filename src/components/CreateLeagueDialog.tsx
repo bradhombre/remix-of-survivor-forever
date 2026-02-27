@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { TeamAvatarUpload } from './TeamAvatarUpload';
 import { CheckCircle2, Trophy, Target, Plus, Minus, Users, Download, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { GameType } from '@/types/survivor';
+import { getPicksPerTeam } from '@/lib/picksPerTeam';
 import { identifyUser } from '@/lib/customerio';
 
 const leagueSchema = z.object({
@@ -285,7 +286,7 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
     }
   };
 
-  const defaultPicks = gameType === 'winner_takes_all' ? 1 : Math.max(1, Math.floor(18 / leagueSize));
+  const defaultPicks = getPicksPerTeam(null, gameType, 18, leagueSize);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
