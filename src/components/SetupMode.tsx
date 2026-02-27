@@ -350,7 +350,7 @@ export const SetupMode = ({
   const computedPicks = getPicksPerTeam(explicitPicks, "full", contestants.length, teamCount);
   const minContestants = computedPicks * teamCount;
   const canStartDraft = contestants.length >= minContestants && !contestants.some((c) => c.owner);
-  const suggestedPicks = teamCount > 0 ? Math.min(4, Math.max(1, Math.floor(contestants.length / teamCount))) : 1;
+  const suggestedPicks = teamCount > 0 ? Math.max(1, Math.floor(contestants.length / teamCount)) : 1;
 
   // Import official cast from master_contestants table
   const handleImportOfficialCast = async () => {
@@ -750,7 +750,7 @@ export const SetupMode = ({
               <Input
                 type="number"
                 min={1}
-                max={Math.max(1, suggestedPicks)}
+                max={contestants.length || 20}
                 value={explicitPicks ?? suggestedPicks}
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
