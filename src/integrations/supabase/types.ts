@@ -811,6 +811,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rename_team_everywhere: {
+        Args: {
+          _league_id: string
+          _new_name: string
+          _old_name: string
+          _team_id: string
+        }
+        Returns: undefined
+      }
       resize_league: {
         Args: { league_uuid: string; new_size: number }
         Returns: undefined
