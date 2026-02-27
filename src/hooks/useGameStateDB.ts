@@ -472,7 +472,17 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     isDraftingRef.current = true;
 
     try {
-      const { draftOrder, currentDraftIndex, draftType, gameType, picksPerTeam: explicitPicks } = state;
+      // Read fresh draft index from DB to avoid stale React state
+      const { data: freshSession } = await supabase
+        .from("game_sessions")
+        .select("current_draft_index")
+        .eq("id", sessionId)
+        .single();
+
+      if (!freshSession) return;
+
+      const currentDraftIndex = freshSession.current_draft_index;
+      const { draftOrder, draftType, gameType, picksPerTeam: explicitPicks } = state;
       const teamCount = draftOrder.length;
       const { getPicksPerTeam } = await import("@/lib/picksPerTeam");
       const picksPerTeam = getPicksPerTeam(explicitPicks, gameType, state.contestants.length, teamCount);
