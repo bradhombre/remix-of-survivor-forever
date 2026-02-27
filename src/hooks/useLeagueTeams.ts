@@ -129,74 +129,61 @@ export const useLeagueTeams = (options: UseLeagueTeamsOptions = {}) => {
   const renameTeam = async (teamId: string, newName: string, oldName?: string) => {
     if (!leagueId) return;
 
-    const { error: updateError } = await supabase
-      .from('league_teams')
-      .update({ name: newName })
-      .eq('id', teamId);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Also update draft_order if old name was provided
-    if (oldName) {
-      // Find the game session for this league
-      const { data: session } = await supabase
-        .from('game_sessions')
-        .select('id')
-        .eq('league_id', leagueId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (session) {
-        await supabase
-          .from('draft_order')
-          .update({ player_name: newName })
-          .eq('session_id', session.id)
-          .eq('player_name', oldName);
-      }
+    if (oldName && oldName !== newName) {
+      const { error: rpcError } = await supabase.rpc('rename_team_everywhere' as any, {
+        _league_id: leagueId,
+        _team_id: teamId,
+        _old_name: oldName,
+        _new_name: newName,
+      });
+      if (rpcError) throw rpcError;
+    } else {
+      const { error: updateError } = await supabase
+        .from('league_teams')
+        .update({ name: newName })
+        .eq('id', teamId);
+      if (updateError) throw updateError;
     }
   };
 
   const updateTeam = async (teamId: string, updates: { name?: string; avatar_url?: string }) => {
-    // If updating name, we need to sync draft_order too
-    let oldName: string | undefined;
     if (updates.name) {
-      // Find the current name from local state
       const currentTeam = teams.find(t => t.id === teamId);
-      oldName = currentTeam?.name;
-    }
+      const oldName = currentTeam?.name;
 
-    const { error: updateError } = await supabase
-      .from('league_teams')
-      .update(updates)
-      .eq('id', teamId);
+      if (oldName && updates.name !== oldName && leagueId) {
+        // Use atomic rename for name changes
+        const { error: rpcError } = await supabase.rpc('rename_team_everywhere' as any, {
+          _league_id: leagueId,
+          _team_id: teamId,
+          _old_name: oldName,
+          _new_name: updates.name,
+        });
+        if (rpcError) throw rpcError;
 
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Sync draft_order if name changed
-    if (updates.name && oldName && updates.name !== oldName && leagueId) {
-      const { data: session } = await supabase
-        .from('game_sessions')
-        .select('id')
-        .eq('league_id', leagueId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (session) {
-        await supabase
-          .from('draft_order')
-          .update({ player_name: updates.name })
-          .eq('session_id', session.id)
-          .eq('player_name', oldName);
+        // If there's also an avatar update, do it separately
+        if (updates.avatar_url !== undefined) {
+          const { error: avatarError } = await supabase
+            .from('league_teams')
+            .update({ avatar_url: updates.avatar_url })
+            .eq('id', teamId);
+          if (avatarError) throw avatarError;
+        }
+      } else {
+        const { error: updateError } = await supabase
+          .from('league_teams')
+          .update(updates)
+          .eq('id', teamId);
+        if (updateError) throw updateError;
       }
+    } else {
+      const { error: updateError } = await supabase
+        .from('league_teams')
+        .update(updates)
+        .eq('id', teamId);
+      if (updateError) throw updateError;
     }
 
-    // Refetch to update local state
     await fetchTeams();
   };
 
