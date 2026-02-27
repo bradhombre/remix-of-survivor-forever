@@ -239,6 +239,23 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     }
   };
 
+  // Debounced reload to prevent concurrent loadGameState calls from racing
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      if (sessionId) loadGameState(sessionId);
+    }, 300);
+  }, [sessionId]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    };
+  }, []);
+
   // Set up realtime subscriptions
   useEffect(() => {
     if (!sessionId) return;
@@ -248,39 +265,39 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "game_sessions", filter: `id=eq.${sessionId}` },
-        () => loadGameState(sessionId)
+        debouncedReload
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "contestants", filter: `session_id=eq.${sessionId}` },
-        () => loadGameState(sessionId)
+        debouncedReload
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "scoring_events", filter: `session_id=eq.${sessionId}` },
-        () => loadGameState(sessionId)
+        debouncedReload
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "draft_order", filter: `session_id=eq.${sessionId}` },
-        () => loadGameState(sessionId)
+        debouncedReload
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "crying_contestants", filter: `session_id=eq.${sessionId}` },
-        () => loadGameState(sessionId)
+        debouncedReload
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "player_profiles", filter: `session_id=eq.${sessionId}` },
-        () => loadGameState(sessionId)
+        debouncedReload
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId]);
+  }, [sessionId, debouncedReload]);
 
   // Keep league team slots in sync in realtime
   useEffect(() => {
@@ -500,6 +517,15 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         await loadGameState(sessionId);
         return;
       }
+
+      // Optimistic UI update — show the pick instantly without waiting for realtime
+      setState((prev) => ({
+        ...prev,
+        currentDraftIndex: currentDraftIndex + 1,
+        contestants: prev.contestants.map((c) =>
+          c.id === contestantId ? { ...c, owner, pickNumber } : c
+        ),
+      }));
     } finally {
       isDraftingRef.current = false;
     }
