@@ -1,83 +1,55 @@
-# Fix: Teams Showing 0/4 Active Players and No Points
 
-## Problem
 
-When a team is renamed (via the League settings), the system updates the team name in `league_teams` and `draft_order`, but **does not update the `owner` column on the `contestants` table**. Since the leaderboard and active player count both work by matching `contestant.owner === draftOrder[i]`, any renamed team will show 0 active players and 0 points -- the contestants are still tagged with the old team name.
+# Post Fix Notification to Affected League Chats
 
-## Solution
+## What We're Doing
 
-Update the team rename logic to also sync the `contestants.owner` column, and add a database-level function to do this atomically. Please make sure you preserve the data
+Inserting a friendly JeffBot announcement into the chat of every league that had mismatched contestant owners due to the team rename bug. The message will inform league members that the issue has been fixed and provide instructions on how to correct any remaining errors using the built-in Contestant Management tool.
 
-### 1. Database migration: Create `rename_team` function
+## Message Content
 
-A single SQL function that atomically renames a team across all three tables (`league_teams`, `draft_order`, `contestants`) within the same session:
+A JeffBot-style message like:
 
-```sql
-CREATE OR REPLACE FUNCTION rename_team_everywhere(
-  _league_id uuid,
-  _team_id uuid,
-  _old_name text,
-  _new_name text
-) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
-DECLARE
-  _session_id uuid;
-BEGIN
-  -- Update the team name
-  UPDATE league_teams SET name = _new_name WHERE id = _team_id;
+> Hey everyone! We fixed a bug where renaming your team could cause your players to show as "0/4 active" and stop earning points. Your team's contestants should now be properly linked to your current team name.
+>
+> If you notice any contestants still assigned to the wrong team, your league commissioner can fix it: go to the Admin Panel (gear icon) -> Data tab -> Contestant Management, then click the edit button next to any contestant to reassign them to the correct team.
+>
+> Sorry for the inconvenience, and thanks for your patience!
 
-  -- Find the active game session for this league
-  SELECT id INTO _session_id
-  FROM game_sessions
-  WHERE league_id = _league_id
-  ORDER BY created_at DESC
-  LIMIT 1;
+## Technical Steps
 
-  IF _session_id IS NOT NULL THEN
-    -- Update draft order
-    UPDATE draft_order
-    SET player_name = _new_name
-    WHERE session_id = _session_id AND player_name = _old_name;
+### 1. Database migration to insert chat messages
 
-    -- Update contestant owners
-    UPDATE contestants
-    SET owner = _new_name
-    WHERE session_id = _session_id AND owner = _old_name;
-  END IF;
-END;
-$$;
-```
+Run a single INSERT statement that posts the JeffBot message into all affected leagues' chats. The message will:
 
-### 2. Code fix: Update `renameTeam` and `updateTeam` in `useLeagueTeams.ts`
-
-Replace the manual multi-step updates with a single RPC call to `rename_team_everywhere`. This ensures all three tables stay in sync atomically.
-
-### 3. One-time data repair migration
-
-Also include a migration to fix any existing mismatched data -- find contestants whose `owner` doesn't match any current `draft_order.player_name` for the same session, and update them based on the `league_teams` history. This will retroactively fix leagues that already have this issue.
+- Use `is_bot = true` so it renders as a JeffBot message
+- Use the league's `owner_id` as the `user_id` (required by the table schema)
+- Target only the leagues identified with mismatched contestant data (~45 leagues)
 
 ```sql
--- Fix existing mismatches: update contestants whose owner
--- matches an old team name that was renamed
-UPDATE contestants c
-SET owner = d.player_name
-FROM draft_order d
-WHERE c.session_id = d.session_id
-  AND c.pick_number = d.position + 1  -- rough match by pick order
-  AND c.owner IS NOT NULL
-  AND c.owner != d.player_name
+INSERT INTO chat_messages (league_id, user_id, content, is_bot)
+SELECT DISTINCT gs.league_id, l.owner_id,
+  E'Hey everyone! \U0001F527 We fixed a bug where renaming your team could cause your players to show as "0/4 active" and stop earning points. Your team''s contestants should now be properly linked to your current team name.\n\nIf you notice any contestants still assigned to the wrong team, your league commissioner can fix it: open the Admin Panel (gear icon) \u2192 Data tab \u2192 Contestant Management, then click the edit button next to any contestant to reassign them to the correct team.\n\nSorry for the inconvenience!',
+  true
+FROM contestants c
+JOIN game_sessions gs ON c.session_id = gs.id
+JOIN leagues l ON gs.league_id = l.id
+WHERE c.owner IS NOT NULL
   AND NOT EXISTS (
-    SELECT 1 FROM draft_order d2
-    WHERE d2.session_id = c.session_id
-      AND d2.player_name = c.owner
+    SELECT 1 FROM draft_order d
+    WHERE d.session_id = c.session_id
+      AND d.player_name = c.owner
   );
 ```
 
-However, since pick_number doesn't reliably map to position, a safer approach is to just ensure the rename function is used going forward and let admins manually fix any existing mismatches via the Admin panel's contestant reassignment UI.
+### 2. No code changes needed
 
-### Summary of changes
+The existing chat system will display these messages automatically as JeffBot messages via the real-time subscription. No frontend changes are required.
 
+## Summary
 
-| File                          | Change                                                              |
-| ----------------------------- | ------------------------------------------------------------------- |
-| New migration                 | `rename_team_everywhere` SQL function                               |
-| `src/hooks/useLeagueTeams.ts` | Call RPC instead of manual updates in `renameTeam` and `updateTeam` |
+| Change | Detail |
+|--------|--------|
+| Database migration | Insert JeffBot notification into ~45 affected league chats |
+| Code changes | None |
+
