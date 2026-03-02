@@ -197,12 +197,13 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         archivedAt: a.archived_at,
       }));
 
-      // Use local mode for this browser, not the shared DB mode
-      const localMode = (localStorage.getItem(LOCAL_MODE_KEY) as GameState["mode"]) || "game";
-      console.log(`Loading game state - local mode: ${localMode}, draft index: ${session.current_draft_index}`);
+      // Use DB mode as the source of truth, fallback to local
+      const dbMode = session.mode as GameState["mode"];
+      localStorage.setItem(LOCAL_MODE_KEY, dbMode);
+      console.log(`Loading game state - DB mode: ${dbMode}, draft index: ${session.current_draft_index}`);
 
       setState({
-        mode: localMode,
+        mode: dbMode,
         season: session.season,
         episode: session.episode,
         isPostMerge: session.is_post_merge,
@@ -330,9 +331,12 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   }, [leagueId, fetchLeagueTeams, sessionId]);
 
   const setMode = async (mode: GameState["mode"]) => {
-    console.log(`Setting local mode to: ${mode}`);
+    console.log(`Setting mode to: ${mode}`);
     localStorage.setItem(LOCAL_MODE_KEY, mode);
     setState((prev) => ({ ...prev, mode }));
+    if (sessionId) {
+      await supabase.from("game_sessions").update({ mode }).eq("id", sessionId);
+    }
   };
 
   const setSeason = async (season: number) => {
