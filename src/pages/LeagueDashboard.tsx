@@ -368,7 +368,7 @@ const LeagueDashboard = () => {
               scoringConfig={scoringConfig}
               draftOrder={state.draftOrder}
               isAdmin={isLeagueAdmin}
-              playerName={playerName}
+              playerName={userTeamName || playerName}
               sessionId={sessionId || undefined}
               onEpisodeChange={setEpisode}
               onTogglePostMerge={togglePostMerge}
