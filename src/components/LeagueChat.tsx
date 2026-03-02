@@ -110,10 +110,14 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName, teams }:
     }
   }, [isExpanded, markAllRead]);
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages or when chat is opened
   useEffect(() => {
     if (isExpanded && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // ScrollArea viewport is the first child div with data-radix-scroll-area-viewport
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [messages, isExpanded, isJeffBotTyping]);
 
