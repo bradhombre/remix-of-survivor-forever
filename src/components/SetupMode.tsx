@@ -76,7 +76,7 @@ export const SetupMode = ({
   const { toast } = useToast();
 
   // Team management state
-  const { teams, loading: teamsLoading, resizeLeague, renameTeam, getFilledCount } = useLeagueTeams({ leagueId });
+  const { teams, loading: teamsLoading, resizeLeague, renameTeam, getFilledCount, refetch } = useLeagueTeams({ leagueId });
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editTeamName, setEditTeamName] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -230,6 +230,9 @@ export const SetupMode = ({
         .from('league_teams')
         .update({ user_id: userId })
         .eq('id', teamId);
+      
+      // Force immediate refresh of team data
+      await refetch();
       
       setAssigningTeamId(null);
       toast({ title: userId ? "Member assigned!" : "Slot unassigned" });
