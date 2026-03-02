@@ -414,6 +414,8 @@ export type Database = {
           created_at: string | null
           id: string
           invite_code: string
+          is_inactive_notified: boolean
+          last_activity_at: string | null
           name: string
           owner_id: string
           scoring_config: Json | null
@@ -424,6 +426,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           invite_code: string
+          is_inactive_notified?: boolean
+          last_activity_at?: string | null
           name: string
           owner_id: string
           scoring_config?: Json | null
@@ -434,6 +438,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           invite_code?: string
+          is_inactive_notified?: boolean
+          last_activity_at?: string | null
           name?: string
           owner_id?: string
           scoring_config?: Json | null
@@ -717,6 +723,8 @@ export type Database = {
           created_at: string | null
           id: string
           invite_code: string
+          is_inactive_notified: boolean
+          last_activity_at: string | null
           name: string
           owner_id: string
           scoring_config: Json | null
