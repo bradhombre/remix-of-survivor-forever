@@ -113,11 +113,17 @@ export function LeagueChat({ leagueId, userId, userEmail, userTeamName, teams }:
   // Auto-scroll on new messages or when chat is opened
   useEffect(() => {
     if (isExpanded && scrollRef.current) {
-      // ScrollArea viewport is the first child div with data-radix-scroll-area-viewport
-      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
+      const scrollToBottom = () => {
+        const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      };
+      // Immediate attempt
+      scrollToBottom();
+      // Delayed attempt to catch late renders
+      const timer = setTimeout(scrollToBottom, 150);
+      return () => clearTimeout(timer);
     }
   }, [messages, isExpanded, isJeffBotTyping]);
 
