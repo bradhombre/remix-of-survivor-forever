@@ -1,62 +1,54 @@
 
 
-## Abandoned League Management & League Detail View
+## Fix: Sync Game Mode to Database
 
-### Overview
-Build a comprehensive league management system for the Admin panel with three layers: activity tracking, deeper league visibility, and cleanup tools.
+### Problem
+The `setMode` function in `useGameStateDB.ts` only saves the mode to `localStorage` and React state -- it **never writes to the database**. This means when leagues transition from draft to game (or any mode change), the `game_sessions.mode` column stays stale. Every league that has completed drafting still shows "draft" in the database, which is why the Admin panel reports incorrect modes.
 
-### 1. Database: Add `last_activity_at` column to leagues
+This also means the mode shown on load comes from `localStorage`, so it only works on the device where the transition happened -- other league members or a fresh browser would see the wrong mode too.
 
-Add a `last_activity_at` timestamp column to the `leagues` table that auto-updates whenever meaningful activity occurs (chat messages, scoring events, game session updates).
+### Solution
 
-**Migration:**
-- Add `last_activity_at` column (defaults to `created_at`) to `leagues`
-- Create a trigger function `update_league_activity()` that sets `last_activity_at = now()` on the parent league
-- Attach triggers to `chat_messages` (on INSERT), `scoring_events` (on INSERT), and `game_sessions` (on UPDATE of `mode` or `episode`) that call this function
-- Backfill existing leagues: set `last_activity_at` to the most recent activity timestamp (latest chat message, scoring event, or session update)
+#### 1. Fix `setMode` to persist to database
+In `src/hooks/useGameStateDB.ts`, update the `setMode` function (line 332-336) to also write the mode to the `game_sessions` table:
 
-### 2. Enhanced Admin Leagues Table
+```typescript
+const setMode = async (mode: GameState["mode"]) => {
+  console.log(`Setting mode to: ${mode}`);
+  localStorage.setItem(LOCAL_MODE_KEY, mode);
+  setState((prev) => ({ ...prev, mode }));
+  if (sessionId) {
+    await supabase.from("game_sessions").update({ mode }).eq("id", sessionId);
+  }
+};
+```
 
-Upgrade the leagues table in the Admin panel to show richer data per league:
+#### 2. Use DB mode on load instead of localStorage
+In `loadGameState` (line 201), change the mode source to prefer the database value over localStorage. This ensures all users in the league see the correct mode:
 
-- **New columns:** Game Mode (setup/draft/game), Season, Episode, Draft progress (e.g. "12/16 picked"), Last Activity (relative time like "3 weeks ago"), Status badge (Active / Inactive / Abandoned)
-- **Status logic:** Active = activity within 14 days, Inactive = 14-30 days, Abandoned = 30+ days
-- **Filters:** Add filter buttons (All / Active / Inactive / Abandoned) and a search box for league name
-- **Sorting:** Clickable column headers, default sort by last activity
-- **Bulk actions:** Checkbox selection with a "Delete Selected" button
+```typescript
+// Use DB mode as the source of truth, fallback to local
+const dbMode = session.mode as GameState["mode"];
+localStorage.setItem(LOCAL_MODE_KEY, dbMode);
+```
 
-### 3. League Detail Drawer
+#### 3. Fix all existing leagues with a data migration
+Run a data update to fix leagues that already completed drafting but are stuck in "draft" mode. The logic: if `current_draft_index >= total expected picks` (all contestants have owners), set mode to "game".
 
-When clicking "View" on a league, instead of navigating away, open a slide-out drawer/sheet showing:
+```sql
+UPDATE game_sessions gs
+SET mode = 'game'
+WHERE gs.mode = 'draft'
+  AND NOT EXISTS (
+    SELECT 1 FROM contestants c
+    WHERE c.session_id = gs.id AND c.owner IS NULL
+  )
+  AND (SELECT count(*) FROM contestants c2 WHERE c2.session_id = gs.id AND c2.owner IS NOT NULL) > 0;
+```
 
-- League name, owner, invite code, created date
-- Current game state: mode, season, episode, draft type
-- Member list with their team names and roles
-- Contestant draft status (who's picked, who's available)
-- Recent chat messages (last 10)
-- Scoring summary (total events count)
+This catches Survivor OGs and any other league in the same situation.
 
-This gives you a full picture without leaving the admin panel.
+### Files to modify
+- **`src/hooks/useGameStateDB.ts`** -- fix `setMode` to write to DB; fix `loadGameState` to read mode from DB
+- **Database** -- data update to fix existing stuck leagues
 
-### 4. Owner Cleanup Reminders (Future-Ready)
-
-Add an `is_inactive_notified` boolean column to `leagues` so that a future scheduled function can email owners of inactive leagues. For now, this column is just a flag -- the actual email sending can be wired up later when needed.
-
-### Technical Details
-
-**Files to create:**
-- `src/components/admin/LeagueManager.tsx` -- new component replacing the inline leagues tab content, with filters, search, bulk delete, and the enhanced table
-- `src/components/admin/LeagueDetailSheet.tsx` -- slide-out drawer showing deep league info
-
-**Files to modify:**
-- `src/pages/Admin.tsx` -- replace inline leagues content with `<LeagueManager />`, remove league-specific state/logic from this file
-- Database migration for `last_activity_at` column, triggers, and backfill
-
-**Key data fetching in LeagueManager:**
-- Fetch leagues with game_sessions joined (mode, season, episode)
-- Fetch contestant counts per session for draft progress
-- Use the new `last_activity_at` for activity status
-- All filtering/sorting done client-side for simplicity
-
-**Key data fetching in LeagueDetailSheet:**
-- Fetch game_session, league_teams with profiles, contestants, recent chat_messages, and scoring_events count for the selected league
