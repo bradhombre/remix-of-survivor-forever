@@ -700,6 +700,7 @@ export const GameMode = ({
           finalists={contestants.filter(c => !c.isEliminated)}
           isAdmin={isAdmin}
           playerName={playerName}
+          players={draftOrder}
           onScore={onAddScoringEvent}
         />
       )}

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Contestant, Player, PLAYERS } from "@/types/survivor";
+import { Contestant, Player } from "@/types/survivor";
 import { CheckCircle2, Circle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ interface FinalPredictionDialogProps {
   finalists: Contestant[];
   isAdmin: boolean;
   playerName: string | null;
+  players: string[];
   onScore: (contestantId: string, contestantName: string, action: string, points: number) => void;
 }
 
@@ -33,6 +34,7 @@ export const FinalPredictionDialog = ({
   finalists,
   isAdmin,
   playerName,
+  players,
   onScore,
 }: FinalPredictionDialogProps) => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
@@ -220,7 +222,7 @@ export const FinalPredictionDialog = ({
 
   const getMissingPlayers = () => {
     const submitted = getPlayersWhoSubmitted();
-    return PLAYERS.filter(p => !submitted.includes(p));
+    return players.filter(p => !submitted.includes(p));
   };
 
   const isRevealed = predictions.length > 0 && predictions[0].is_revealed;
@@ -240,7 +242,7 @@ export const FinalPredictionDialog = ({
           <div className="space-y-2">
             <h3 className="font-semibold">Submission Status:</h3>
             <div className="grid grid-cols-2 gap-2">
-              {PLAYERS.map((player) => {
+              {players.map((player) => {
                 const hasSubmitted = getPlayersWhoSubmitted().includes(player);
                 return (
                   <div key={player} className="flex items-center gap-2">
@@ -271,7 +273,7 @@ export const FinalPredictionDialog = ({
                         <SelectValue placeholder="Select player" />
                       </SelectTrigger>
                       <SelectContent>
-                        {PLAYERS.map((player) => (
+                        {players.map((player) => (
                           <SelectItem key={player} value={player}>
                             {player}
                           </SelectItem>
