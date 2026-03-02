@@ -156,10 +156,14 @@ const LeagueDashboard = () => {
     }
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     const ppt = getPicksPerTeam(state.picksPerTeam, state.gameType, state.contestants.length, state.draftOrder.length);
     const totalPicksCalc = state.draftOrder.length * ppt;
     if (state.currentDraftIndex >= totalPicksCalc) {
+      // Ensure game starts in pre-merge state
+      if (state.isPostMerge) {
+        await togglePostMerge();
+      }
       setMode("game");
     }
   };
