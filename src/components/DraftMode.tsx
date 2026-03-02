@@ -224,6 +224,7 @@ export const DraftMode = ({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{contestant.name}</p>
                       <div className="text-xs text-muted-foreground space-y-0.5">
+                        {contestant.tribe && <p>Tribe: {contestant.tribe}</p>}
                         {contestant.age && <p>Age: {contestant.age}</p>}
                         {contestant.location && <p className="truncate">{contestant.location}</p>}
                         <p>Pick #{contestant.pickNumber}</p>
