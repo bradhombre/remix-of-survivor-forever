@@ -1,62 +1,50 @@
 
 
-## Fix: JeffBot conversation context for follow-up questions
+## Fix: Team assignment UI not updating without refresh
 
-**Problem**: When a user asks JeffBot a follow-up question, JeffBot has no memory of the conversation. The edge function only receives the single current question with no prior chat history.
+**Problem**: When unassigning or reassigning members to team slots in the Setup tab, the UI doesn't reflect changes immediately. The `handleAssignMember` function updates the database directly but doesn't trigger a local data refresh, so the UI stays stale until the real-time subscription catches up (which can be delayed or missed entirely).
 
-**Solution**: Send recent chat history (both user messages and JeffBot responses) to the edge function so it can include them as conversation context in the AI prompt.
+**Solution**: After each assign/unassign operation, explicitly call `refetch()` from the `useLeagueTeams` hook to immediately reload the team data from the database.
 
 ### Changes
 
-**1. `src/hooks/useChatMessages.ts` - Send chat history with JeffBot requests**
+**File: `src/components/SetupMode.tsx`**
 
-In the `sendMessage` callback, when a `@jeffbot` query is detected, gather the last ~10 messages from the current `messages` state and pass them to the edge function as `history`.
+1. Destructure `refetch` from `useLeagueTeams` (line 79) -- it's already returned by the hook but not currently used in this component.
+
+2. In `handleAssignMember` (lines 216-239), add `await refetch()` after the database updates complete, before showing the toast. This ensures the UI reflects the new assignments immediately.
 
 ```typescript
-if (isJeffBotQuery) {
-  setIsJeffBotTyping(true);
-  const question = trimmedContent.slice(8).trim();
-  
-  // Gather recent messages for context (last 10)
-  const recentHistory = messages.slice(-10).map(m => ({
-    role: m.is_bot ? "assistant" : "user",
-    name: m.user_display_name || "user",
-    content: m.content,
-  }));
-
-  const { error: funcError } = await supabase.functions.invoke("jeffbot", {
-    body: { league_id: leagueId, user_id: userId, question, history: recentHistory },
-  });
-  // ...
-}
+const { teams, loading: teamsLoading, resizeLeague, renameTeam, getFilledCount, refetch } = useLeagueTeams({ leagueId });
 ```
 
-**2. `supabase/functions/jeffbot/index.ts` - Use chat history in AI call**
-
-Accept the `history` array from the request body and include it as prior messages in the AI conversation, between the system prompt and the new user question.
-
 ```typescript
-const { league_id, user_id, question, history } = await req.json();
-
-// Build messages array with history
-const aiMessages = [
-  { role: "system", content: systemPrompt },
-];
-
-// Add recent chat history for context
-if (Array.isArray(history)) {
-  for (const msg of history.slice(-10)) {
-    aiMessages.push({
-      role: msg.role === "assistant" ? "assistant" : "user",
-      content: msg.content,
-    });
+const handleAssignMember = async (teamId: string, userId: string | null) => {
+  try {
+    if (userId) {
+      const existingTeam = teams.find(t => t.user_id === userId);
+      if (existingTeam && existingTeam.id !== teamId) {
+        await supabase
+          .from('league_teams')
+          .update({ user_id: null })
+          .eq('id', existingTeam.id);
+      }
+    }
+    await supabase
+      .from('league_teams')
+      .update({ user_id: userId })
+      .eq('id', teamId);
+    
+    // Force immediate refresh of team data
+    await refetch();
+    
+    setAssigningTeamId(null);
+    toast({ title: userId ? "Member assigned!" : "Slot unassigned" });
+  } catch (err: any) {
+    toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
   }
-}
-
-// Add current question
-aiMessages.push({ role: "user", content: question });
-
-// Use aiMessages in the API call instead of the hardcoded two-message array
+};
 ```
 
-This gives JeffBot context from the last ~10 messages so it can handle follow-ups like "Who else was on that season?" or "Tell me more about them."
+This is a small, targeted fix -- just two line changes that ensure the team list refreshes immediately after any assignment change.
+
