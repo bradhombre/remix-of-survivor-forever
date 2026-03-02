@@ -1,31 +1,34 @@
 
-# Enable Live Updates for Draft Page
 
-## Problem
-The draft page requires a manual refresh to see new picks because the database tables aren't configured for realtime updates. The frontend code already listens for changes (realtime subscriptions exist in the game state hook), but the database isn't broadcasting those changes.
+## Fix: Chat not scrolling to bottom on open
 
-## Solution
-Add the relevant game tables to the realtime publication so the existing subscription code starts working. This is a single database migration -- no frontend code changes needed.
+**Problem**: The auto-scroll effect fires before the DOM has fully rendered the messages, so `scrollHeight` is still small when `scrollTop` is set.
 
-## Tables to Enable
-- `game_sessions` -- draft index changes, episode updates
-- `contestants` -- new picks, eliminations
-- `draft_order` -- order changes
-- `scoring_events` -- score updates
-- `crying_contestants` -- crying tracking
-- `player_profiles` -- avatar updates
+**Solution**: Add a small `setTimeout` delay to the auto-scroll logic, giving the browser time to layout the messages before scrolling. Also add a `requestAnimationFrame` for reliability.
 
-## Technical Details
+### Changes
 
-A single SQL migration will run:
+**File: `src/components/LeagueChat.tsx`** (lines 113-122)
 
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.game_sessions;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.contestants;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.draft_order;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.scoring_events;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.crying_contestants;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.player_profiles;
+Replace the auto-scroll `useEffect` with a version that waits for the next frame + a small timeout:
+
+```typescript
+useEffect(() => {
+  if (isExpanded && scrollRef.current) {
+    const scrollToBottom = () => {
+      const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    };
+    // Immediate attempt
+    scrollToBottom();
+    // Delayed attempt to catch late renders
+    const timer = setTimeout(scrollToBottom, 150);
+    return () => clearTimeout(timer);
+  }
+}, [messages, isExpanded, isJeffBotTyping]);
 ```
 
-No frontend changes are needed -- the realtime listeners in `useGameStateDB.ts` are already wired up and will start receiving events once the tables are published.
+This double-scroll approach (immediate + 150ms delayed) ensures it works whether content is already rendered or still loading.
+
