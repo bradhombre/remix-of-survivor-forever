@@ -13,7 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { LeagueDetailSheet } from "./LeagueDetailSheet";
-import { Users, Eye, Trash2, Search, ArrowUpDown } from "lucide-react";
+import { Users, Eye, Trash2, Search, ArrowUpDown, ExternalLink } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -321,6 +321,11 @@ export function LeagueManager() {
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => setDetailLeagueId(league.id)}>
                             <Eye className="h-4 w-4 mr-1" /> View
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={`/league/${league.id}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-1" /> Visit
+                            </a>
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
