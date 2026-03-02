@@ -207,10 +207,16 @@ export function useChatMessages({ leagueId, userId, onNewMessage }: UseChatMessa
         // If it's a JeffBot query, call the edge function
         if (isJeffBotQuery) {
           setIsJeffBotTyping(true);
-          const question = trimmedContent.slice(8).trim(); // Remove @jeffbot prefix
+          const question = trimmedContent.slice(8).trim();
           
+          // Gather recent messages for context (last 10)
+          const recentHistory = messages.slice(-10).map(m => ({
+            role: m.is_bot ? "assistant" as const : "user" as const,
+            content: m.content,
+          }));
+
           const { error: funcError } = await supabase.functions.invoke("jeffbot", {
-            body: { league_id: leagueId, user_id: userId, question },
+            body: { league_id: leagueId, user_id: userId, question, history: recentHistory },
           });
 
           if (funcError) {

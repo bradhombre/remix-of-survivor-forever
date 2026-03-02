@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { league_id, user_id, question } = await req.json();
+    const { league_id, user_id, question, history } = await req.json();
 
     if (!league_id || !user_id || !question) {
       return new Response(
@@ -69,6 +69,22 @@ CONTEXT:
 
 FORMAT: Keep responses concise (2-4 sentences) for chat. Be specific with names, numbers, and facts.`;
 
+    // Build messages array with conversation history
+    const aiMessages: { role: string; content: string }[] = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    if (Array.isArray(history)) {
+      for (const msg of history.slice(-10)) {
+        aiMessages.push({
+          role: msg.role === "assistant" ? "assistant" : "user",
+          content: msg.content,
+        });
+      }
+    }
+
+    aiMessages.push({ role: "user", content: question });
+
     // Call Lovable AI Gateway with the most capable model
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -78,10 +94,7 @@ FORMAT: Keep responses concise (2-4 sentences) for chat. Be specific with names,
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: question },
-        ],
+        messages: aiMessages,
         temperature: 0.7,
       }),
     });
