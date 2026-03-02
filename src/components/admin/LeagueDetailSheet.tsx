@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
-import { Users, Gamepad2, MessageSquare, Trophy, Copy } from "lucide-react";
+import { Users, Gamepad2, MessageSquare, Trophy, Copy, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 interface LeagueDetailSheetProps {
@@ -192,7 +193,16 @@ export function LeagueDetailSheet({ leagueId, open, onOpenChange }: LeagueDetail
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>{detail?.name || "League Details"}</SheetTitle>
+          <div className="flex items-center justify-between pr-6">
+            <SheetTitle>{detail?.name || "League Details"}</SheetTitle>
+            {detail && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={`/league/${detail.id}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1" /> Visit League
+                </a>
+              </Button>
+            )}
+          </div>
         </SheetHeader>
 
         {loading ? (
