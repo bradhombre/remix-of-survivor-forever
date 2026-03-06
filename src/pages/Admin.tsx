@@ -200,7 +200,9 @@ export default function Admin() {
                   <p className="text-muted-foreground text-center py-8">No bug reports yet.</p>
                 ) : (
                   <div className="space-y-4">
-                    {bugs.map((bug) => (
+                    {bugs
+                      .filter((bug) => bug.status !== 'resolved' && bug.status !== 'closed')
+                      .map((bug) => (
                       <Card key={bug.id} className="p-4 space-y-3">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-4">
@@ -281,6 +283,43 @@ export default function Admin() {
                         </div>
                       </Card>
                     ))}
+                    {bugs.filter((bug) => bug.status === 'resolved' || bug.status === 'closed').length > 0 && (
+                      <details className="mt-6">
+                        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          {bugs.filter((bug) => bug.status === 'resolved' || bug.status === 'closed').length} resolved/closed report(s)
+                        </summary>
+                        <div className="space-y-4 mt-4">
+                          {bugs
+                            .filter((bug) => bug.status === 'resolved' || bug.status === 'closed')
+                            .map((bug) => (
+                              <Card key={bug.id} className="p-4 space-y-3 opacity-60">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                      <span className="text-xs text-muted-foreground">{bug.user_email}</span>
+                                      <span className="text-xs text-muted-foreground">·</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(bug.created_at), "MMM d, yyyy")}
+                                      </span>
+                                    </div>
+                                    <select
+                                      value={bug.status}
+                                      onChange={(e) => handleUpdateBugStatus(bug.id, e.target.value)}
+                                      className="text-xs rounded border border-input bg-background px-2 py-1 shrink-0 w-auto max-w-[130px]"
+                                    >
+                                      <option value="open">Open</option>
+                                      <option value="in_progress">In Progress</option>
+                                      <option value="resolved">Resolved</option>
+                                      <option value="closed">Closed</option>
+                                    </select>
+                                  </div>
+                                  <p className="text-sm">{bug.description}</p>
+                                </div>
+                              </Card>
+                            ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
                 )}
               </CardContent>
