@@ -12,6 +12,7 @@ interface TourStep {
 interface OnboardingTourProps {
   leagueId: string;
   isLeagueAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
 const PLAYER_STEPS: TourStep[] = [
@@ -42,7 +43,7 @@ const ADMIN_STEP: TourStep = {
     "Manage your cast, scoring settings, and league configuration. You'll use this to score events during each episode.",
 };
 
-export function OnboardingTour({ leagueId, isLeagueAdmin }: OnboardingTourProps) {
+export function OnboardingTour({ leagueId, isLeagueAdmin, isSuperAdmin }: OnboardingTourProps) {
   const storageKey = `tour-seen-${leagueId}`;
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -54,12 +55,13 @@ export function OnboardingTour({ leagueId, isLeagueAdmin }: OnboardingTourProps)
     ...(isLeagueAdmin ? [ADMIN_STEP] : []),
   ];
 
-  // Auto-start after delay if not seen
+  // Auto-start after delay if not seen (skip for super admins)
   useEffect(() => {
+    if (isSuperAdmin) return;
     if (localStorage.getItem(storageKey) === "true") return;
     const timer = setTimeout(() => setActive(true), 800);
     return () => clearTimeout(timer);
-  }, [storageKey]);
+  }, [storageKey, isSuperAdmin]);
 
   const positionPopover = useCallback(() => {
     if (!active) return;
