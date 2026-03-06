@@ -60,6 +60,7 @@ type AdminPanelProps = {
   onResetAll?: () => void;
   onNewSeason?: () => void;
   onRevertToSetup?: () => void;
+  onScoringConfigSaved?: (config: any) => void;
 };
 
 export function AdminPanel({ 
@@ -89,6 +90,7 @@ export function AdminPanel({
   onResetAll, 
   onNewSeason,
   onRevertToSetup,
+  onScoringConfigSaved,
 }: AdminPanelProps) {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -399,7 +401,7 @@ export function AdminPanel({
             {gameType === 'winner_takes_all' ? (
               <div className="relative">
                 <div className="opacity-40 pointer-events-none">
-                  <ScoringSettings leagueId={leagueId} />
+                  <ScoringSettings leagueId={leagueId} onScoringConfigSaved={onScoringConfigSaved} />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Card className="p-6 text-center max-w-md shadow-lg">
@@ -412,7 +414,7 @@ export function AdminPanel({
                 </div>
               </div>
             ) : (
-              <ScoringSettings leagueId={leagueId} />
+              <ScoringSettings leagueId={leagueId} onScoringConfigSaved={onScoringConfigSaved} />
             )}
           </div>
         </TabsContent>

@@ -886,6 +886,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     sessionId,
     sessionStatus,
     scoringConfig,
+    setScoringConfig,
     setState,
     resetState,
     startNewSeason,

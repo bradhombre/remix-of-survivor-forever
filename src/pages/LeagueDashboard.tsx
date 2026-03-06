@@ -38,6 +38,7 @@ const LeagueDashboard = () => {
     sessionId,
     sessionStatus,
     scoringConfig,
+    setScoringConfig,
     setMode,
     setSeason,
     setEpisode,
@@ -426,6 +427,7 @@ const LeagueDashboard = () => {
             onClearHistory={clearHistory}
             onResetAll={resetAll}
             onRevertToSetup={revertToSetup}
+            onScoringConfigSaved={setScoringConfig}
             onNewSeason={() => {
               const firstConfirm = confirm(
                 `⚠️ START NEW SEASON?\n\n` +
