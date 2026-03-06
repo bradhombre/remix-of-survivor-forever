@@ -52,6 +52,7 @@ const SCORING_CATEGORIES = {
 
 interface ScoringSettingsProps {
   leagueId: string;
+  onScoringConfigSaved?: (config: ScoringConfig) => void;
 }
 
 interface SavedTemplate {
@@ -79,7 +80,7 @@ const isActionEnabled = (key: string, config: ScoringConfig): boolean => {
 
 const generateCustomActionId = () => `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-export function ScoringSettings({ leagueId }: ScoringSettingsProps) {
+export function ScoringSettings({ leagueId, onScoringConfigSaved }: ScoringSettingsProps) {
   const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(getDefaultScoringConfig());
   const [loading, setLoading] = useState(true);
   const [savingScoring, setSavingScoring] = useState(false);
@@ -161,6 +162,7 @@ export function ScoringSettings({ leagueId }: ScoringSettingsProps) {
     } else {
       toast.success("Scoring rules saved");
       setOriginalConfig(configToSave as Record<string, number>);
+      onScoringConfigSaved?.(configToSave as ScoringConfig);
     }
     setSavingScoring(false);
   };
