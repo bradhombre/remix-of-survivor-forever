@@ -1,23 +1,26 @@
 
 
-## Auto-Refresh for Tribal Vote Predictions
+## Fix: Super Admin League View Shows Onboarding & Grayed Content
 
 ### Problem
-When the FinalPredictionDialog is open, players can't see when others have submitted their predictions without manually closing and reopening the dialog.
-
-### Solution
-Subscribe to Supabase Realtime on the `final_predictions` table while the dialog is open. This will automatically update the submission status list as each player submits.
+When a super admin drops into a league via the admin panel, two things make it hard to inspect the league:
+1. The **OnboardingTour** fires for every league they haven't visited before, covering the screen with a modal walkthrough
+2. The **Game tab** shows grayed out (`opacity-50 pointer-events-none`) content when the draft isn't complete, making it hard to see what's going on
 
 ### Changes
 
-**`src/components/FinalPredictionDialog.tsx`**
-- Add a Realtime subscription in the `useEffect` that fires when the dialog opens
-- Listen for `INSERT` and `UPDATE` events on `final_predictions` filtered by `session_id` and `episode`
-- On any change, call the existing `loadPredictions()` to refresh the list
-- Clean up the subscription when the dialog closes
+**`src/components/OnboardingTour.tsx`**
+- Accept a new `isSuperAdmin` prop (or detect it internally)
+- Skip the auto-start tour entirely when the user is a super admin visiting a league (they don't need onboarding)
 
-**Database** (migration needed)
-- Enable realtime on `final_predictions`: `ALTER PUBLICATION supabase_realtime ADD TABLE public.final_predictions;`
+**`src/pages/LeagueDashboard.tsx`**
+- Pass `isSuperAdmin` status to `OnboardingTour` so it can suppress itself
+- Get this from the existing `useIsSuperAdmin` hook (already used elsewhere)
+- For the grayed-out game view: when user is a super admin, remove the `opacity-50 pointer-events-none` classes so they can actually see and interact with the league state
 
-This is a small, targeted change — roughly 15 lines of code plus a one-line migration.
+### Technical Detail
+- Import `useIsSuperAdmin` in LeagueDashboard
+- Pass `isSuperAdmin` to `OnboardingTour`; in OnboardingTour, add `if (isSuperAdmin) return;` before the auto-start effect
+- Change the gray-out condition on line 348 from `!canShowGame` to `!canShowGame && !isSuperAdmin`
+- Similarly for the "draft not complete" info banner on lines 340-347, hide it for super admins or make it less obtrusive
 
