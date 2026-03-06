@@ -1,31 +1,26 @@
 
 
-## Bug: "Gord" Not Showing -- Data Mismatch
+## User Feedback: "Can't find how to delete a league"
 
-### Root Cause
+### Current State
 
-In the "League of Champs" league, the user `buddyholley1958@gmail.com` (team "Gord") has 4 contestants assigned to the old name **"Team 2"** instead of **"Gord"**. This happened because the team was renamed after draft picks were already made, and the rename didn't propagate to the `contestants` table.
+The "Delete League" option already exists. It's located at the bottom of the **League** tab (the "League Info" section) inside a league's dashboard (`/league/:id`). Only the league owner can see it. The problem is purely discoverability -- users don't think to look inside the league they want to delete.
 
-The draft order was updated correctly ("Gord" appears at position 4), but the contestant ownership still says "Team 2". Since no team named "Team 2" exists anymore, those picks appear orphaned -- visible only to Gord's own screen (where code might fall back to showing them) but invisible to everyone else's leaderboard/scoring views.
+### Proposed Improvement: Add Delete Option on the Leagues List Page
 
-**Affected contestants (owner = "Team 2"):**
-- Colby Donaldson
-- Joe Hunter
-- Quintavius "Q" Burdette
-- Savannah Louie
+Add a context menu or action to each league card on the `/leagues` page so owners can delete directly from the list without entering the league first.
 
-### Fix
+**Changes:**
 
-#### 1. Data repair (SQL migration)
-Update the 4 orphaned contestant records in this session to use the correct team name "Gord":
+1. **`src/pages/Leagues.tsx`** -- For league cards where the user is the owner (league_admin role), add a small dropdown menu (kebab/three-dot icon) in the card corner with a "Delete League" option. Clicking it opens the same confirmation dialog pattern already used elsewhere. On confirm, call `supabase.rpc('delete_league', { league_uuid })` and refresh the list.
 
-```sql
-UPDATE contestants
-SET owner = 'Gord'
-WHERE session_id = '6c80c89f-0c0a-4b05-89ad-9ff6e511644c'
-  AND owner = 'Team 2';
-```
+   - Fetch `owner_id` alongside existing league data to determine ownership (or infer from `league_admin` role)
+   - Add a stop-propagation handler so clicking the menu doesn't navigate into the league
+   - Reuse the existing `AlertDialog` pattern for confirmation
 
-#### 2. No code changes needed
-The `rename_team_everywhere` function already handles this correctly going forward -- it updates `contestants.owner` and `draft_order.player_name`. The issue was that the rename likely happened through a direct team name update (bypassing the RPC function) before the atomic rename was implemented.
+2. **No database or backend changes needed** -- the `delete_league` RPC and ownership check already exist.
+
+### Technical Detail
+
+The leagues query in `fetchMemberships` needs to also select `owner_id` from the `leagues` join so we can conditionally show the delete action only for the league owner (not just any league_admin).
 
