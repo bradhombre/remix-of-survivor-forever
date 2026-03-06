@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Bug } from "lucide-react";
 import { BugReportDialog } from "@/components/BugReportDialog";
 import { DonateButton } from "@/components/DonateButton";
 
 export function AppFooter() {
   const [bugOpen, setBugOpen] = useState(false);
-  const params = useParams<{ id?: string }>();
-  const leagueId = params.id;
+  const location = useLocation();
+  const leagueMatch = location.pathname.match(/^\/league\/([a-f0-9-]+)/i);
+  const leagueId = leagueMatch?.[1];
 
   return (
     <>

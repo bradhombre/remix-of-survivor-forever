@@ -202,9 +202,9 @@ export default function Admin() {
                   <div className="space-y-4">
                     {bugs.map((bug) => (
                       <Card key={bug.id} className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
                               <span className="text-xs text-muted-foreground">{bug.user_email}</span>
                               <span className="text-xs text-muted-foreground">·</span>
                               <span className="text-xs text-muted-foreground">
@@ -217,24 +217,24 @@ export default function Admin() {
                                 </>
                               )}
                             </div>
-                            <details className="cursor-pointer">
-                              <summary className="text-sm truncate max-w-md">{bug.description}</summary>
-                              <p className="mt-2 text-sm whitespace-pre-wrap text-muted-foreground">{bug.description}</p>
-                            </details>
-                            {bug.page_url && (
-                              <p className="text-xs text-muted-foreground truncate max-w-sm">{bug.page_url}</p>
-                            )}
+                            <select
+                              value={bug.status}
+                              onChange={(e) => handleUpdateBugStatus(bug.id, e.target.value)}
+                              className="text-xs rounded border border-input bg-background px-2 py-1 shrink-0 w-auto max-w-[130px]"
+                            >
+                              <option value="open">Open</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="resolved">Resolved</option>
+                              <option value="closed">Closed</option>
+                            </select>
                           </div>
-                          <select
-                            value={bug.status}
-                            onChange={(e) => handleUpdateBugStatus(bug.id, e.target.value)}
-                            className="text-xs rounded border border-input bg-background px-2 py-1 shrink-0"
-                          >
-                            <option value="open">Open</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="closed">Closed</option>
-                          </select>
+                          <details className="cursor-pointer">
+                            <summary className="text-sm">{bug.description}</summary>
+                            <p className="mt-2 text-sm whitespace-pre-wrap text-muted-foreground">{bug.description}</p>
+                          </details>
+                          {bug.page_url && (
+                            <p className="text-xs text-muted-foreground truncate">{bug.page_url}</p>
+                          )}
                         </div>
 
                         {/* Admin notes section */}
