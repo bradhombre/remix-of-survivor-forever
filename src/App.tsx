@@ -11,6 +11,7 @@ import Admin from "./pages/Admin";
 import JoinByLink from "./pages/JoinByLink";
 import NotFound from "./pages/NotFound";
 import { AppFooter } from "./components/AppFooter";
+import { BugResponseBanner } from "./components/BugResponseBanner";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <AppFooter />
+        <BugResponseBanner />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

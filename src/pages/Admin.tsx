@@ -9,13 +9,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { NewsManager } from "@/components/admin/NewsManager";
 import { CastManager } from "@/components/admin/CastManager";
 import { AdminSettings } from "@/components/admin/AdminSettings";
 import { LeagueManager } from "@/components/admin/LeagueManager";
-import { ArrowLeft, Users, Newspaper, UserCircle, Settings, Bug } from "lucide-react";
+import { ArrowLeft, Users, Newspaper, UserCircle, Settings, Bug, Sparkles, Send, Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface BugReport {
   id: string;
@@ -24,15 +25,20 @@ interface BugReport {
   page_url: string | null;
   status: string;
   created_at: string;
+  admin_notes: string | null;
+  league_id: string | null;
   user_email?: string;
+  league_name?: string;
 }
 
 export default function Admin() {
   const { isSuperAdmin, loading: roleLoading } = useIsSuperAdmin();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [bugs, setBugs] = useState<BugReport[]>([]);
+  const [notesInput, setNotesInput] = useState<Record<string, string>>({});
+  const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({});
+  const [generatingAI, setGeneratingAI] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,20 +61,80 @@ export default function Admin() {
       .select("*")
       .order("created_at", { ascending: false });
     if (!data) return;
+
     const userIds = [...new Set(data.map((b: any) => b.user_id))];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .in("id", userIds);
-    const emailMap = new Map(profiles?.map((p) => [p.id, p.email]) || []);
-    setBugs(
-      data.map((b: any) => ({ ...b, user_email: emailMap.get(b.user_id) || "Unknown" }))
-    );
+    const leagueIds = [...new Set(data.map((b: any) => b.league_id).filter(Boolean))];
+
+    const [profilesRes, leaguesRes] = await Promise.all([
+      supabase.from("profiles").select("id, email").in("id", userIds),
+      leagueIds.length > 0
+        ? supabase.from("leagues").select("id, name").in("id", leagueIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const emailMap = new Map(profilesRes.data?.map((p) => [p.id, p.email]) || []);
+    const leagueMap = new Map<string, string>(leaguesRes.data?.map((l: any) => [l.id, l.name] as [string, string]) || []);
+
+    const mapped = data.map((b: any) => ({
+      ...b,
+      user_email: emailMap.get(b.user_id) || "Unknown",
+      league_name: b.league_id ? leagueMap.get(b.league_id) || null : null,
+    }));
+
+    setBugs(mapped);
+    // Initialize notes inputs
+    const notes: Record<string, string> = {};
+    mapped.forEach((b: BugReport) => { notes[b.id] = b.admin_notes || ""; });
+    setNotesInput(notes);
   };
 
   const handleUpdateBugStatus = async (id: string, status: string) => {
     await supabase.from("bug_reports").update({ status }).eq("id", id);
     setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+  };
+
+  const handleSaveNotes = async (id: string) => {
+    const notes = notesInput[id]?.trim() || null;
+    setSavingNotes((p) => ({ ...p, [id]: true }));
+    const { error } = await supabase
+      .from("bug_reports")
+      .update({ admin_notes: notes, user_viewed_response: false } as any)
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to save notes");
+    } else {
+      toast.success("Response saved — user will be notified");
+      setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, admin_notes: notes } : b)));
+    }
+    setSavingNotes((p) => ({ ...p, [id]: false }));
+  };
+
+  const handleAISuggest = async (bug: BugReport) => {
+    setGeneratingAI((p) => ({ ...p, [bug.id]: true }));
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/suggest-bug-response`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.session?.access_token}`,
+          },
+          body: JSON.stringify({
+            description: bug.description,
+            page_url: bug.page_url,
+            status: bug.status,
+          }),
+        }
+      );
+      if (!resp.ok) throw new Error("AI request failed");
+      const { suggestion } = await resp.json();
+      setNotesInput((p) => ({ ...p, [bug.id]: suggestion }));
+    } catch {
+      toast.error("Failed to generate AI suggestion");
+    }
+    setGeneratingAI((p) => ({ ...p, [bug.id]: false }));
   };
 
   if (authLoading || roleLoading) {
@@ -79,9 +145,7 @@ export default function Admin() {
     );
   }
 
-  if (!isSuperAdmin) {
-    return null;
-  }
+  if (!isSuperAdmin) return null;
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -119,17 +183,9 @@ export default function Admin() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="leagues">
-            <LeagueManager />
-          </TabsContent>
-
-          <TabsContent value="cast">
-            <CastManager />
-          </TabsContent>
-
-          <TabsContent value="news">
-            <NewsManager />
-          </TabsContent>
+          <TabsContent value="leagues"><LeagueManager /></TabsContent>
+          <TabsContent value="cast"><CastManager /></TabsContent>
+          <TabsContent value="news"><NewsManager /></TabsContent>
 
           <TabsContent value="bugs">
             <Card>
@@ -143,52 +199,95 @@ export default function Admin() {
                 {bugs.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">No bug reports yet.</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Page</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bugs.map((bug) => (
-                        <TableRow key={bug.id}>
-                          <TableCell className="text-muted-foreground text-xs">{bug.user_email}</TableCell>
-                          <TableCell className="max-w-xs">
+                  <div className="space-y-4">
+                    {bugs.map((bug) => (
+                      <Card key={bug.id} className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-muted-foreground">{bug.user_email}</span>
+                              <span className="text-xs text-muted-foreground">·</span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(bug.created_at), "MMM d, yyyy")}
+                              </span>
+                              {bug.league_name && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">·</span>
+                                  <span className="text-xs font-medium text-primary">{bug.league_name}</span>
+                                </>
+                              )}
+                            </div>
                             <details className="cursor-pointer">
-                              <summary className="truncate max-w-xs">{bug.description}</summary>
-                              <p className="mt-2 text-sm whitespace-pre-wrap">{bug.description}</p>
+                              <summary className="text-sm truncate max-w-md">{bug.description}</summary>
+                              <p className="mt-2 text-sm whitespace-pre-wrap text-muted-foreground">{bug.description}</p>
                             </details>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{bug.page_url}</TableCell>
-                          <TableCell className="text-muted-foreground text-xs">{format(new Date(bug.created_at), "MMM d, yyyy")}</TableCell>
-                          <TableCell>
-                            <select
-                              value={bug.status}
-                              onChange={(e) => handleUpdateBugStatus(bug.id, e.target.value)}
-                              className="text-xs rounded border border-input bg-background px-2 py-1"
+                            {bug.page_url && (
+                              <p className="text-xs text-muted-foreground truncate max-w-sm">{bug.page_url}</p>
+                            )}
+                          </div>
+                          <select
+                            value={bug.status}
+                            onChange={(e) => handleUpdateBugStatus(bug.id, e.target.value)}
+                            className="text-xs rounded border border-input bg-background px-2 py-1 shrink-0"
+                          >
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                          </select>
+                        </div>
+
+                        {/* Admin notes section */}
+                        <div className="space-y-2 pt-2 border-t border-border">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-muted-foreground">Admin Response</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1 text-xs"
+                              onClick={() => handleAISuggest(bug)}
+                              disabled={generatingAI[bug.id]}
                             >
-                              <option value="open">Open</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="resolved">Resolved</option>
-                              <option value="closed">Closed</option>
-                            </select>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              {generatingAI[bug.id] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3 w-3" />
+                              )}
+                              AI Suggest
+                            </Button>
+                          </div>
+                          <Textarea
+                            placeholder="Write a response to the user..."
+                            value={notesInput[bug.id] || ""}
+                            onChange={(e) => setNotesInput((p) => ({ ...p, [bug.id]: e.target.value }))}
+                            rows={2}
+                            className="text-sm"
+                          />
+                          <div className="flex justify-end">
+                            <Button
+                              size="sm"
+                              className="h-7 gap-1 text-xs"
+                              onClick={() => handleSaveNotes(bug.id)}
+                              disabled={savingNotes[bug.id] || (notesInput[bug.id] || "") === (bug.admin_notes || "")}
+                            >
+                              {savingNotes[bug.id] ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Send className="h-3 w-3" />
+                              )}
+                              Send Response
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings">
-            <AdminSettings />
-          </TabsContent>
+          <TabsContent value="settings"><AdminSettings /></TabsContent>
         </Tabs>
       </div>
     </div>
