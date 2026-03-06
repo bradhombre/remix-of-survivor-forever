@@ -14,7 +14,8 @@ import { NewsManager } from "@/components/admin/NewsManager";
 import { CastManager } from "@/components/admin/CastManager";
 import { AdminSettings } from "@/components/admin/AdminSettings";
 import { LeagueManager } from "@/components/admin/LeagueManager";
-import { ArrowLeft, Users, Newspaper, UserCircle, Settings, Bug, Sparkles, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, Newspaper, UserCircle, Settings, Bug, Sparkles, Send, Loader2, MessageSquare } from "lucide-react";
+import { ChatMonitor } from "@/components/admin/ChatMonitor";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -173,6 +174,10 @@ export default function Admin() {
               <Newspaper className="h-4 w-4" />
               News
             </TabsTrigger>
+            <TabsTrigger value="chat" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Chat
+            </TabsTrigger>
             <TabsTrigger value="bugs" className="gap-2">
               <Bug className="h-4 w-4" />
               Bugs ({bugs.length})
@@ -186,6 +191,7 @@ export default function Admin() {
           <TabsContent value="leagues"><LeagueManager /></TabsContent>
           <TabsContent value="cast"><CastManager /></TabsContent>
           <TabsContent value="news"><NewsManager /></TabsContent>
+          <TabsContent value="chat"><ChatMonitor /></TabsContent>
 
           <TabsContent value="bugs">
             <Card>
