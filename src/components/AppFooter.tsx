@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { Bug } from "lucide-react";
 import { BugReportDialog } from "@/components/BugReportDialog";
 import { DonateButton } from "@/components/DonateButton";
 
 export function AppFooter() {
   const [bugOpen, setBugOpen] = useState(false);
+  const params = useParams<{ id?: string }>();
+  const leagueId = params.id;
 
   return (
     <>
@@ -21,7 +24,7 @@ export function AppFooter() {
           <DonateButton />
         </div>
       </footer>
-      <BugReportDialog open={bugOpen} onOpenChange={setBugOpen} />
+      <BugReportDialog open={bugOpen} onOpenChange={setBugOpen} leagueId={leagueId} />
     </>
   );
 }

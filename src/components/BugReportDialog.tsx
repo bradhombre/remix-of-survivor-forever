@@ -16,9 +16,10 @@ import { toast } from "sonner";
 interface BugReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  leagueId?: string;
 }
 
-export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
+export function BugReportDialog({ open, onOpenChange, leagueId }: BugReportDialogProps) {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
@@ -30,7 +31,8 @@ export function BugReportDialog({ open, onOpenChange }: BugReportDialogProps) {
       user_id: user.id,
       description: description.trim().slice(0, 2000),
       page_url: window.location.href,
-    });
+      league_id: leagueId || null,
+    } as any);
     if (error) {
       toast.error("Failed to submit bug report");
     } else {

@@ -75,30 +75,47 @@ export type Database = {
       }
       bug_reports: {
         Row: {
+          admin_notes: string | null
           created_at: string
           description: string
           id: string
+          league_id: string | null
           page_url: string | null
           status: string
           user_id: string
+          user_viewed_response: boolean
         }
         Insert: {
+          admin_notes?: string | null
           created_at?: string
           description: string
           id?: string
+          league_id?: string | null
           page_url?: string | null
           status?: string
           user_id: string
+          user_viewed_response?: boolean
         }
         Update: {
+          admin_notes?: string | null
           created_at?: string
           description?: string
           id?: string
+          league_id?: string | null
           page_url?: string | null
           status?: string
           user_id?: string
+          user_viewed_response?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_messages: {
         Row: {
