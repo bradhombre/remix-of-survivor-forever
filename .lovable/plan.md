@@ -1,24 +1,31 @@
 
 
-## Add "Visit League" Button to Admin Panel
+## Bug: "Gord" Not Showing -- Data Mismatch
 
-### What it does
-Adds a link from the admin League Manager table to directly open any league's full dashboard (`/league/:id`), letting you drop in and see exactly what league members see -- live game, draft, scores, etc.
+### Root Cause
 
-### Changes
+In the "League of Champs" league, the user `buddyholley1958@gmail.com` (team "Gord") has 4 contestants assigned to the old name **"Team 2"** instead of **"Gord"**. This happened because the team was renamed after draft picks were already made, and the rename didn't propagate to the `contestants` table.
 
-#### 1. LeagueManager.tsx -- Add "Visit" link
-Add a navigation link (opens in new tab) next to the existing "View" button on each league row. This takes you to the full LeagueDashboard for that league.
+The draft order was updated correctly ("Gord" appears at position 4), but the contestant ownership still says "Team 2". Since no team named "Team 2" exists anymore, those picks appear orphaned -- visible only to Gord's own screen (where code might fall back to showing them) but invisible to everyone else's leaderboard/scoring views.
 
-#### 2. LeagueDetailSheet.tsx -- Add "Visit" link
-Add a "Visit League" button at the top of the detail drawer so you can also jump to the live dashboard from the detail view.
+**Affected contestants (owner = "Team 2"):**
+- Colby Donaldson
+- Joe Hunter
+- Quintavius "Q" Burdette
+- Savannah Louie
 
-### Why this works without other changes
-- Your super_admin role already grants SELECT access on `game_sessions`, `contestants`, `scoring_events`, `draft_order`, and other tables via RLS policies that check `is_super_admin(auth.uid())`
-- The `useLeagueRole` hook already recognizes `super_admin` and grants `isLeagueAdmin = true`
-- No membership record is needed -- super_admin bypasses league membership checks
+### Fix
 
-### Files to modify
-- `src/components/admin/LeagueManager.tsx` -- add "Visit" button/link per row
-- `src/components/admin/LeagueDetailSheet.tsx` -- add "Visit League" button in drawer
+#### 1. Data repair (SQL migration)
+Update the 4 orphaned contestant records in this session to use the correct team name "Gord":
+
+```sql
+UPDATE contestants
+SET owner = 'Gord'
+WHERE session_id = '6c80c89f-0c0a-4b05-89ad-9ff6e511644c'
+  AND owner = 'Team 2';
+```
+
+#### 2. No code changes needed
+The `rename_team_everywhere` function already handles this correctly going forward -- it updates `contestants.owner` and `draft_order.player_name`. The issue was that the rename likely happened through a direct team name update (bypassing the RPC function) before the atomic rename was implemented.
 
