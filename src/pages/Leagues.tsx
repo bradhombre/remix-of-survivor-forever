@@ -36,6 +36,7 @@ interface LeagueMembership {
     id: string;
     name: string;
     invite_code: string;
+    owner_id: string;
   } | null;
 }
 
@@ -47,6 +48,9 @@ export default function Leagues() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteLeagueOpen, setDeleteLeagueOpen] = useState(false);
+  const [leagueToDelete, setLeagueToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deletingLeague, setDeletingLeague] = useState(false);
   const { user, signOut, loading: authLoading } = useAuth();
   const { isSuperAdmin } = useIsSuperAdmin();
   const navigate = useNavigate();
@@ -74,7 +78,8 @@ export default function Leagues() {
         leagues (
           id,
           name,
-          invite_code
+          invite_code,
+          owner_id
         )
       `)
       .eq('user_id', user.id)
@@ -115,6 +120,23 @@ export default function Leagues() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleDeleteLeague = async () => {
+    if (!leagueToDelete) return;
+    setDeletingLeague(true);
+    try {
+      const { error } = await supabase.rpc('delete_league', { league_uuid: leagueToDelete.id });
+      if (error) throw error;
+      toast.success(`"${leagueToDelete.name}" has been deleted.`);
+      fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete league');
+    } finally {
+      setDeletingLeague(false);
+      setDeleteLeagueOpen(false);
+      setLeagueToDelete(null);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -309,18 +331,46 @@ export default function Leagues() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{membership.leagues.name}</CardTitle>
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge variant={getRoleVariant(membership.role)} className="flex items-center gap-1">
-                          {getRoleIcon(membership.role)}
-                          {getRoleLabel(membership.role)}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs flex items-center gap-1">
-                          {gameTypes[membership.leagues.id] === 'winner_takes_all' ? (
-                            <><Target className="h-3 w-3" />WTA</>
-                          ) : (
-                            <><Trophy className="h-3 w-3" />Fantasy</>
-                          )}
-                        </Badge>
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant={getRoleVariant(membership.role)} className="flex items-center gap-1">
+                            {getRoleIcon(membership.role)}
+                            {getRoleLabel(membership.role)}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                            {gameTypes[membership.leagues.id] === 'winner_takes_all' ? (
+                              <><Target className="h-3 w-3" />WTA</>
+                            ) : (
+                              <><Trophy className="h-3 w-3" />Fantasy</>
+                            )}
+                          </Badge>
+                        </div>
+                        {user && membership.leagues.owner_id === user.id && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => {
+                                  setLeagueToDelete({ id: membership.leagues!.id, name: membership.leagues!.name });
+                                  setDeleteLeagueOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete League
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -338,6 +388,26 @@ export default function Leagues() {
         )}
       </main>
 
+      <AlertDialog open={deleteLeagueOpen} onOpenChange={setDeleteLeagueOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{leagueToDelete?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this league, all its game data, teams, and chat history. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingLeague}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteLeague}
+              disabled={deletingLeague}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingLeague ? 'Deleting...' : 'Delete League'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <CreateLeagueDialog 
         open={createOpen} 
