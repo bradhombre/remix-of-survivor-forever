@@ -49,6 +49,31 @@ export const FinalPredictionDialog = ({
     }
   }, [open, sessionId, episode]);
 
+  // Realtime subscription for live updates
+  useEffect(() => {
+    if (!open) return;
+
+    const channel = supabase
+      .channel(`final-predictions-${sessionId}-${episode}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'final_predictions',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        () => {
+          loadPredictions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, sessionId, episode]);
+
   const loadPredictions = async () => {
     const { data, error } = await supabase
       .from("final_predictions")
