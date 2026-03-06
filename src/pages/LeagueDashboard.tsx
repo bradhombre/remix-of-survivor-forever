@@ -4,6 +4,7 @@ import { useGameStateDB } from "@/hooks/useGameStateDB";
 import { useAuth } from "@/hooks/useAuth";
 import { useLeagueRole } from "@/hooks/useLeagueRole";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
+import { useIsSuperAdmin } from "@/hooks/useIsSuperAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { DraftMode } from "@/components/DraftMode";
 import { GameMode } from "@/components/GameMode";
@@ -74,6 +75,7 @@ const LeagueDashboard = () => {
   const { user, isAdmin, playerName, loading, signOut } = useAuth();
   const { isLeagueAdmin, loading: roleLoading } = useLeagueRole(leagueId);
   const { getMyTeam, teams } = useLeagueTeams({ leagueId });
+  const { isSuperAdmin } = useIsSuperAdmin();
   const navigate = useNavigate();
   
   // Get current user's team name for chat
@@ -337,7 +339,7 @@ const LeagueDashboard = () => {
       {viewMode === "game" && (
         <>
           <GameplayTips leagueId={leagueId!} />
-          {!canShowGame && (
+          {!canShowGame && !isSuperAdmin && (
             <div className="container max-w-7xl mx-auto px-4 mt-4">
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                 <Info className="h-4 w-4 shrink-0" />
@@ -345,7 +347,7 @@ const LeagueDashboard = () => {
               </div>
             </div>
           )}
-          <div className={!canShowGame ? "opacity-50 pointer-events-none" : ""}>
+          <div className={!canShowGame && !isSuperAdmin ? "opacity-50 pointer-events-none" : ""}>
           {state.gameType === "winner_takes_all" ? (
             <WinnerTakesAllMode
               leagueId={leagueId}
@@ -466,7 +468,7 @@ const LeagueDashboard = () => {
 
       {/* Onboarding Tour */}
       {leagueId && (
-        <OnboardingTour leagueId={leagueId} isLeagueAdmin={isLeagueAdmin} />
+        <OnboardingTour leagueId={leagueId} isLeagueAdmin={isLeagueAdmin} isSuperAdmin={isSuperAdmin} />
       )}
     </div>
   );
