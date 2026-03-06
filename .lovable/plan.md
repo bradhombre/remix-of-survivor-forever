@@ -1,26 +1,23 @@
 
 
-## User Feedback: "Can't find how to delete a league"
+## Auto-Refresh for Tribal Vote Predictions
 
-### Current State
+### Problem
+When the FinalPredictionDialog is open, players can't see when others have submitted their predictions without manually closing and reopening the dialog.
 
-The "Delete League" option already exists. It's located at the bottom of the **League** tab (the "League Info" section) inside a league's dashboard (`/league/:id`). Only the league owner can see it. The problem is purely discoverability -- users don't think to look inside the league they want to delete.
+### Solution
+Subscribe to Supabase Realtime on the `final_predictions` table while the dialog is open. This will automatically update the submission status list as each player submits.
 
-### Proposed Improvement: Add Delete Option on the Leagues List Page
+### Changes
 
-Add a context menu or action to each league card on the `/leagues` page so owners can delete directly from the list without entering the league first.
+**`src/components/FinalPredictionDialog.tsx`**
+- Add a Realtime subscription in the `useEffect` that fires when the dialog opens
+- Listen for `INSERT` and `UPDATE` events on `final_predictions` filtered by `session_id` and `episode`
+- On any change, call the existing `loadPredictions()` to refresh the list
+- Clean up the subscription when the dialog closes
 
-**Changes:**
+**Database** (migration needed)
+- Enable realtime on `final_predictions`: `ALTER PUBLICATION supabase_realtime ADD TABLE public.final_predictions;`
 
-1. **`src/pages/Leagues.tsx`** -- For league cards where the user is the owner (league_admin role), add a small dropdown menu (kebab/three-dot icon) in the card corner with a "Delete League" option. Clicking it opens the same confirmation dialog pattern already used elsewhere. On confirm, call `supabase.rpc('delete_league', { league_uuid })` and refresh the list.
-
-   - Fetch `owner_id` alongside existing league data to determine ownership (or infer from `league_admin` role)
-   - Add a stop-propagation handler so clicking the menu doesn't navigate into the league
-   - Reuse the existing `AlertDialog` pattern for confirmation
-
-2. **No database or backend changes needed** -- the `delete_league` RPC and ownership check already exist.
-
-### Technical Detail
-
-The leagues query in `fetchMemberships` needs to also select `owner_id` from the `leagues` join so we can conditionally show the delete action only for the league owner (not just any league_admin).
+This is a small, targeted change — roughly 15 lines of code plus a one-line migration.
 
