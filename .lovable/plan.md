@@ -1,45 +1,37 @@
 
 
-## Cross-League Chat Monitor for Super Admins
+## Enhance JeffBot with App Help Knowledge + Announce New Feature
 
-### What it does
-Adds a new "Chat" tab to the Platform Admin panel that shows recent chat activity across all leagues in one view. This gives you a single place to monitor conversations, spot issues, and see how leagues are engaging with the chat and JeffBot.
+### What changes
 
-### Features
-- **Cross-league chat feed**: Most recent messages across all leagues, grouped or labeled by league name
-- **League filter dropdown**: Optionally filter to a specific league
-- **Message stats**: Quick counts of total messages, JeffBot interactions, and active chatting leagues
-- **Full message view**: Shows sender (team name or email), content, timestamp, and league name
-- **Load more**: Paginated with a "load more" button (starts with 50 messages)
+**1. JeffBot system prompt** (`supabase/functions/jeffbot/index.ts`)
+Add an `APP HELP` section to the system prompt covering the specific scoring questions users are asking:
 
-### Technical changes
+- **How to score an episode**: Scroll down to "Score This Episode" section on the Game tab. Each contestant card has quick-action buttons (Survive, Immunity, Cry, Voted Out). Tap "More" to expand all scoring categories. Commissioners can also mark eliminations.
+- **How to mark all survivors at once**: Commissioners tap the "..." menu (mobile) or "Mark Survivors" button (desktop) to bulk-award survival points to all remaining contestants for the current episode.
+- **How to undo scoring**: Use the "Undo Last Action" button — on mobile it's in the "..." admin menu, on desktop it's the undo icon button. This removes the most recent scoring event.
+- **How the Tribal button works**: Opens predictions — each player picks who they think gets voted out. Correct guessers earn bonus points (unless everyone picks the same person). Commissioners use this to officially eliminate contestants.
+- **How to find more scoring categories**: Tap "More" on any contestant card to see all enabled categories. Commissioners can customize which categories are available and their point values in the Scoring tab under league settings.
+- **General app help**: How to invite players (share invite code/link), how the draft works, how to claim/rename teams, how to resize the league.
 
-**`src/pages/Admin.tsx`**
-- Add a new "Chat" tab with a `MessageSquare` icon to the TabsList
-- Render the new `ChatMonitor` component inside that tab
+The prompt will instruct JeffBot to answer app questions concisely and suggest submitting a bug report if it doesn't know the answer.
 
-**`src/components/admin/ChatMonitor.tsx`** (new file)
-- Fetches recent `chat_messages` across all leagues (ordered by `created_at` desc, paginated at 50)
-- Joins with `profiles` for sender emails and `leagues` for league names, `league_teams` for team names
-- Displays each message with: league name badge, sender name, timestamp, content (truncated with expand)
-- Filter dropdown populated from leagues with chat activity
-- Summary stats card at top: total messages (all time), messages today, JeffBot messages, active leagues
-- Uses existing RLS — super admin SELECT is already covered by `is_league_member` check combined with `is_super_admin` in the chat_messages policies... actually, let me check.
+**2. Update welcome message** (DB migration to replace `seed_jeffbot_welcome` function)
+Change the welcome text to mention app help: add "Ask me questions about the app!" to the existing intro.
 
-**RLS consideration**: The `chat_messages` SELECT policy uses `is_league_member(auth.uid(), league_id)` which does NOT include super admin bypass. A new policy is needed:
-
-**Database migration**: Add a SELECT policy on `chat_messages` for super admins:
+**3. Announce new feature to all existing leagues** (DB migration)
+Insert a bot message into every league's chat announcing the new capability:
 ```sql
-CREATE POLICY "Super admins can view all chat messages"
-ON public.chat_messages
-FOR SELECT
-TO authenticated
-USING (is_super_admin(auth.uid()));
+INSERT INTO chat_messages (league_id, user_id, content, is_bot)
+SELECT l.id, l.owner_id,
+  'New feature! 🎉 I can now answer questions about how to use the app — scoring, drafts, inviting players, you name it. Just tag me with @jeffbot and ask away!',
+  true
+FROM leagues l;
 ```
 
-### UI layout
-The chat monitor will be a card with:
-1. Stats row at top (total messages, today's count, JeffBot %, active leagues)
-2. League filter dropdown
-3. Scrollable message list with league labels, sender names, timestamps, and content
+### Technical detail
+- Edge function: expand the `systemPrompt` string in `supabase/functions/jeffbot/index.ts` with an `APP HELP` block (~20 lines of Q&A knowledge)
+- DB migration #1: `CREATE OR REPLACE FUNCTION seed_jeffbot_welcome()` with updated welcome text mentioning app help
+- DB migration #2: One-time INSERT of announcement message to all leagues using each league's `owner_id`
+- No schema changes, no new files, no RLS changes needed
 
