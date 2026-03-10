@@ -137,7 +137,7 @@ export function ChatMonitor() {
     setMessages(msgs);
     setHasMore(msgs.length === PAGE_SIZE);
     setLoading(false);
-  }, [filterLeague, fetchMessages, fetchStats]);
+  }, [filterLeague, hideBot, fetchMessages, fetchStats]);
 
   useEffect(() => {
     // Fetch leagues for filter
