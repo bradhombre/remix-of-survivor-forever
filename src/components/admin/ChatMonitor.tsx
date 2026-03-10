@@ -229,17 +229,6 @@ export function ChatMonitor() {
                 <Label htmlFor="hide-bot" className="text-sm whitespace-nowrap">Hide JeffBot</Label>
               </div>
             </div>
-                <SelectValue placeholder="All Leagues" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Leagues</SelectItem>
-                {leagues.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
         <CardContent>
