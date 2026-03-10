@@ -210,8 +210,25 @@ export function ChatMonitor() {
               <MessageSquare className="h-5 w-5" />
               Chat Feed
             </CardTitle>
-            <Select value={filterLeague} onValueChange={setFilterLeague}>
-              <SelectTrigger className="w-[200px]">
+            <div className="flex items-center gap-4 flex-wrap">
+              <Select value={filterLeague} onValueChange={setFilterLeague}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Leagues" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Leagues</SelectItem>
+                  {leagues.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2">
+                <Switch id="hide-bot" checked={hideBot} onCheckedChange={setHideBot} />
+                <Label htmlFor="hide-bot" className="text-sm whitespace-nowrap">Hide JeffBot</Label>
+              </div>
+            </div>
                 <SelectValue placeholder="All Leagues" />
               </SelectTrigger>
               <SelectContent>
