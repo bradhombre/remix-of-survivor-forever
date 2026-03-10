@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -39,6 +41,7 @@ export function ChatMonitor() {
   const [stats, setStats] = useState<Stats>({ total: 0, today: 0, botMessages: 0, activeLeagues: 0 });
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [filterLeague, setFilterLeague] = useState<string>("all");
+  const [hideBot, setHideBot] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -88,6 +91,10 @@ export function ChatMonitor() {
       query = query.eq("league_id", leagueFilter);
     }
 
+    if (hideBot) {
+      query = query.eq("is_bot", false);
+    }
+
     const { data } = await query;
     if (!data) return [];
 
@@ -124,7 +131,7 @@ export function ChatMonitor() {
     }));
 
     return enriched;
-  }, []);
+  }, [hideBot]);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
@@ -132,7 +139,7 @@ export function ChatMonitor() {
     setMessages(msgs);
     setHasMore(msgs.length === PAGE_SIZE);
     setLoading(false);
-  }, [filterLeague, fetchMessages, fetchStats]);
+  }, [filterLeague, hideBot, fetchMessages, fetchStats]);
 
   useEffect(() => {
     // Fetch leagues for filter
@@ -203,19 +210,25 @@ export function ChatMonitor() {
               <MessageSquare className="h-5 w-5" />
               Chat Feed
             </CardTitle>
-            <Select value={filterLeague} onValueChange={setFilterLeague}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Leagues" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Leagues</SelectItem>
-                {leagues.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Select value={filterLeague} onValueChange={setFilterLeague}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Leagues" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Leagues</SelectItem>
+                  {leagues.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2">
+                <Switch id="hide-bot" checked={hideBot} onCheckedChange={setHideBot} />
+                <Label htmlFor="hide-bot" className="text-sm whitespace-nowrap">Hide JeffBot</Label>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
