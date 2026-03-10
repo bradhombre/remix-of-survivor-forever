@@ -39,6 +39,7 @@ export function ChatMonitor() {
   const [stats, setStats] = useState<Stats>({ total: 0, today: 0, botMessages: 0, activeLeagues: 0 });
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [filterLeague, setFilterLeague] = useState<string>("all");
+  const [hideBot, setHideBot] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
