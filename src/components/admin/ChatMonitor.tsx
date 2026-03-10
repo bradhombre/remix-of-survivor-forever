@@ -89,6 +89,10 @@ export function ChatMonitor() {
       query = query.eq("league_id", leagueFilter);
     }
 
+    if (hideBot) {
+      query = query.eq("is_bot", false);
+    }
+
     const { data } = await query;
     if (!data) return [];
 
