@@ -129,7 +129,7 @@ export function ChatMonitor() {
     }));
 
     return enriched;
-  }, []);
+  }, [hideBot]);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
