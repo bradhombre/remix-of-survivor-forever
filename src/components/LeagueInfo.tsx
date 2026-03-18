@@ -209,14 +209,14 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
 
   const isOwner = currentUserId === league?.owner_id;
 
-  const handleRemoveMember = async (memberId: string, memberEmail: string) => {
-    const { error } = await supabase
-      .from("league_memberships")
-      .delete()
-      .eq("id", memberId);
+  const handleRemoveMember = async (memberId: string, memberEmail: string, memberUserId: string) => {
+    const { error } = await supabase.rpc("remove_league_member", {
+      _league_id: leagueId,
+      _user_id: memberUserId,
+    });
 
     if (error) {
-      toast.error("Failed to remove member");
+      toast.error("Failed to remove member: " + error.message);
     } else {
       toast.success(`${memberEmail} removed from league`);
       setMembers(prev => prev.filter(m => m.id !== memberId));
