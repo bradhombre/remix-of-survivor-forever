@@ -210,7 +210,7 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
   const isOwner = currentUserId === league?.owner_id;
 
   const handleRemoveMember = async (memberId: string, memberEmail: string, memberUserId: string) => {
-    const { error } = await supabase.rpc("remove_league_member", {
+    const { error } = await (supabase.rpc as any)("remove_league_member", {
       _league_id: leagueId,
       _user_id: memberUserId,
     });
