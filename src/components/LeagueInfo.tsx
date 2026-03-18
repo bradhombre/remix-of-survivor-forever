@@ -502,7 +502,7 @@ export function LeagueInfo({ leagueId }: LeagueInfoProps) {
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleRemoveMember(member.id, member.email)}
+                                  onClick={() => handleRemoveMember(member.id, member.email, member.user_id)}
                                 >
                                   Remove
                                 </AlertDialogAction>
