@@ -836,6 +836,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      remove_league_member: {
+        Args: { _league_id: string; _user_id: string }
+        Returns: undefined
+      }
       rename_team_everywhere: {
         Args: {
           _league_id: string
