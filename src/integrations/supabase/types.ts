@@ -427,6 +427,7 @@ export type Database = {
       }
       leagues: {
         Row: {
+          allow_player_scoring: boolean
           auto_renew: boolean
           created_at: string | null
           id: string
@@ -439,6 +440,7 @@ export type Database = {
           team_count: number | null
         }
         Insert: {
+          allow_player_scoring?: boolean
           auto_renew?: boolean
           created_at?: string | null
           id?: string
@@ -451,6 +453,7 @@ export type Database = {
           team_count?: number | null
         }
         Update: {
+          allow_player_scoring?: boolean
           auto_renew?: boolean
           created_at?: string | null
           id?: string
@@ -736,6 +739,7 @@ export type Database = {
       create_league: {
         Args: { league_name: string }
         Returns: {
+          allow_player_scoring: boolean
           auto_renew: boolean
           created_at: string | null
           id: string
