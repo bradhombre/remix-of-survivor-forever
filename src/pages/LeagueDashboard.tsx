@@ -356,7 +356,6 @@ const LeagueDashboard = () => {
               contestants={state.contestants}
               draftOrder={state.draftOrder}
               isAdmin={isLeagueAdmin}
-              allowPlayerScoring={allowPlayerScoring}
               sessionId={sessionId || undefined}
               sessionStatus={sessionStatus}
             />
