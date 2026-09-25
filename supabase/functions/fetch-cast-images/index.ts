@@ -199,14 +199,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const reqBody = await req.json();
     const {
       season_number,
       contestant_ids,
       force_refresh = false,
       cast_page_url,
-    }: FetchRequest = await req.json();
+    }: FetchRequest = reqBody;
 
-    if (!season_number) {
+    if (!season_number || typeof season_number !== "number" || season_number < 1 || season_number > 200) {
       return new Response(
         JSON.stringify({ success: false, error: "season_number is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -218,9 +219,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const mode = (await Promise.resolve((globalThis as any).__mode)) ?? undefined;
-    void mode;
-    const reqMode = (reqBody as any).mode as string | undefined;
+    const reqMode = reqBody?.mode as string | undefined;
     if (reqMode === "import_cast" || reqMode === "auto") {
       if (reqMode === "auto") {
         const { data: setting } = await supabase.from("app_settings").select("value").eq("key", "current_season").maybeSingle();
