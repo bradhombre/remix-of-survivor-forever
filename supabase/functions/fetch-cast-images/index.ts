@@ -191,6 +191,64 @@ function extractCastFromHTML(html: string): CastMapping[] {
   return mappings;
 }
 
+// --- Full cast import from wiki ---
+
+interface ImportedCastaway {
+  name: string;
+  tribe: string | null;
+  age: number | null;
+  occupation: string | null;
+  image_url: string | null;
+}
+
+async function importCastFromWiki(season: number, pageUrl?: string): Promise<ImportedCastaway[]> {
+  const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!firecrawlKey || !lovableKey) throw new Error("Scraping or AI key not configured");
+
+  const url = pageUrl || `https://survivor.fandom.com/wiki/Survivor_${season}`;
+  const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ url, formats: ["markdown"] }),
+  });
+  if (!res.ok) throw new Error(`Wiki fetch failed [${res.status}]: ${await res.text()}`);
+  const data = await res.json();
+  let md: string = data.data?.markdown || data.markdown || "";
+  const idx = md.search(/#+\s*Cast(aways)?\b/i);
+  if (idx >= 0) md = md.substring(idx);
+  md = md.substring(0, 60000);
+
+  const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "openai/gpt-6-astra",
+      instructions:
+        `Extract the Survivor Season ${season} castaways from this wiki page markdown. Return ONLY a JSON array: [{"name":"Full Name","tribe":"Starting tribe or null","age":number or null,"occupation":"text or null","image_url":"castaway thumbnail URL from static.wikia.nocookie.net or null"}]. If the page has no cast listed yet, return []. Do not invent people.`,
+      input: md,
+    }),
+  });
+  if (!aiRes.ok) throw new Error(`AI extraction failed [${aiRes.status}]: ${await aiRes.text()}`);
+  const ai = await aiRes.json();
+  let text: string = ai.output_text || "";
+  if (!text && Array.isArray(ai.output)) {
+    for (const o of ai.output) for (const c of o.content || []) if (c.text) text += c.text;
+  }
+  const m = text.match(/\[[\s\S]*\]/);
+  if (!m) return [];
+  const arr = JSON.parse(m[0]) as ImportedCastaway[];
+  return arr
+    .filter((c) => c && typeof c.name === "string" && c.name.trim())
+    .map((c) => ({
+      name: c.name.trim(),
+      tribe: c.tribe || null,
+      age: typeof c.age === "number" ? c.age : null,
+      occupation: c.occupation || null,
+      image_url: c.image_url ? cleanWikiaUrl(c.image_url) : null,
+    }));
+}
+
 // --- Main Handler ---
 
 Deno.serve(async (req) => {
@@ -199,14 +257,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const reqBody = await req.json();
     const {
       season_number,
       contestant_ids,
       force_refresh = false,
       cast_page_url,
-    }: FetchRequest = await req.json();
+    }: FetchRequest = reqBody;
 
-    if (!season_number) {
+    if (!season_number || typeof season_number !== "number" || season_number < 1 || season_number > 200) {
       return new Response(
         JSON.stringify({ success: false, error: "season_number is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -217,6 +276,26 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    const reqMode = reqBody?.mode as string | undefined;
+    if (reqMode === "import_cast" || reqMode === "auto") {
+      if (reqMode === "auto") {
+        const { data: setting } = await supabase.from("app_settings").select("value").eq("key", "current_season").maybeSingle();
+        const cur = parseInt(setting?.value || "") || season_number;
+        const { count } = await supabase.from("master_contestants").select("id", { count: "exact", head: true }).eq("season_number", cur);
+        if ((count || 0) > 0) {
+          return new Response(JSON.stringify({ success: true, skipped: true, reason: "cast already exists" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const cast = await importCastFromWiki(cur, cast_page_url);
+        if (cast.length === 0) {
+          return new Response(JSON.stringify({ success: true, inserted: 0, reason: "wiki not ready" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const { error } = await supabase.from("master_contestants").insert(cast.map((c) => ({ ...c, season_number: cur })));
+        return new Response(JSON.stringify({ success: !error, inserted: error ? 0 : cast.length, error: error?.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const cast = await importCastFromWiki(season_number, cast_page_url);
+      return new Response(JSON.stringify({ success: true, cast }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     let query = supabase
       .from("master_contestants")
