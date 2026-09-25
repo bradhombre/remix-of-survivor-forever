@@ -31,6 +31,7 @@ const LeagueDashboard = () => {
   const { id: leagueId } = useParams<{ id: string }>();
   const [leagueName, setLeagueName] = useState<string>("");
   const [leagueLoading, setLeagueLoading] = useState(true);
+  const [allowPlayerScoring, setAllowPlayerScoring] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("draft"); // will be corrected by effect
 
   const {
@@ -100,7 +101,7 @@ const LeagueDashboard = () => {
       
       const { data, error } = await supabase
         .from('leagues')
-        .select('name')
+        .select('name, allow_player_scoring')
         .eq('id', leagueId)
         .single();
 
@@ -109,6 +110,7 @@ const LeagueDashboard = () => {
         navigate('/leagues');
       } else {
         setLeagueName(data.name);
+        setAllowPlayerScoring(!!data.allow_player_scoring);
       }
       setLeagueLoading(false);
     };
@@ -371,6 +373,7 @@ const LeagueDashboard = () => {
               scoringConfig={scoringConfig}
               draftOrder={state.draftOrder}
               isAdmin={isLeagueAdmin}
+              allowPlayerScoring={allowPlayerScoring}
               playerName={userTeamName || playerName}
               sessionId={sessionId || undefined}
               onEpisodeChange={setEpisode}

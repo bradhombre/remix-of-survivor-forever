@@ -1,0 +1,1 @@
+ALTER TABLE public.leagues ADD COLUMN IF NOT EXISTS allow_player_scoring boolean NOT NULL DEFAULT false;

@@ -86,6 +86,7 @@ export function ScoringSettings({ leagueId, onScoringConfigSaved }: ScoringSetti
   const [savingScoring, setSavingScoring] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [allowPlayerScoring, setAllowPlayerScoring] = useState(false);
   const [originalConfig, setOriginalConfig] = useState<Record<string, number> | null>(null);
   
   const [customActions, setCustomActions] = useState<CustomScoringAction[]>([]);
@@ -109,7 +110,7 @@ export function ScoringSettings({ leagueId, onScoringConfigSaved }: ScoringSetti
 
       const { data: leagueData, error: leagueError } = await supabase
         .from("leagues")
-        .select("owner_id, scoring_config")
+        .select("owner_id, scoring_config, allow_player_scoring")
         .eq("id", leagueId)
         .single();
 
@@ -120,6 +121,7 @@ export function ScoringSettings({ leagueId, onScoringConfigSaved }: ScoringSetti
       }
 
       setIsOwner(user?.id === leagueData.owner_id);
+      setAllowPlayerScoring(!!leagueData.allow_player_scoring);
       setOriginalConfig(leagueData.scoring_config as Record<string, number> | null);
       
       if (leagueData.scoring_config) {
@@ -306,6 +308,20 @@ export function ScoringSettings({ leagueId, onScoringConfigSaved }: ScoringSetti
     toast.success(`Applied "${template.name}" template`);
   };
 
+  const handleTogglePlayerScoring = async (value: boolean) => {
+    setAllowPlayerScoring(value);
+    const { error } = await supabase
+      .from("leagues")
+      .update({ allow_player_scoring: value })
+      .eq("id", leagueId);
+    if (error) {
+      setAllowPlayerScoring(!value);
+      toast.error("Failed to update scoring permissions");
+    } else {
+      toast.success(value ? "All players can now score episodes" : "Only commissioners can score now");
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4">
@@ -327,6 +343,21 @@ export function ScoringSettings({ leagueId, onScoringConfigSaved }: ScoringSetti
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {/* Who can score */}
+          <div className="flex items-start justify-between gap-4 pb-4 border-b border-border">
+            <div>
+              <p className="text-sm font-medium">Let all players score episodes</p>
+              <p className="text-xs text-muted-foreground">
+                When off, only commissioners can add points. Turn on for casual leagues where anyone watching can record scores. Voted Out stays commissioner-only.
+              </p>
+            </div>
+            <Switch
+              checked={allowPlayerScoring}
+              onCheckedChange={handleTogglePlayerScoring}
+              disabled={!isOwner}
+              aria-label="Let all players score episodes"
+            />
+          </div>
           {/* Scoring Templates */}
           {isOwner && (
             <div className="space-y-4 pb-4 border-b border-border">

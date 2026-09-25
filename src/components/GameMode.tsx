@@ -52,6 +52,7 @@ interface GameModeProps {
   scoringConfig?: ScoringConfig | null;
   draftOrder: Player[];
   isAdmin?: boolean;
+  allowPlayerScoring?: boolean;
   playerName?: string | null;
   sessionId?: string;
   onEpisodeChange: (episode: number) => void;
@@ -76,6 +77,7 @@ export const GameMode = ({
   scoringConfig,
   draftOrder,
   isAdmin = false,
+  allowPlayerScoring = false,
   playerName = null,
   sessionId,
   onEpisodeChange,
@@ -89,6 +91,7 @@ export const GameMode = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterOwner, setFilterOwner] = useState<Player | "all">("all");
   const [showEliminated, setShowEliminated] = useState(true);
+  const canScore = isAdmin || allowPlayerScoring;
   const [expandedContestant, setExpandedContestant] = useState<string | null>(null);
   const [expandedPlayers, setExpandedPlayers] = useState<Set<Player>>(new Set());
   const [scoringView, setScoringView] = useState<"team" | "all">("team");
@@ -947,7 +950,7 @@ export const GameMode = ({
                           
                           {/* Top-Right Action Buttons */}
                           <div className="flex flex-col gap-1 shrink-0">
-                            {!contestant.isEliminated && (
+                            {canScore && !contestant.isEliminated && (
                               <Button
                                 onClick={() => handleQuickScore(contestant, surviveAction.label, survivePoints)}
                                 variant="success"
@@ -973,7 +976,7 @@ export const GameMode = ({
                         </div>
 
                         {/* Bottom Quick Actions */}
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className={`grid grid-cols-3 gap-2 ${canScore ? "" : "hidden"}`}>
                           {isActionEnabled("WIN_IMMUNITY", scoringConfig) && (
                             <Button
                               onClick={() =>
@@ -1015,7 +1018,7 @@ export const GameMode = ({
                         </div>
 
                         {/* Expanded Menu */}
-                        {isExpanded && (
+                        {canScore && isExpanded && (
                           <div className="glass-strong p-3 rounded-lg space-y-2 animate-in slide-in-from-top">
                             {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
                               if (key === "SURVIVE_PRE" || key === "SURVIVE_POST" || key === "VOTED_OUT" || key === "CRY") return null;
@@ -1104,7 +1107,7 @@ export const GameMode = ({
                     
                     {/* Top-Right Action Buttons */}
                     <div className="flex flex-col gap-1 shrink-0">
-                      {!contestant.isEliminated && (
+                      {canScore && !contestant.isEliminated && (
                         <Button
                           onClick={() => handleQuickScore(contestant, surviveAction.label, survivePoints)}
                           variant="success"
@@ -1130,7 +1133,7 @@ export const GameMode = ({
                   </div>
 
                   {/* Bottom Quick Actions */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={`grid grid-cols-3 gap-2 ${canScore ? "" : "hidden"}`}>
                     {isActionEnabled("WIN_IMMUNITY", scoringConfig) && (
                       <Button
                         onClick={() =>
@@ -1172,7 +1175,7 @@ export const GameMode = ({
                   </div>
 
                   {/* Expanded Menu */}
-                  {isExpanded && (
+                  {canScore && isExpanded && (
                     <div className="glass-strong p-3 rounded-lg space-y-2 animate-in slide-in-from-top">
                       {Object.entries(SCORING_ACTIONS).map(([key, action]) => {
                         if (key === "SURVIVE_PRE" || key === "SURVIVE_POST" || key === "VOTED_OUT" || key === "CRY") return null;
