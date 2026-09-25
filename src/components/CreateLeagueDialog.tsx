@@ -62,7 +62,11 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [leagueSize, setLeagueSize] = useState(4);
   const [picksPerTeamOverride, setPicksPerTeamOverride] = useState<number | null>(null);
-  const [seasonNumber, setSeasonNumber] = useState(50);
+  const [seasonNumber, setSeasonNumber] = useState(51);
+  useEffect(() => {
+    supabase.from('app_settings').select('value').eq('key', 'current_season').maybeSingle()
+      .then(({ data }) => { const n = parseInt(data?.value || ''); if (n) setSeasonNumber(n); });
+  }, []);
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Step 3 state - Import Cast
