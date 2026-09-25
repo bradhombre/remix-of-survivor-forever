@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect, useMemo } from "react";
 import { ContestantAvatar } from "./ContestantAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,55 +12,28 @@ import {
 import { ArchivedSeason, Player } from "@/types/survivor";
 import { Download, Calendar, Users, Trophy } from "lucide-react";
 
-interface CompletedSession {
-  id: string;
-  season: number;
-  updated_at: string;
-}
-
 interface HistoryModeProps {
-  leagueId: string;
+  leagueId?: string;
   archivedSeasons: ArchivedSeason[];
   playerProfiles: Record<Player, { avatar?: string }>;
 }
 
-export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: HistoryModeProps) => {
-  const [completedSessions, setCompletedSessions] = useState<CompletedSession[]>([]);
+export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProps) => {
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<string>("");
   const [selectedSeason, setSelectedSeason] = useState<ArchivedSeason | null>(null);
 
-  // Fetch completed sessions for this league
-  useEffect(() => {
-    const fetchCompletedSessions = async () => {
-      const { data } = await supabase
-        .from("game_sessions")
-        .select("id, season, updated_at")
-        .eq("league_id", leagueId)
-        .eq("status", "completed")
-        .order("season", { ascending: false });
-
-      if (data && data.length > 0) {
-        setCompletedSessions(data);
-      }
-    };
-
-    fetchCompletedSessions();
-  }, [leagueId]);
+  // One entry per season, newest first (archivedSeasons is already newest-first,
+  // so if a season was archived twice we keep the latest copy)
+  const seasonNumbers = useMemo(
+    () => Array.from(new Set(archivedSeasons.map((s) => s.season))).sort((a, b) => b - a),
+    [archivedSeasons]
+  );
 
   // Auto-select the most recent season when data is available
   useEffect(() => {
-    if (selectedSeasonNumber) return; // already selected
-
-    // Gather all available season numbers from both sources
-    const allSeasons = new Set<number>();
-    completedSessions.forEach((s) => allSeasons.add(s.season));
-    archivedSeasons.forEach((s) => allSeasons.add(s.season));
-
-    if (allSeasons.size > 0) {
-      const mostRecent = Math.max(...allSeasons);
-      setSelectedSeasonNumber(String(mostRecent));
-    }
-  }, [completedSessions, archivedSeasons, selectedSeasonNumber]);
+    if (selectedSeasonNumber) return;
+    if (seasonNumbers.length > 0) setSelectedSeasonNumber(String(seasonNumbers[0]));
+  }, [seasonNumbers, selectedSeasonNumber]);
 
   // When season selection changes, find the matching archived data
   useEffect(() => {
@@ -93,7 +65,7 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
   };
 
   // No completed sessions or archived seasons
-  if (completedSessions.length === 0 && archivedSeasons.length === 0) {
+  if (archivedSeasons.length === 0) {
     return (
       <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
         <div className="text-center space-y-4">
@@ -118,19 +90,11 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
                 <SelectValue placeholder="Select season" />
               </SelectTrigger>
               <SelectContent>
-                {completedSessions.map((session) => (
-                  <SelectItem key={session.id} value={String(session.season)}>
-                    Season {session.season}
+                {seasonNumbers.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    Season {n}
                   </SelectItem>
                 ))}
-                {/* Also include archived seasons not in completed sessions */}
-                {archivedSeasons
-                  .filter((as) => !completedSessions.some((cs) => cs.season === as.season))
-                  .map((as) => (
-                    <SelectItem key={as.season} value={String(as.season)}>
-                      Season {as.season}
-                    </SelectItem>
-                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -148,7 +112,7 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
               <Card key={entry.player} className="glass-strong p-6 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-4xl">{getRankEmoji(index)}</span>
-                  <span className="text-sm text-muted-foreground">{entry.activeCount}/4 active</span>
+                  <span className="text-sm text-muted-foreground">{entry.activeCount} still in</span>
                 </div>
                 
                 {playerProfiles[entry.player]?.avatar && (
@@ -183,7 +147,9 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
           <Card className="glass p-6 space-y-2">
             <Calendar className="h-8 w-8 text-success" />
             <p className="text-3xl font-bold">
-              {Math.max(...selectedSeason.scoringEvents.map(e => e.episode))}
+              {selectedSeason.scoringEvents.length > 0
+                ? Math.max(...selectedSeason.scoringEvents.map((e) => e.episode))
+                : 0}
             </p>
             <p className="text-muted-foreground">Episodes Tracked</p>
           </Card>
@@ -192,7 +158,7 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
         {/* Contestants by Team */}
         <div className="space-y-6">
           <h2 className="text-3xl font-bold">👥 Team Rosters</h2>
-          {(["Brad", "Coco", "Kalin", "Roy"] as Player[]).map((player) => {
+          {selectedSeason.finalStandings.map((entry) => entry.player as Player).map((player) => {
             const playerContestants = selectedSeason.contestants.filter(c => c.owner === player);
             if (playerContestants.length === 0) return null;
 
@@ -239,18 +205,11 @@ export const HistoryMode = ({ leagueId, archivedSeasons, playerProfiles }: Histo
             <SelectValue placeholder="Select season" />
           </SelectTrigger>
           <SelectContent>
-            {completedSessions.map((session) => (
-              <SelectItem key={session.id} value={String(session.season)}>
-                Season {session.season}
+            {seasonNumbers.map((n) => (
+              <SelectItem key={n} value={String(n)}>
+                Season {n}
               </SelectItem>
             ))}
-            {archivedSeasons
-              .filter((as) => !completedSessions.some((cs) => cs.season === as.season))
-              .map((as) => (
-                <SelectItem key={as.season} value={String(as.season)}>
-                  Season {as.season}
-                </SelectItem>
-              ))}
           </SelectContent>
         </Select>
       </div>

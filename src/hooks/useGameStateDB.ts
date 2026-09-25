@@ -38,7 +38,14 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     gameType: "full",
     picksPerTeam: null,
   });
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionIdState] = useState<string | null>(null);
+  // The session the screen is currently showing. Loads for any other session are ignored,
+  // so a slow reload of last season can't overwrite the new one.
+  const currentSidRef = useRef<string | null>(null);
+  const setSessionId = (sid: string | null) => {
+    currentSidRef.current = sid;
+    setSessionIdState(sid);
+  };
   const [sessionStatus, setSessionStatus] = useState<string>("active");
   const [loading, setLoading] = useState(true);
   const [scoringConfig, setScoringConfig] = useState<ScoringConfig | null>(null);
@@ -92,8 +99,31 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
 
         if (leagueSession) {
           console.log("Loading league session:", leagueSession.id);
+          let status: string = (leagueSession as any).status || "active";
+
+          // The old "Start New Season" button saved the season, emptied the session,
+          // bumped the season number and marked it "completed". Some commissioners then
+          // imported the new cast and drafted inside that "completed" session.
+          // The only real way to finish a season is crowning a winner, so a completed
+          // session with no "Win Survivor" event is a live season: reopen it as-is.
+          // This only changes the status flag; cast, picks and scores are untouched.
+          if (status === "completed") {
+            const { count: crownCount, error: crownError } = await supabase
+              .from("scoring_events")
+              .select("id", { count: "exact", head: true })
+              .eq("session_id", leagueSession.id)
+              .ilike("action", "%Win Survivor%");
+            if (!crownError && crownCount === 0) {
+              status = "active";
+              await supabase
+                .from("game_sessions")
+                .update({ status: "active" } as any)
+                .eq("id", leagueSession.id);
+            }
+          }
+
           setSessionId(leagueSession.id);
-          setSessionStatus((leagueSession as any).status || "active");
+          setSessionStatus(status);
           await loadGameState(leagueSession.id, teams);
           
           // Fetch league's scoring config
@@ -141,6 +171,9 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
           ? supabase.from("archived_seasons").select("*").eq("league_id", leagueId).order("created_at", { ascending: false })
           : supabase.from("archived_seasons").select("*").order("created_at", { ascending: false }),
       ]);
+
+      // Drop results for a session we've already switched away from
+      if (currentSidRef.current && sid !== currentSidRef.current) return;
 
       const session = sessionData.data;
       const contestants = contestantsData.data || [];
@@ -197,6 +230,9 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         archivedAt: a.archived_at,
       }));
 
+      // Keep status in sync (e.g. a Winner Takes All crown from another device)
+      if ((session as any)?.status) setSessionStatus((session as any).status);
+
       // Use DB mode as the source of truth, fallback to local
       const dbMode = session.mode as GameState["mode"];
       localStorage.setItem(LOCAL_MODE_KEY, dbMode);
@@ -243,6 +279,10 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
 
   // Debounced reload to prevent concurrent loadGameState calls from racing
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+  }, [sessionId]);
 
   const debouncedReload = useCallback(() => {
     if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
@@ -300,6 +340,32 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       supabase.removeChannel(channel);
     };
   }, [sessionId, debouncedReload]);
+
+  // When a commissioner starts a new season on another device, follow them to it
+  useEffect(() => {
+    if (!leagueId) return;
+
+    const channel = supabase
+      .channel(`league-sessions-${leagueId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "game_sessions", filter: `league_id=eq.${leagueId}` },
+        async (payload) => {
+          const newId = (payload.new as { id?: string } | null)?.id;
+          if (newId && newId !== currentSidRef.current) {
+            setSessionId(newId);
+            setSessionStatus("active");
+            await loadGameState(newId);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId]);
 
   // Keep league team slots in sync in realtime
   useEffect(() => {
@@ -745,7 +811,9 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   };
 
   const clearHistory = async () => {
-    await supabase.from("archived_seasons").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    // Only this league's history. (This used to delete every league's archived seasons.)
+    if (!leagueId) return;
+    await supabase.from("archived_seasons").delete().eq("league_id", leagueId);
   };
 
   const resetAll = async () => {
@@ -756,7 +824,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
       supabase.from("scoring_events").delete().eq("session_id", sessionId),
       supabase.from("crying_contestants").delete().eq("session_id", sessionId),
       supabase.from("game_sessions").update({
-        season: 49,
+        season: state.season,
         episode: 1,
         mode: "setup",
         is_post_merge: false,
@@ -766,95 +834,121 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     ]);
   };
 
-  const resetState = async () => {
-    if (!sessionId) return;
+  // Archive the current season (if anyone drafted) and start a fresh session for the
+  // next season. Nothing is deleted: the old session stays in the database untouched.
+  // Teams, members and scoring settings carry over automatically (they live on the league).
+  const startNewSeason = async (
+    targetSeason?: number
+  ): Promise<"started" | "switched" | "failed"> => {
+    if (!leagueId || !sessionId) return "failed";
 
-    // Archive current season if there's data
-    if (state.contestants.length > 0 && state.contestants.some((c) => c.owner)) {
-      // Use dynamic teams from draftOrder
-      const leaderboard = state.draftOrder
-        .map((player) => {
-          const playerContestants = state.contestants.filter((c) => c.owner === player);
-          const contestantIds = playerContestants.map((c) => c.id);
-          const score = state.scoringEvents
-            .filter((e) => contestantIds.includes(e.contestantId))
-            .reduce((sum, e) => sum + e.points, 0);
-          return {
-            player,
-            score,
-            activeCount: playerContestants.filter((c) => !c.isEliminated).length,
-          };
-        })
-        .sort((a, b) => b.score - a.score);
+    const endingSeason = state.season;
+    const nextSeason =
+      targetSeason && targetSeason > endingSeason ? targetSeason : endingSeason + 1;
 
-      await supabase.from("archived_seasons").insert({
-        season: state.season,
-        contestants: state.contestants as any,
-        scoring_events: state.scoringEvents as any,
-        final_standings: leaderboard as any,
-        archived_at: Date.now(),
-        league_id: leagueId,
-      });
+    try {
+      // 0. If another device already started a newer season, switch to it instead
+      const { data: newest, error: newestError } = await supabase
+        .from("game_sessions")
+        .select("id")
+        .eq("league_id", leagueId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (newestError) throw newestError;
+      if (newest && newest.id !== sessionId) {
+        setSessionId(newest.id);
+        setSessionStatus("active");
+        await loadGameState(newest.id);
+        toast.info("A new season was already started for this league. You're on it now.");
+        return "switched";
+      }
 
-      // Track season_ended event
-      trackEvent('season_ended', {
-        league_name: leagueId,
-        winner_name: leaderboard[0]?.player || 'Unknown',
-        season: state.season,
-        total_rounds: state.episode,
-      });
+      // 1. Save final standings to History (once per season)
+      if (state.contestants.some((c) => c.owner)) {
+        const { data: existingArchive, error: archiveCheckError } = await supabase
+          .from("archived_seasons")
+          .select("id")
+          .eq("league_id", leagueId)
+          .eq("season", endingSeason)
+          .limit(1)
+          .maybeSingle();
+        if (archiveCheckError) throw archiveCheckError;
+
+        if (!existingArchive) {
+          const leaderboard = state.draftOrder
+            .map((player) => {
+              const playerContestants = state.contestants.filter((c) => c.owner === player);
+              const contestantIds = playerContestants.map((c) => c.id);
+              const score = state.scoringEvents
+                .filter((e) => contestantIds.includes(e.contestantId))
+                .reduce((sum, e) => sum + e.points, 0);
+              return {
+                player,
+                score,
+                activeCount: playerContestants.filter((c) => !c.isEliminated).length,
+              };
+            })
+            .sort((a, b) => b.score - a.score);
+
+          const { error: archiveError } = await supabase.from("archived_seasons").insert({
+            season: endingSeason,
+            contestants: state.contestants as any,
+            scoring_events: state.scoringEvents as any,
+            final_standings: leaderboard as any,
+            archived_at: Date.now(),
+            league_id: leagueId,
+          });
+          if (archiveError) throw archiveError;
+
+          trackEvent("season_ended", {
+            league_id: leagueId,
+            league_name: leagueId,
+            winner_name: leaderboard[0]?.player || "Unknown",
+            season: endingSeason,
+            next_season: nextSeason,
+            total_rounds: state.episode,
+          });
+        }
+      }
+
+      // 2. Close out the old session
+      const { error: completeError } = await supabase
+        .from("game_sessions")
+        .update({ status: "completed" } as any)
+        .eq("id", sessionId);
+      if (completeError) throw completeError;
+
+      // 3. Open a brand-new session for the next season
+      const { data: newSession, error: createError } = await supabase
+        .from("game_sessions")
+        .insert({
+          league_id: leagueId,
+          mode: "setup",
+          season: nextSeason,
+          episode: 1,
+          is_post_merge: false,
+          draft_type: state.draftType || "snake",
+          current_draft_index: 0,
+          status: "active",
+          game_type: state.gameType,
+          picks_per_team: state.picksPerTeam,
+        } as any)
+        .select()
+        .single();
+      if (createError || !newSession) throw createError || new Error("No session returned");
+
+      // 4. Switch the app over to it
+      localStorage.setItem(LOCAL_MODE_KEY, "setup");
+      setSessionId(newSession.id);
+      setSessionStatus("active");
+      await loadGameState(newSession.id);
+      return "started";
+    } catch (error) {
+      console.error("Error starting new season:", error);
+      toast.error("Couldn't start the new season. Nothing was deleted, so it's safe to try again.");
+      return "failed";
     }
-
-    // Mark current session as completed
-    await supabase.from("game_sessions").update({ status: "completed" } as any).eq("id", sessionId);
-    setSessionStatus("completed");
-
-    // Clear current season data and reset for new season
-    await Promise.all([
-      supabase.from("contestants").delete().eq("session_id", sessionId),
-      supabase.from("scoring_events").delete().eq("session_id", sessionId),
-      supabase.from("crying_contestants").delete().eq("session_id", sessionId),
-      supabase.from("game_sessions").update({
-        season: state.season + 1,
-        episode: 1,
-        mode: "setup",
-        is_post_merge: false,
-        draft_type: "snake",
-        current_draft_index: 0,
-      }).eq("id", sessionId),
-    ]);
-  };
-
-  const startNewSeason = async () => {
-    if (!leagueId) return;
-
-    // Create a new game session for this league
-    const { data: newSession, error } = await supabase
-      .from("game_sessions")
-      .insert({
-        league_id: leagueId,
-        mode: "setup",
-        season: state.season + 1,
-        episode: 1,
-        is_post_merge: false,
-        draft_type: "snake",
-        current_draft_index: 0,
-        status: "active",
-      } as any)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error creating new season:", error);
-      toast.error("Failed to start new season");
-      return;
-    }
-
-    // Switch to the new session
-    setSessionId(newSession.id);
-    setSessionStatus("active");
-    await loadGameState(newSession.id);
-    toast.success(`Season ${state.season + 1} started!`);
   };
 
   const revertToSetup = async () => {
@@ -888,7 +982,6 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     scoringConfig,
     setScoringConfig,
     setState,
-    resetState,
     startNewSeason,
     revertToSetup,
     setMode,

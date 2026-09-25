@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Contestant, Player } from "@/types/survivor";
+import { Contestant, Player, ScoringEvent } from "@/types/survivor";
 import { useLeagueTeams } from "@/hooks/useLeagueTeams";
 import { TeamAvatar } from "./TeamAvatar";
 import { ContestantAvatar } from "./ContestantAvatar";
@@ -17,6 +17,7 @@ interface WinnerTakesAllModeProps {
   isAdmin: boolean;
   sessionId?: string;
   sessionStatus?: string;
+  scoringEvents?: ScoringEvent[];
 }
 
 export function WinnerTakesAllMode({
@@ -26,6 +27,7 @@ export function WinnerTakesAllMode({
   isAdmin,
   sessionId,
   sessionStatus,
+  scoringEvents = [],
 }: WinnerTakesAllModeProps) {
   const { teams } = useLeagueTeams({ leagueId });
 
@@ -46,9 +48,12 @@ export function WinnerTakesAllMode({
   // Check if there's a WIN_SURVIVOR scoring event (winner declared)
   // We detect winner by checking if a contestant's owner has the WIN_SURVIVOR event
   // For simplicity, we'll check if session is completed and only 1 remains
-  const winner = sessionStatus === "completed"
-    ? remainingContestants[0]
-    : null;
+  // The crowned contestant carries the "Win Survivor" scoring event. Fall back to
+  // the last one standing for seasons crowned before that was checked.
+  const crownedId = [...scoringEvents].reverse().find((e) => e.action.includes("Win Survivor"))?.contestantId;
+  const crownedContestant =
+    draftedContestants.find((c) => c.id === crownedId) || remainingContestants[0] || null;
+  const winner = sessionStatus === "completed" ? crownedContestant : null;
 
   const handleToggleElimination = async (contestant: Contestant) => {
     if (!sessionId) return;
@@ -85,8 +90,8 @@ export function WinnerTakesAllMode({
   };
 
   // Celebration state
-  if (sessionStatus === "completed" && remainingContestants.length > 0) {
-    const winnerContestant = remainingContestants[0];
+  if (sessionStatus === "completed" && crownedContestant) {
+    const winnerContestant = crownedContestant;
     return (
       <div className="container max-w-4xl mx-auto p-4 md:p-8 space-y-8">
         <div className="text-center space-y-6">

@@ -228,7 +228,7 @@ export function AdminPanel({
   };
 
   const handleClearHistory = () => {
-    if (!confirm('Delete all archived seasons? This cannot be undone.')) return;
+    if (!confirm("Delete this league's archived seasons from History? This cannot be undone.")) return;
     onClearHistory?.();
     toast.success('Season history cleared');
   };

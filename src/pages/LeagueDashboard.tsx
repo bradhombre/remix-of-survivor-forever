@@ -15,7 +15,8 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { GameplayTips } from "@/components/GameplayTips";
 import { getPicksPerTeam } from "@/lib/picksPerTeam";
 import { LeagueInfo } from "@/components/LeagueInfo";
-import { SeasonCompleteBanner } from "@/components/SeasonCompleteBanner";
+import { SeasonCompleteBanner, NewSeasonDialog } from "@/components/SeasonCompleteBanner";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { WinnerTakesAllMode } from "@/components/WinnerTakesAllMode";
 import { NewsFeed } from "@/components/NewsFeed";
 import { LeagueChat } from "@/components/LeagueChat";
@@ -33,6 +34,17 @@ const LeagueDashboard = () => {
   const [leagueLoading, setLeagueLoading] = useState(true);
   const [allowPlayerScoring, setAllowPlayerScoring] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("draft"); // will be corrected by effect
+  const [newSeasonOpen, setNewSeasonOpen] = useState(false);
+  // Season numbers are frozen when the dialog opens so the text doesn't change mid-click
+  const [rollover, setRollover] = useState<{
+    from: number;
+    to: number;
+    hasDraft: boolean;
+    castPreview: string;
+  }>({ from: 0, to: 0, hasDraft: false, castPreview: "" });
+  const { settings: appSettings } = useAppSettings();
+  const [looksLikeNewCast, setLooksLikeNewCast] = useState(false);
+  const [castCheckPending, setCastCheckPending] = useState(false);
 
   const {
     state,
@@ -61,7 +73,6 @@ const LeagueDashboard = () => {
     undoEvent,
     exportData,
     importData,
-    resetState,
     startNewSeason,
     revertToSetup,
     updatePlayerAvatar,
@@ -132,6 +143,78 @@ const LeagueDashboard = () => {
     }
   }, [canShowGame]);
 
+  // Season rollover: the platform admin sets "current season" in /admin > Settings.
+  // If this league is behind it (or its season is marked complete), offer to move on.
+  const platformSeason = parseInt(appSettings.current_season || "", 10) || 0;
+  const nextSeason = platformSeason > state.season ? platformSeason : state.season + 1;
+  const showSeasonBanner =
+    !castCheckPending && (sessionStatus === "completed" || platformSeason > state.season);
+  // Already drafting the new cast but still labeled with the old season number?
+  // Then the fix is to relabel, not to archive.
+  const seasonReason: "completed" | "new_available" | "relabel" =
+    sessionStatus === "completed" ? "completed" : looksLikeNewCast ? "relabel" : "new_available";
+
+  const handleRelabelSeason = async () => {
+    await setSeason(platformSeason);
+    toast.success(`Now labeled Season ${platformSeason}. Your cast, picks and scores didn't change.`);
+  };
+
+  // If this league is behind the current season but its castaways match the current
+  // season's official cast, it's already playing the new season under an old label.
+  const castNamesKey = state.contestants.map((c) => c.name).join("|");
+  useEffect(() => {
+    const current = parseInt(appSettings.current_season || "", 10) || 0;
+    if (!current || current <= state.season || state.contestants.length === 0) {
+      setLooksLikeNewCast(false);
+      setCastCheckPending(false);
+      return;
+    }
+    let cancelled = false;
+    setCastCheckPending(true);
+    supabase
+      .from("master_contestants")
+      .select("name")
+      .eq("season_number", current)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const official = new Set((data || []).map((m) => m.name.trim().toLowerCase()));
+        const matches = state.contestants.filter((c) =>
+          official.has(c.name.trim().toLowerCase())
+        ).length;
+        setLooksLikeNewCast(
+          official.size > 0 && matches >= Math.max(3, Math.ceil(state.contestants.length / 2))
+        );
+        setCastCheckPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appSettings.current_season, state.season, castNamesKey]);
+
+  const openNewSeasonDialog = () => {
+    setRollover({
+      from: state.season,
+      to: nextSeason,
+      hasDraft: state.contestants.some((c) => c.owner),
+      castPreview: state.contestants
+        .filter((c) => c.owner)
+        .slice(0, 6)
+        .map((c) => c.name)
+        .join(", "),
+    });
+    setNewSeasonOpen(true);
+  };
+
+  const handleConfirmNewSeason = async () => {
+    const result = await startNewSeason(rollover.to);
+    if (result === "started") {
+      toast.success(`Season ${rollover.to} is ready. Import the cast on the Draft tab to get going.`);
+    }
+    if (result !== "failed") setViewMode("draft");
+    return result !== "failed";
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -176,13 +259,24 @@ const LeagueDashboard = () => {
   return (
     <div className="min-h-screen">
       {/* Season Complete Banner */}
-      {sessionStatus === "completed" && (
+      {showSeasonBanner && (
         <SeasonCompleteBanner
           season={state.season}
+          nextSeason={nextSeason}
+          reason={seasonReason}
           isLeagueAdmin={isLeagueAdmin}
-          onStartNewSeason={startNewSeason}
+          onStartNewSeason={seasonReason === "relabel" ? handleRelabelSeason : openNewSeasonDialog}
         />
       )}
+      <NewSeasonDialog
+        open={newSeasonOpen}
+        onOpenChange={setNewSeasonOpen}
+        season={rollover.from}
+        nextSeason={rollover.to}
+        hasDraft={rollover.hasDraft}
+        castPreview={rollover.castPreview}
+        onConfirm={handleConfirmNewSeason}
+      />
 
       {/* News Feed */}
       <NewsFeed />
@@ -358,6 +452,7 @@ const LeagueDashboard = () => {
               isAdmin={isLeagueAdmin}
               sessionId={sessionId || undefined}
               sessionStatus={sessionStatus}
+              scoringEvents={state.scoringEvents}
             />
           ) : (
             <GameMode
@@ -433,29 +528,7 @@ const LeagueDashboard = () => {
             onResetAll={resetAll}
             onRevertToSetup={revertToSetup}
             onScoringConfigSaved={setScoringConfig}
-            onNewSeason={() => {
-              const firstConfirm = confirm(
-                `⚠️ START NEW SEASON?\n\n` +
-                `This will:\n` +
-                `• Archive Season ${state.season}\n` +
-                `• Clear all current scores\n` +
-                `• Start fresh Season ${state.season + 1}\n\n` +
-                `Are you sure you want to continue?`
-              );
-              
-              if (firstConfirm) {
-                const secondConfirm = confirm(
-                  `🚨 FINAL CONFIRMATION 🚨\n\n` +
-                  `This action CANNOT be undone!\n\n` +
-                  `Click OK to archive Season ${state.season} and start Season ${state.season + 1}`
-                );
-                
-                if (secondConfirm) {
-                  resetState();
-                  toast.success(`New Season Started! Season ${state.season} archived.`);
-                }
-              }
-            }}
+            onNewSeason={openNewSeasonDialog}
           />
         </div>
       )}

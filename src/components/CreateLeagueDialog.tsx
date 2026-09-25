@@ -62,10 +62,15 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [leagueSize, setLeagueSize] = useState(4);
   const [picksPerTeamOverride, setPicksPerTeamOverride] = useState<number | null>(null);
+  // Default season comes from /admin > Settings > "Current season"
+  const [defaultSeason, setDefaultSeason] = useState(51);
   const [seasonNumber, setSeasonNumber] = useState(51);
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'current_season').maybeSingle()
-      .then(({ data }) => { const n = parseInt(data?.value || ''); if (n) setSeasonNumber(n); });
+      .then(({ data }) => {
+        const n = parseInt(data?.value || '');
+        if (n) { setDefaultSeason(n); setSeasonNumber(n); }
+      });
   }, []);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -89,14 +94,14 @@ export function CreateLeagueDialog({ open, onOpenChange, onSuccess }: CreateLeag
       setSessionId(null);
       setLeagueSize(4);
       setPicksPerTeamOverride(null);
-      setSeasonNumber(50);
+      setSeasonNumber(defaultSeason);
       setImportingCast(false);
       setImportedCount(null);
       setTeamId(null);
       setTeamName('');
       setTeamAvatarUrl(null);
     }
-  }, [open]);
+  }, [open, defaultSeason]);
 
   const handleCreateLeague = async (e: React.FormEvent) => {
     e.preventDefault();

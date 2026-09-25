@@ -107,3 +107,9 @@ All colors MUST be HSL.
     background: hsl(var(--player-roy) / 0.08);
   }
 }
+
+/* Hide the "Made with Lovable" badge that Lovable injects on the published site.
+   Backup for the Project settings -> Publishing -> "Hide Lovable badge" toggle. */
+#lovable-badge {
+  display: none !important;
+}

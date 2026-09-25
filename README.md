@@ -1,73 +1,38 @@
-# Welcome to your Lovable project
+# Survivors Ready
 
-## Project info
+Survivor fantasy league app. Friends create a league, draft castaways, and score each episode. Live at **https://survivorsready.com**.
 
-**URL**: https://lovable.dev/projects/adb2986d-c786-4ae8-bdb2-7bffaae8299b
+## Where things live
 
-## How can I edit this code?
+| Thing | Where |
+|---|---|
+| Hosting, database, login, backend functions | Lovable (Lovable Cloud / Supabase), project "remix-of-survivor-forever" |
+| Code | This GitHub repo (`bradhombre`), two-way synced with Lovable |
+| Local copy | `Documents/COWORK - PERSONAL/Survivors Ready/remix-of-survivor-forever` |
+| Email + tracking | Customer.io workspace "Survivors Ready" (snippet in `index.html`) |
+| Platform admin screens | survivorsready.com/admin (Cast, News, Chat, Bugs, Settings) |
 
-There are several ways of editing your application.
+## How a change goes live
 
-**Use Lovable**
+1. Claude (or you) edit files here.
+2. **GitHub Desktop**: Commit to main, then Push origin.
+3. **Lovable**: wait for Project settings → Git to show "In sync", then **Publish → Update**.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/adb2986d-c786-4ae8-bdb2-7bffaae8299b) and start prompting.
+Pushing alone does **not** change the live site.
 
-Changes made via Lovable will be committed automatically to this repo.
+## The gotchas
 
-**Use your preferred IDE**
+- **Database changes and backend functions don't deploy from GitHub.** New files in `supabase/migrations/` or changes in `supabase/functions/` need a prompt in Lovable's chat, for example: "Apply the migration in supabase/migrations/<file>.sql" or "Deploy the jeffbot edge function."
+- **If you edit in Lovable, pull first.** Before asking Claude for changes, click Fetch origin, then Pull, in GitHub Desktop so the two copies don't diverge.
+- **The repo has no data.** Leagues, scores and cast live in the database, not in these files.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## New season checklist
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. /admin → Settings → set **Current season** (e.g. 52).
+2. /admin → Cast → **Import cast from wiki** for that season, then check the photos.
+3. Each commissioner sees a "Season N is here" banner in their league and clicks **Start Season N**. The old season is saved to History; teams and scoring carry over.
+4. In the league, go to the Draft tab, click **Import Season N cast**, and draft.
 
-Follow these steps:
+## Tech
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/adb2986d-c786-4ae8-bdb2-7bffaae8299b) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+React + Vite + TypeScript + Tailwind/shadcn. Backend is Supabase (Postgres + row-level security + Deno edge functions in `supabase/functions`). Main game logic is in `src/hooks/useGameStateDB.ts`; scoring rules are in `src/lib/scoring.ts`.
