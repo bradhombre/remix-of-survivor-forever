@@ -218,6 +218,28 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const mode = (await Promise.resolve((globalThis as any).__mode)) ?? undefined;
+    void mode;
+    const reqMode = (reqBody as any).mode as string | undefined;
+    if (reqMode === "import_cast" || reqMode === "auto") {
+      if (reqMode === "auto") {
+        const { data: setting } = await supabase.from("app_settings").select("value").eq("key", "current_season").maybeSingle();
+        const cur = parseInt(setting?.value || "") || season_number;
+        const { count } = await supabase.from("master_contestants").select("id", { count: "exact", head: true }).eq("season_number", cur);
+        if ((count || 0) > 0) {
+          return new Response(JSON.stringify({ success: true, skipped: true, reason: "cast already exists" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const cast = await importCastFromWiki(cur, cast_page_url);
+        if (cast.length === 0) {
+          return new Response(JSON.stringify({ success: true, inserted: 0, reason: "wiki not ready" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const { error } = await supabase.from("master_contestants").insert(cast.map((c) => ({ ...c, season_number: cur })));
+        return new Response(JSON.stringify({ success: !error, inserted: error ? 0 : cast.length, error: error?.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const cast = await importCastFromWiki(season_number, cast_page_url);
+      return new Response(JSON.stringify({ success: true, cast }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     let query = supabase
       .from("master_contestants")
       .select("id, name, image_url")
