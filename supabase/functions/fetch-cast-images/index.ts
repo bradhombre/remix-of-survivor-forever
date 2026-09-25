@@ -191,6 +191,64 @@ function extractCastFromHTML(html: string): CastMapping[] {
   return mappings;
 }
 
+// --- Full cast import from wiki ---
+
+interface ImportedCastaway {
+  name: string;
+  tribe: string | null;
+  age: number | null;
+  occupation: string | null;
+  image_url: string | null;
+}
+
+async function importCastFromWiki(season: number, pageUrl?: string): Promise<ImportedCastaway[]> {
+  const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!firecrawlKey || !lovableKey) throw new Error("Scraping or AI key not configured");
+
+  const url = pageUrl || `https://survivor.fandom.com/wiki/Survivor_${season}`;
+  const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ url, formats: ["markdown"] }),
+  });
+  if (!res.ok) throw new Error(`Wiki fetch failed [${res.status}]: ${await res.text()}`);
+  const data = await res.json();
+  let md: string = data.data?.markdown || data.markdown || "";
+  const idx = md.search(/#+\s*Cast(aways)?\b/i);
+  if (idx >= 0) md = md.substring(idx);
+  md = md.substring(0, 60000);
+
+  const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "openai/gpt-6-astra",
+      instructions:
+        `Extract the Survivor Season ${season} castaways from this wiki page markdown. Return ONLY a JSON array: [{"name":"Full Name","tribe":"Starting tribe or null","age":number or null,"occupation":"text or null","image_url":"castaway thumbnail URL from static.wikia.nocookie.net or null"}]. If the page has no cast listed yet, return []. Do not invent people.`,
+      input: md,
+    }),
+  });
+  if (!aiRes.ok) throw new Error(`AI extraction failed [${aiRes.status}]: ${await aiRes.text()}`);
+  const ai = await aiRes.json();
+  let text: string = ai.output_text || "";
+  if (!text && Array.isArray(ai.output)) {
+    for (const o of ai.output) for (const c of o.content || []) if (c.text) text += c.text;
+  }
+  const m = text.match(/\[[\s\S]*\]/);
+  if (!m) return [];
+  const arr = JSON.parse(m[0]) as ImportedCastaway[];
+  return arr
+    .filter((c) => c && typeof c.name === "string" && c.name.trim())
+    .map((c) => ({
+      name: c.name.trim(),
+      tribe: c.tribe || null,
+      age: typeof c.age === "number" ? c.age : null,
+      occupation: c.occupation || null,
+      image_url: c.image_url ? cleanWikiaUrl(c.image_url) : null,
+    }));
+}
+
 // --- Main Handler ---
 
 Deno.serve(async (req) => {
