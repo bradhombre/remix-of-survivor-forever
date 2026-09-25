@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Upload, Trash2, Pencil, Check, X, Users, FileUp, AlertTriangle, ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 interface MasterContestant {
   id: string;
@@ -199,7 +200,13 @@ function parseRowWithMapping(parts: string[], mapping: ColumnMapping): ParsedCon
 }
 
 export function CastManager() {
-  const [season, setSeason] = useState(49);
+  const [season, setSeason] = useState(51);
+  const [isWikiImporting, setIsWikiImporting] = useState(false);
+  const { settings: appSettings } = useAppSettings();
+  useEffect(() => {
+    const cur = parseInt(appSettings.current_season || "");
+    if (cur) setSeason(cur);
+  }, [appSettings.current_season]);
   const [contestants, setContestants] = useState<MasterContestant[]>([]);
   const [loading, setLoading] = useState(true);
   const [existingSeasons, setExistingSeasons] = useState<number[]>([]);
@@ -582,6 +589,30 @@ export function CastManager() {
     e.target.value = "";
   };
 
+  const handleWikiImport = async () => {
+    setIsWikiImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-cast-images", {
+        body: { season_number: season, mode: "import_cast" },
+      });
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
+      const existing = new Set(contestants.map((c) => c.name.toLowerCase()));
+      const fresh = (data.cast as ParsedContestant[]).filter((c) => !existing.has(c.name.toLowerCase()));
+      if (fresh.length === 0) {
+        toast.info(data.cast.length === 0
+          ? `The wiki doesn't list a Season ${season} cast yet. Try again later or add them manually.`
+          : "Everyone on the wiki is already added.");
+        return;
+      }
+      setPreviewData(fresh);
+      setShowPreviewDialog(true);
+    } catch (e) {
+      toast.error(`Couldn't import from wiki: ${e instanceof Error ? e.message : "unknown error"}`);
+    } finally {
+      setIsWikiImporting(false);
+    }
+  };
+
   const handleConfirmImport = async () => {
     if (previewData.length === 0) return;
 
@@ -695,6 +726,10 @@ export function CastManager() {
                 Delete All
               </Button>
             )}
+            <Button onClick={handleWikiImport} size="sm" variant="secondary" disabled={isWikiImporting}>
+              {isWikiImporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileUp className="h-4 w-4 mr-1" />}
+              Import cast from wiki
+            </Button>
             <Button onClick={() => setShowAddDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Contestant
