@@ -103,15 +103,15 @@ const Index = () => {
         {/* Wordmark sitting on the horizon: the sun rises out of the real water */}
         <div className="absolute inset-x-0 top-[180px] sm:top-[205px]">
           <div className="container max-w-5xl mx-auto px-5">
-            <h1 className="font-display leading-none text-[#E9E3D3]" style={titleShadow}>
-              <span className="flex items-baseline text-[54px] sm:text-[72px]">
+            <h1 className="font-display leading-none text-[#E9E3D3] sm:text-center" style={titleShadow}>
+              <span className="flex items-baseline text-[54px] sm:justify-center sm:text-[72px]">
                 SURVIV
                 <SunO ref={sunRef} water={0.5} seeThrough />
                 RS
               </span>
-              <span className="block text-[54px] sm:text-[72px] tracking-[0.16em] mt-1">READY</span>
+              <span className="block text-[54px] sm:text-[72px] tracking-[0.16em] sm:pl-[0.16em] mt-1">READY</span>
             </h1>
-            <p className="font-label mt-3 text-lg sm:text-xl tracking-[0.32em] text-[#E9E3D3]">
+            <p className="font-label mt-3 text-lg sm:text-xl tracking-[0.32em] sm:pl-[0.32em] sm:text-center text-[#E9E3D3]">
               DRAFT · SCORE · OUTLAST
             </p>
           </div>
