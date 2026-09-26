@@ -87,7 +87,7 @@ const Index = () => {
         />
         <span
           aria-hidden="true"
-          className="absolute left-[-30px] h-5 w-[100px] bg-[#24402F]"
+          className="absolute left-[-30px] h-5 w-[100px] sm:left-[-40px] sm:h-10 sm:w-[320px] bg-[#24402F]"
           style={{ top: horizon - 10, borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
         />
 
