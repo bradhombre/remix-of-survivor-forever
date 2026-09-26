@@ -339,8 +339,8 @@ export const GameMode = ({
       <div className="glass-strong p-6 rounded-2xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold">
-              🔥 Season {season}
+            <h1 className="font-display text-4xl md:text-5xl leading-none">
+              Season {season}
             </h1>
             <p className="text-muted-foreground">Episode {episode}</p>
           </div>
@@ -717,13 +717,36 @@ export const GameMode = ({
           return (
             <Card
               key={entry.player}
-              className={`glass border-l-4 ${getRankColor(index)} overflow-hidden`}
+              className="overflow-hidden"
             >
               <Collapsible open={isExpanded} onOpenChange={() => togglePlayerExpanded(entry.player)}>
-                <div className="p-6 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-3xl">{getRankEmoji(index)}</span>
-                    <span className="text-sm text-muted-foreground">{entry.activeCount}/{picksPerTeam} active</span>
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-lg font-black tabular ${
+                        index === 0
+                          ? "bg-warning text-warning-foreground border-2 border-plank"
+                          : "text-primary"
+                      }`}
+                      aria-label={`Rank ${index + 1}`}
+                    >
+                      {index + 1}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {picksPerTeam <= 8 &&
+                        Array.from({ length: picksPerTeam }, (_, i) => (
+                          <span
+                            key={i}
+                            aria-hidden="true"
+                            className={`h-2.5 w-2.5 rounded-full ${
+                              i < entry.activeCount ? "bg-success" : "border-[1.5px] border-input"
+                            }`}
+                          />
+                        ))}
+                      <span className="ml-1 text-xs font-semibold text-muted-foreground">
+                        {entry.activeCount}/{picksPerTeam} active
+                      </span>
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
@@ -759,9 +782,20 @@ export const GameMode = ({
                       )}
                     </div>
                     
-                    <div className="flex-1">
-                      <h3 className="text-2xl font-bold">{entry.player}</h3>
-                      <p className="text-4xl font-bold text-accent">{entry.score}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display text-2xl leading-[0.95] break-words">{entry.player}</h3>
+                      <div className="mt-1 flex items-baseline gap-2">
+                        <p className="text-4xl font-black tracking-tight tabular">{entry.score}</p>
+                        {(() => {
+                          const epPts = getPlayerScoreByEpisode(entry.player, episode);
+                          return epPts !== 0 ? (
+                            <span className="text-sm font-bold text-success tabular">
+                              {epPts > 0 ? "+" : ""}
+                              {epPts} ep {episode}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
                   </div>
                   
@@ -770,12 +804,12 @@ export const GameMode = ({
                       {isExpanded ? (
                         <>
                           <ChevronUp className="h-4 w-4 mr-2" />
-                          Hide Team
+                          Hide team
                         </>
                       ) : (
                         <>
                           <ChevronRight className="h-4 w-4 mr-2" />
-                          Show Team
+                          Show team
                         </>
                       )}
                     </Button>
@@ -785,20 +819,20 @@ export const GameMode = ({
                 <CollapsibleContent>
                   <div className="px-6 pb-6 space-y-4">
                     {/* Episode Breakdown */}
-                    <div className="glass-strong p-3 rounded-lg">
-                      <h4 className="text-sm font-semibold mb-2">Episode Scores</h4>
+                    <div className="glass p-3 rounded-[12px]">
+                      <h4 className="label-caps mb-2 text-muted-foreground">Episode scores</h4>
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         {Array.from({ length: episode }, (_, i) => i + 1).map((ep) => {
                           const epScore = getPlayerScoreByEpisode(entry.player, ep);
                           return (
                             <div
                               key={ep}
-                              className={`p-2 rounded ${
-                                ep === episode ? 'bg-accent/20 border border-accent' : 'bg-background/50'
+                              className={`p-2 rounded-[10px] ${
+                                ep === episode ? 'bg-accent/15 border-2 border-accent' : 'bg-muted/60'
                               }`}
                             >
-                              <div className="font-medium">Ep {ep}</div>
-                              <div className="text-accent font-bold">
+                              <div className="font-semibold">Ep {ep}</div>
+                              <div className="text-success font-extrabold tabular">
                                 {epScore > 0 && '+'}
                                 {epScore}
                               </div>
@@ -815,15 +849,15 @@ export const GameMode = ({
                         return (
                           <div
                             key={contestant.id}
-                            className={`glass-strong p-3 rounded-lg transition-opacity ${
-                              contestant.isEliminated ? "opacity-50" : ""
+                            className={`glass p-3 rounded-[12px] transition-opacity ${
+                              contestant.isEliminated ? "opacity-70" : ""
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <ContestantAvatar name={contestant.name} imageUrl={contestant.imageUrl} size="xs" isEliminated={contestant.isEliminated} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">{contestant.name}</p>
+                                  <p className={`font-semibold text-sm truncate ${contestant.isEliminated ? "line-through" : ""}`}>{contestant.name}</p>
                                   <p className="text-xs text-muted-foreground">
                                     Pick #{contestant.pickNumber}
                                     {contestant.tribe && ` • ${contestant.tribe}`}
@@ -831,8 +865,12 @@ export const GameMode = ({
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-accent">{contestantScore} pts</span>
-                                {contestant.isEliminated && <span className="text-lg">💀</span>}
+                                {contestant.isEliminated && (
+                                  <span className="rounded-full bg-destructive px-2 py-0.5 text-[11px] font-extrabold text-destructive-foreground">
+                                    Out
+                                  </span>
+                                )}
+                                <span className="text-sm font-extrabold tabular">{contestantScore} pts</span>
                               </div>
                             </div>
                           </div>
@@ -885,7 +923,7 @@ export const GameMode = ({
       {/* Scoring Section - Grouped by Player */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">⚡ Score This Episode</h2>
+          <h2 className="font-display text-3xl leading-none">Score this episode</h2>
           
           <div className="flex items-center gap-2 glass p-1 rounded-xl">
             <Button
@@ -915,7 +953,7 @@ export const GameMode = ({
             <Card key={player} className={`glass-strong border-l-4 ${getTeamColorByName(player)} overflow-hidden`}>
               <div className="p-4 md:p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">{player}'s Team</h3>
+                  <h3 className="font-display text-2xl leading-none">{player}'s team</h3>
                   <span className="text-sm text-muted-foreground px-3 py-1 glass rounded-full">
                     {playerContestants.filter(c => !c.isEliminated).length} active
                   </span>
@@ -1235,7 +1273,7 @@ export const GameMode = ({
 
       {/* Episode Log */}
       <Card className="glass p-6 space-y-4">
-        <h2 className="text-2xl font-bold">📜 Episode {episode} Events</h2>
+        <h2 className="font-display text-3xl leading-none">Episode {episode} events</h2>
         
         {episodeEvents.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">No points scored yet this episode. Use the buttons above to score actions.</p>

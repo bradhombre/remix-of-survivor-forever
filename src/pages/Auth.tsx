@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { Lockup } from "@/components/Lockup";
 
 const authSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -81,11 +82,20 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-      <img src="/logo.png" alt="Survivors Ready" className="h-20 w-auto mb-6" />
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-header">
+        <div className="container max-w-md mx-auto px-4 py-5 flex items-center justify-between">
+          <Link to="/" aria-label="Survivors Ready home">
+            <Lockup className="text-2xl" />
+          </Link>
+          <span className="label-caps text-header-label">Free fantasy league</span>
+        </div>
+      </header>
+      <div className="buff-trim" aria-hidden="true" />
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Survivors Ready</CardTitle>
+          <CardTitle className="text-3xl">{isLogin ? "Come on in" : "Join the tribe"}</CardTitle>
           <CardDescription>
             {isLogin
               ? 'Sign in to Survivors Ready'
@@ -168,6 +178,7 @@ export default function Auth() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

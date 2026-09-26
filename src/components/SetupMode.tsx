@@ -470,16 +470,16 @@ export const SetupMode = ({
   return (
     <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
       <div className="text-center space-y-2">
-        <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent">
-          🔥 Survivors Ready
+        <h1 className="font-display text-5xl md:text-6xl leading-none text-primary">
+          Season setup
         </h1>
-        <p className="text-muted-foreground text-lg">Survivor Fantasy League — Setup your season and draft</p>
+        <p className="text-muted-foreground text-lg">Set up your season, then run the draft.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Season & Quick Actions */}
         <Card className="glass p-6 space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">⚙️ Season Setup</h2>
+          <h2 className="font-display text-3xl leading-none text-foreground">Season</h2>
           
           <div>
             <Label htmlFor="season">Season Number</Label>
@@ -518,7 +518,7 @@ export const SetupMode = ({
         {/* League Size & Members */}
         <Card className="glass p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-foreground">👥 League Size</h2>
+            <h2 className="font-display text-3xl leading-none text-foreground">League size</h2>
             <span className="text-sm text-muted-foreground">
               {filledCount}/{leagueSize} filled
             </span>
@@ -663,7 +663,7 @@ export const SetupMode = ({
 
         {/* Draft Settings */}
         <Card className="glass p-6 space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">🎲 Draft Settings</h2>
+          <h2 className="font-display text-3xl leading-none text-foreground">Draft settings</h2>
 
           <div>
             <Label>Draft Order (drag to reorder)</Label>
@@ -780,7 +780,7 @@ export const SetupMode = ({
       {/* Add Contestants */}
       <Card className="glass p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-2xl font-bold text-foreground">🏝️ Add Contestants</h2>
+          <h2 className="font-display text-3xl leading-none text-foreground">Add castaways</h2>
           <div className="flex gap-2 flex-wrap">
             <Button
               onClick={handleImportOfficialCast}
@@ -894,8 +894,8 @@ export const SetupMode = ({
       {/* Contestants List */}
       {contestants.length > 0 && (
         <Card className="glass p-6 space-y-4">
-          <h2 className="text-2xl font-bold text-foreground">
-            📋 Contestants ({contestants.length})
+          <h2 className="font-display text-3xl leading-none text-foreground">
+            Castaways ({contestants.length})
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
             {contestants.map((contestant) => (

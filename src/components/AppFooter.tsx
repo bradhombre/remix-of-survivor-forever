@@ -12,17 +12,22 @@ export function AppFooter() {
 
   return (
     <>
-      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-sm border-t border-border py-2 px-4">
-        <div className="container mx-auto flex items-center justify-center gap-4">
-          <button
-            onClick={() => setBugOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Bug className="h-3 w-3" />
-            Report a Bug
-          </button>
-          <span className="text-border">|</span>
-          <DonateButton />
+      <footer className="fixed bottom-0 left-0 right-0 z-40 border-t-2 border-plank bg-card/95 px-4 py-2 backdrop-blur-sm">
+        <div className="container mx-auto flex flex-col items-center gap-1">
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={() => setBugOpen(true)}
+              className="flex min-h-[32px] items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Bug className="h-3 w-3" />
+              Report a Bug
+            </button>
+            <span className="text-border">|</span>
+            <DonateButton />
+          </div>
+          <p className="text-center text-[11px] leading-tight text-muted-foreground">
+            Survivors Ready is a free fan game. Not affiliated with CBS or the show.
+          </p>
         </div>
       </footer>
       <BugReportDialog open={bugOpen} onOpenChange={setBugOpen} leagueId={leagueId} />

@@ -2,63 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Survivors Ready design system: "Deep Jungle".
+   Source of truth: Survivors Ready/design/design_handoff_survivors_ready/README.md
+   All colors are HSL triplets so Tailwind's hsl(var(--x) / alpha) works.
+   Light is the default; dark follows the device setting. */
 
 @layer base {
   :root {
-    --background: 30 25% 15%;
-    --foreground: 38 40% 92%;
+    /* Surfaces */
+    --background: 44 28% 84%;          /* bone #E2DCCB */
+    --foreground: 142 14% 11%;         /* ink #18201B */
+    --card: 41 33% 91%;                /* palm card #EFEADF */
+    --card-foreground: 142 14% 11%;
+    --popover: 41 33% 91%;
+    --popover-foreground: 142 14% 11%;
 
-    --card: 28 22% 19%;
-    --card-foreground: 38 40% 92%;
+    /* Brand roles */
+    --primary: 145 28% 16%;            /* canopy #1D3326: headers, nav, primary buttons */
+    --primary-foreground: 44 33% 87%;  /* bone text #E9E3D3 */
+    --secondary: 147 39% 30%;          /* fern #2F6B4A */
+    --secondary-foreground: 44 33% 87%;
+    --accent: 11 60% 41%;              /* clay red #A8412A: CTA, current episode */
+    --accent-foreground: 44 33% 87%;
+    --destructive: 11 60% 41%;         /* clay red: voted out */
+    --destructive-foreground: 44 33% 87%;
+    --success: 147 39% 30%;            /* fern: points gained, still in */
+    --success-foreground: 44 33% 87%;
+    --warning: 43 61% 61%;             /* sun #D8B55E: winner, #1 */
+    --warning-foreground: 142 14% 11%;
 
-    --popover: 28 25% 13%;
-    --popover-foreground: 38 40% 92%;
+    /* Neutrals */
+    --muted: 44 24% 79%;               /* #D6CFBC */
+    --muted-foreground: 144 5% 36%;    /* lichen #56605A */
+    --border: 44 19% 73%;              /* hairline #C8C1AE */
+    --input: 45 14% 62%;               /* #ABA48F */
+    --ring: 145 28% 16%;
+    --radius: 0.875rem;                /* 14px cards */
 
-    --primary: 36 65% 48%;
-    --primary-foreground: 30 30% 10%;
+    /* Plank edge: the ink border under cards and buttons */
+    --plank-edge: 142 14% 11%;
+    /* Header text on canopy */
+    --header-label: 134 12% 66%;       /* #9DB2A2 */
+    --header-bg: 145 28% 16%;
+    --header-fg: 44 33% 87%;
 
-    --secondary: 150 25% 22%;
-    --secondary-foreground: 38 40% 92%;
+    /* Logo and hero only */
+    --sunset: 25 74% 53%;              /* #E0782E */
+    --ocean: 194 58% 29%;              /* #1F5F73 */
+    --ocean-stripe: 193 51% 35%;       /* #2C7488 */
+    --sky: 42 53% 81%;                 /* #E8D8B4 */
 
-    --muted: 30 15% 22%;
-    --muted-foreground: 35 20% 55%;
+    --gold: 43 61% 61%;
+    --silver: 60 5% 65%;
+    --bronze: 26 43% 51%;
 
-    --accent: 36 80% 55%;
-    --accent-foreground: 30 30% 10%;
+    --mat: rgba(140, 105, 50, 0.05);
 
-    --success: 145 50% 40%;
-    --success-foreground: 0 0% 100%;
-
-    --destructive: 5 60% 48%;
-    --destructive-foreground: 0 0% 100%;
-
-    --warning: 36 80% 55%;
-    --warning-foreground: 30 30% 10%;
-
-    --border: 30 18% 26%;
-    --input: 28 18% 21%;
-    --ring: 36 65% 48%;
-
-    --radius: 0.75rem;
-
-    --gradient-start: 30 28% 12%;
-    --gradient-mid: 25 22% 17%;
-    --gradient-end: 35 20% 14%;
-
-    --glass-bg: 36 30% 50% / 0.1;
-    --glass-border: 36 30% 50% / 0.18;
-
-    --gold: 38 75% 52%;
-    --silver: 0 0% 75%;
-    --bronze: 25 70% 52%;
-
+    /* Legacy team colors (the original four-player league) */
     --player-brad: 200 80% 55%;
     --player-coco: 330 75% 60%;
     --player-kalin: 280 75% 60%;
     --player-roy: 150 65% 50%;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 147 26% 7%;          /* night canopy #0D1611 */
+      --foreground: 44 33% 87%;          /* bone #E9E3D3 */
+      --card: 145 21% 11%;               /* understory #16221B */
+      --card-foreground: 44 33% 87%;
+      --popover: 145 21% 11%;
+      --popover-foreground: 44 33% 87%;
+
+      --primary: 44 33% 87%;             /* bone buttons on dark */
+      --primary-foreground: 147 26% 7%;
+      --secondary: 146 39% 62%;          /* fern #79C49A */
+      --secondary-foreground: 147 26% 7%;
+      --accent: 13 65% 54%;              /* clay #D6603F */
+      --accent-foreground: 147 26% 7%;
+      --destructive: 13 65% 54%;
+      --destructive-foreground: 147 26% 7%;
+      --success: 146 39% 62%;
+      --success-foreground: 147 26% 7%;
+      --warning: 43 62% 65%;             /* sun #DDBE6E */
+      --warning-foreground: 147 26% 7%;
+
+      --muted: 142 22% 14%;              /* #1C2C22 */
+      --muted-foreground: 133 9% 60%;    /* lichen #8FA193 */
+      --border: 142 17% 18%;             /* card edge #26362C */
+      --input: 141 14% 24%;
+      --ring: 146 39% 62%;
+
+      --plank-edge: 175 60% 4%;          /* #04100F */
+      --header-bg: 141 31% 11%;          /* #132419 */
+      --header-fg: 44 33% 87%;
+
+      --gold: 43 62% 65%;
+      --mat: rgba(255, 255, 255, 0.018);
+    }
   }
 }
 
@@ -67,24 +108,76 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
-    @apply bg-gradient-to-br from-[hsl(var(--gradient-start))] via-[hsl(var(--gradient-mid))] to-[hsl(var(--gradient-end))] text-foreground min-h-screen;
+    @apply text-foreground min-h-screen font-sans antialiased;
+    background-color: hsl(var(--background));
+    /* Woven-mat texture */
+    background-image:
+      repeating-linear-gradient(45deg, var(--mat) 0 5px, transparent 5px 10px),
+      repeating-linear-gradient(-45deg, var(--mat) 0 5px, transparent 5px 10px);
   }
 }
 
 @layer utilities {
-  .glass {
-    background: hsl(var(--glass-bg));
-    backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--glass-border));
-    box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3);
+  /* Weathered display type: wordmark, headlines, player and castaway names. 24px and up only. */
+  .font-display {
+    font-family: "Rubik Dirt", Impact, "Arial Black", sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.005em;
   }
 
+  /* Small uppercase tracked label */
+  .label-caps {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Soft card (was frosted glass): used for chips, inputs and small panels */
+  .glass {
+    background: hsl(var(--card));
+    border: 1.5px solid hsl(var(--border));
+  }
+
+  /* Plank card (was strong glass): big panels and cards */
   .glass-strong {
-    background: hsl(0 0% 100% / 0.1);
-    backdrop-filter: blur(24px);
-    border: 1px solid hsl(var(--glass-border));
-    box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.4);
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--plank-edge));
+    border-bottom-width: 4px;
+  }
+
+  .plank {
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--plank-edge));
+    border-bottom-width: 4px;
+    border-radius: 14px;
+  }
+
+  /* Zigzag buff trim, only under headers */
+  .buff-trim {
+    height: 12px;
+    background:
+      linear-gradient(135deg, hsl(var(--accent)) 25%, transparent 25%) -6px 0 / 12px 12px,
+      linear-gradient(225deg, hsl(var(--accent)) 25%, transparent 25%) -6px 0 / 12px 12px,
+      hsl(var(--header-bg));
+  }
+
+  .bg-header {
+    background-color: hsl(var(--header-bg));
+    color: hsl(var(--header-fg));
+  }
+
+  .text-header-label {
+    color: hsl(var(--header-label));
   }
 
   .player-brad {
@@ -105,6 +198,13 @@ All colors MUST be HSL.
   .player-roy {
     border-color: hsl(var(--player-roy) / 0.5);
     background: hsl(var(--player-roy) / 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
 

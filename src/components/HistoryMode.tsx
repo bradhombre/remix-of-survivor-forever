@@ -69,7 +69,7 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
     return (
       <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
         <div className="text-center space-y-4">
-          <h1 className="text-5xl md:text-6xl font-bold">📜 Season History</h1>
+          <h1 className="font-display text-5xl md:text-6xl leading-none">Season history</h1>
           <p className="text-muted-foreground text-lg">No archived seasons yet</p>
           <p className="text-muted-foreground">Complete a season and start a new draft to archive it here</p>
         </div>
@@ -84,7 +84,7 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
         {/* Season Selector */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold">📜 Season History</h1>
+            <h1 className="font-display text-4xl leading-none">Season history</h1>
             <Select value={selectedSeasonNumber} onValueChange={setSelectedSeasonNumber}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select season" />
@@ -106,12 +106,12 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
 
         {/* Final Standings */}
         <div className="space-y-4">
-          <h2 className="text-3xl font-bold">🏆 Final Standings</h2>
+          <h2 className="font-display text-3xl leading-none">Final standings</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {selectedSeason.finalStandings.map((entry, index) => (
               <Card key={entry.player} className="glass-strong p-6 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-4xl">{getRankEmoji(index)}</span>
+                  <span className={`flex h-10 min-w-10 items-center justify-center rounded-full px-2 text-xl font-black tabular ${index === 0 ? "bg-warning text-warning-foreground border-2 border-plank" : "text-primary"}`}>{index + 1}</span>
                   <span className="text-sm text-muted-foreground">{entry.activeCount} still in</span>
                 </div>
                 
@@ -124,8 +124,8 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
                 )}
                 
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold">{entry.player}</h3>
-                  <p className="text-4xl font-bold text-accent">{entry.score}</p>
+                  <h3 className="font-display text-2xl leading-none">{entry.player}</h3>
+                  <p className="text-4xl font-black tracking-tight tabular">{entry.score}</p>
                 </div>
               </Card>
             ))}
@@ -157,7 +157,7 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
 
         {/* Contestants by Team */}
         <div className="space-y-6">
-          <h2 className="text-3xl font-bold">👥 Team Rosters</h2>
+          <h2 className="font-display text-3xl leading-none">Team rosters</h2>
           {selectedSeason.finalStandings.map((entry) => entry.player as Player).map((player) => {
             const playerContestants = selectedSeason.contestants.filter(c => c.owner === player);
             if (playerContestants.length === 0) return null;
@@ -183,7 +183,7 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
                         {contestant.tribe && <p>Tribe: {contestant.tribe}</p>}
                         <p>Pick #{contestant.pickNumber}</p>
                       </div>
-                      {contestant.isEliminated && <p className="text-sm mt-1">💀 Eliminated</p>}
+                      {contestant.isEliminated && <p className="mt-1 inline-block rounded-full bg-destructive px-2 py-0.5 text-[11px] font-extrabold text-destructive-foreground">Voted out</p>}
                     </div>
                   ))}
                 </div>
@@ -199,7 +199,7 @@ export const HistoryMode = ({ archivedSeasons, playerProfiles }: HistoryModeProp
   return (
     <div className="container max-w-6xl mx-auto p-4 md:p-8 space-y-8">
       <div className="flex items-center gap-4">
-        <h1 className="text-3xl font-bold">📜 Season History</h1>
+        <h1 className="font-display text-4xl leading-none">Season history</h1>
         <Select value={selectedSeasonNumber} onValueChange={setSelectedSeasonNumber}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select season" />

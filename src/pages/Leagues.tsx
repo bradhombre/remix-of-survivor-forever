@@ -28,6 +28,7 @@ import { CreateLeagueDialog } from '@/components/CreateLeagueDialog';
 import { JoinLeagueDialog } from '@/components/JoinLeagueDialog';
 
 import { toast } from 'sonner';
+import { Lockup } from "@/components/Lockup";
 
 interface LeagueMembership {
   id: string;
@@ -216,12 +217,12 @@ export default function Leagues() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Survivors Ready" className="h-8 w-auto" />
-            <h1 className="text-2xl font-bold text-foreground">My Leagues</h1>
+    <div className="min-h-screen">
+      <header className="bg-header">
+        <div className="container mx-auto px-4 pt-4 pb-5 flex justify-between items-start gap-3">
+          <div className="flex flex-col gap-2 min-w-0">
+            <Lockup className="text-2xl sm:text-3xl" />
+            <h1 className="label-caps text-header-label">My leagues</h1>
           </div>
           <div className="flex gap-2">
             {isSuperAdmin && (
@@ -253,6 +254,7 @@ export default function Leagues() {
           </div>
         </div>
       </header>
+      <div className="buff-trim" aria-hidden="true" />
 
       <main className="container mx-auto px-4 py-8">
         <div className="flex gap-3 mb-8">

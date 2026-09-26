@@ -95,8 +95,8 @@ export function WinnerTakesAllMode({
     return (
       <div className="container max-w-4xl mx-auto p-4 md:p-8 space-y-8">
         <div className="text-center space-y-6">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent">
-            👑 Sole Survivor
+          <h1 className="font-display text-5xl md:text-6xl leading-none text-primary">
+            Sole Survivor
           </h1>
           <Card className="glass-strong p-8 max-w-md mx-auto space-y-4">
             <ContestantAvatar
@@ -170,8 +170,8 @@ export function WinnerTakesAllMode({
   return (
     <div className="container max-w-4xl mx-auto p-4 md:p-8 space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-accent via-primary to-secondary bg-clip-text text-transparent">
-          🎯 Winner Takes All
+        <h1 className="font-display text-4xl md:text-5xl leading-none text-primary">
+          Winner takes all
         </h1>
         <p className="text-muted-foreground">
           {remainingContestants.length} of {draftedContestants.length} picks still alive

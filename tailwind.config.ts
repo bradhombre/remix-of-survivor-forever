@@ -13,7 +13,17 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Rubik", "Helvetica Neue", "Helvetica", "Arial", "sans-serif"],
+        display: ['"Rubik Dirt"', "Impact", '"Arial Black"', "sans-serif"],
+        label: ['"Bebas Neue"', "Impact", "sans-serif"],
+      },
       colors: {
+        plank: "hsl(var(--plank-edge))",
+        sunset: "hsl(var(--sunset))",
+        ocean: "hsl(var(--ocean))",
+        "ocean-stripe": "hsl(var(--ocean-stripe))",
+        sky: "hsl(var(--sky))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

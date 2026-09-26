@@ -16,6 +16,7 @@ import { GameplayTips } from "@/components/GameplayTips";
 import { getPicksPerTeam } from "@/lib/picksPerTeam";
 import { LeagueInfo } from "@/components/LeagueInfo";
 import { SeasonCompleteBanner, NewSeasonDialog } from "@/components/SeasonCompleteBanner";
+import { Lockup } from "@/components/Lockup";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { WinnerTakesAllMode } from "@/components/WinnerTakesAllMode";
 import { NewsFeed } from "@/components/NewsFeed";
@@ -286,103 +287,72 @@ const LeagueDashboard = () => {
       {/* News Feed */}
       <NewsFeed />
 
-      {/* League Header */}
-      <div className="bg-muted/50 border-b border-border">
-        <div className="container max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link 
-            to="/leagues" 
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            My Leagues
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h2 className="font-semibold text-foreground">{leagueName}</h2>
-          <Badge variant="outline" className="text-xs">
-            {state.gameType === "winner_takes_all" ? (
-              <><Target className="h-3 w-3 mr-1" />Winner Takes All</>
-            ) : (
-              <><Trophy className="h-3 w-3 mr-1" />Full Fantasy</>
-            )}
-          </Badge>
-        </div>
-      </div>
-
-      {/* Mode Navigation - 4 tabs */}
-      <div className="glass-strong border-b border-border sticky top-0 z-50 backdrop-blur-xl">
-        <div className="container max-w-7xl mx-auto p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <img src="/logo.png" alt="Survivors Ready" className="h-8 w-auto hidden sm:block shrink-0" />
-              <div className="flex gap-1.5 sm:gap-2 overflow-x-auto flex-nowrap">
-                {!canShowGame && (
-                  <Button
-                    data-tour="draft"
-                    onClick={() => setViewMode("draft")}
-                    variant={viewMode === "draft" ? "accent" : "ghost"}
-                    size="sm"
-                    className="min-h-[44px] shrink-0"
-                  >
-                    <ClipboardList className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Draft</span>
-                  </Button>
-                )}
-                <Button
-                  data-tour="game"
-                  onClick={() => setViewMode("game")}
-                  variant={viewMode === "game" ? "accent" : "ghost"}
-                  size="sm"
-                  className="min-h-[44px] shrink-0"
-                >
-                  <Trophy className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Game</span>
-                </Button>
-                <Button
-                  data-tour="history"
-                  onClick={() => setViewMode("history")}
-                  variant={viewMode === "history" ? "accent" : "ghost"}
-                  size="sm"
-                  className="min-h-[44px] shrink-0"
-                >
-                  <History className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">History</span>
-                </Button>
-                <Button
-                  data-tour="league"
-                  onClick={() => setViewMode("league")}
-                  variant={viewMode === "league" ? "accent" : "ghost"}
-                  size="sm"
-                  className="min-h-[44px] shrink-0"
-                >
-                  <Users className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">League</span>
-                </Button>
-                {isLeagueAdmin && (
-                  <Button
-                    data-tour="admin"
-                    onClick={() => setViewMode("admin")}
-                    variant={viewMode === "admin" ? "accent" : "ghost"}
-                    size="sm"
-                    className="min-h-[44px] shrink-0"
-                  >
-                    <Shield className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Admin</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground hidden md:block">
-                Season {state.season} • Episode {state.episode}
-              </div>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
+      {/* League Header (canopy) */}
+      <header className="bg-header">
+        <div className="container max-w-7xl mx-auto px-4 pt-3 pb-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              to="/leagues"
+              className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-header-label transition-colors hover:text-[hsl(var(--header-fg))]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">My leagues</span>
+              <Lockup className="ml-1 text-xl sm:text-2xl text-[hsl(var(--header-fg))]" />
+            </Link>
+            <div className="flex items-center gap-3">
+              <span className="label-caps hidden md:block text-header-label">
+                Season {state.season} · Episode {state.episode}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="flex min-h-[44px] items-center gap-2 rounded-[10px] px-2 text-sm font-semibold text-header-label transition-colors hover:text-[hsl(var(--header-fg))]"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
             </div>
           </div>
+          <div className="flex flex-col gap-1">
+            <span className="label-caps text-header-label">
+              Season {state.season} · {state.gameType === "winner_takes_all" ? "Winner takes all" : "Full fantasy"}
+            </span>
+            <h1 className="font-display text-3xl sm:text-4xl leading-[0.95] break-words">{leagueName}</h1>
+          </div>
         </div>
-      </div>
+      </header>
+      <div className="buff-trim" aria-hidden="true" />
+
+      {/* Mode Navigation */}
+      <nav className="sticky top-0 z-50 border-b-2 border-plank bg-card/95 backdrop-blur-sm" aria-label="League sections">
+        <div className="container max-w-7xl mx-auto px-2 sm:px-4 py-2">
+          <div className="flex gap-1 overflow-x-auto flex-nowrap">
+            {(
+              [
+                !canShowGame && { key: "draft", label: "Draft", Icon: ClipboardList },
+                { key: "game", label: "Game", Icon: Trophy },
+                { key: "history", label: "History", Icon: History },
+                { key: "league", label: "League", Icon: Users },
+                isLeagueAdmin && { key: "admin", label: "Admin", Icon: Shield },
+              ].filter(Boolean) as { key: ViewMode; label: string; Icon: typeof Trophy }[]
+            ).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                data-tour={key}
+                onClick={() => setViewMode(key)}
+                aria-current={viewMode === key ? "page" : undefined}
+                className={`flex min-h-[44px] flex-1 sm:flex-none shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm transition-colors ${
+                  viewMode === key
+                    ? "bg-primary text-primary-foreground font-extrabold"
+                    : "font-semibold text-foreground hover:bg-muted"
+                }`}
+              >
+                <Icon className="hidden sm:block h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
 
       {/* Commissioner Checklist - show on Draft tab during setup/draft */}
       {isLeagueAdmin && viewMode === "draft" && (state.mode === "setup" || state.mode === "draft") && (
