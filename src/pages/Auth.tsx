@@ -84,11 +84,13 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-header">
-        <div className="container max-w-md mx-auto px-4 py-5 flex items-center justify-between">
-          <Link to="/" aria-label="Survivors Ready home">
-            <Lockup className="text-2xl" />
+        <div className="container max-w-md mx-auto px-4 py-5 flex items-center justify-between gap-5">
+          <Link to="/" aria-label="Survivors Ready home" className="shrink-0">
+            <Lockup className="text-xl sm:text-2xl" />
           </Link>
-          <span className="label-caps text-header-label">Survivor fantasy league</span>
+          <span className="label-caps text-header-label text-right text-[10px] sm:text-xs tracking-[0.18em] leading-loose">
+            Survivor fantasy league
+          </span>
         </div>
       </header>
       <div className="buff-trim" aria-hidden="true" />
