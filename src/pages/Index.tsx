@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,26 @@ const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState("");
+  const heroRef = useRef<HTMLElement>(null);
+  const sunRef = useRef<HTMLSpanElement>(null);
+  // Where the horizon sits, measured from the sun in the wordmark so the sun always
+  // rises exactly out of the water, whatever the font metrics or screen size.
+  const [horizon, setHorizon] = useState(215);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const hero = heroRef.current;
+      const sun = sunRef.current;
+      if (!hero || !sun) return;
+      const h = hero.getBoundingClientRect();
+      const r = sun.getBoundingClientRect();
+      setHorizon(Math.round(r.top - h.top + r.height / 2));
+    };
+    measure();
+    document.fonts?.ready.then(measure).catch(() => {});
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [loading]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -37,25 +57,27 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero scene: sky, horizon, ocean, islands */}
-      <section className="relative h-[430px] sm:h-[480px] overflow-hidden bg-sky" aria-label="Survivors Ready">
+      <section ref={heroRef} className="relative h-[430px] sm:h-[480px] overflow-hidden bg-sky" aria-label="Survivors Ready">
         {/* Ocean below the horizon */}
         <div
-          className="absolute inset-x-0 bottom-0 top-[230px] sm:top-[260px]"
+          className="absolute inset-x-0 bottom-0"
           style={{
+            top: horizon,
             background:
               "repeating-linear-gradient(180deg, hsl(var(--ocean)) 0 8px, hsl(var(--ocean-stripe)) 8px 12px)",
           }}
         />
-        {/* Islands */}
+        {/* Islands sit on the horizon */}
         <span
           aria-hidden="true"
-          className="absolute right-[-60px] top-[210px] sm:top-[240px] h-10 w-[150px] sm:w-[220px] bg-[#1D3326]"
-          style={{ borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
+          className="absolute right-[-60px] h-10 w-[150px] sm:w-[220px] bg-[#1D3326]"
+          style={{ top: horizon - 20, borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
         />
         <span
           aria-hidden="true"
-          className="absolute right-2 sm:right-10 top-[120px] sm:top-[140px] h-24 w-24 sm:h-28 sm:w-28 bg-[#1D3326]"
+          className="absolute right-2 sm:right-10 h-24 w-24 bg-[#1D3326]"
           style={{
+            top: horizon - 110,
             transform: "scaleX(-1)",
             WebkitMask: "url(/brand/gi-palm-tree.svg) center / contain no-repeat",
             mask: "url(/brand/gi-palm-tree.svg) center / contain no-repeat",
@@ -63,13 +85,13 @@ const Index = () => {
         />
         <span
           aria-hidden="true"
-          className="absolute left-[-30px] top-[220px] sm:top-[250px] h-5 w-[100px] bg-[#24402F]"
-          style={{ borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
+          className="absolute left-[-30px] h-5 w-[100px] bg-[#24402F]"
+          style={{ top: horizon - 10, borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
         />
 
         {/* Top bar */}
         <div className="relative container max-w-5xl mx-auto px-5 pt-5 flex items-center justify-between">
-          <span className="font-label text-base tracking-[0.2em] text-[#1D3326]">FREE FANTASY LEAGUE</span>
+          <span className="font-label text-base tracking-[0.2em] text-[#1D3326]">SURVIVOR FANTASY LEAGUE</span>
           <button
             onClick={() => navigate("/auth")}
             className="min-h-[44px] px-1 text-base font-bold text-[#1D3326] hover:underline"
@@ -84,7 +106,7 @@ const Index = () => {
             <h1 className="font-display leading-none text-[#E9E3D3]" style={titleShadow}>
               <span className="flex items-baseline text-[54px] sm:text-[72px]">
                 SURVIV
-                <SunO water={0.5} seeThrough />
+                <SunO ref={sunRef} water={0.5} seeThrough />
                 RS
               </span>
               <span className="block text-[54px] sm:text-[72px] tracking-[0.16em] mt-1">READY</span>
@@ -109,12 +131,13 @@ const Index = () => {
         <div className="border-t-4 border-accent">
           <div className="container max-w-5xl mx-auto px-5 py-8 sm:py-10 grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-start">
             <div className="flex flex-col gap-4">
-              <h2 className="font-display text-[44px] sm:text-[54px] leading-[0.92] text-[#1D3326] dark:text-foreground">
+              <p className="label-caps text-accent">A free fantasy league for Survivor fans · Season 51</p>
+              <h2 className="font-display text-[44px] sm:text-[54px] leading-[0.92] text-primary">
                 Draft the cast. Score every episode.
               </h2>
               <p className="text-[17px] leading-relaxed text-muted-foreground max-w-prose">
-                A free fantasy league for your group. Draft castaways before the season, score each episode
-                during or after it airs, and the standings update for everyone.
+                Fantasy football, but for Survivor. Your group drafts castaways from the current season of
+                the show, scores each episode during or after it airs, and the standings update for everyone.
               </p>
             </div>
 

@@ -88,7 +88,7 @@ export default function Auth() {
           <Link to="/" aria-label="Survivors Ready home">
             <Lockup className="text-2xl" />
           </Link>
-          <span className="label-caps text-header-label">Free fantasy league</span>
+          <span className="label-caps text-header-label">Survivor fantasy league</span>
         </div>
       </header>
       <div className="buff-trim" aria-hidden="true" />

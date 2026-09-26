@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface SunOProps {
@@ -8,9 +9,13 @@ interface SunOProps {
 }
 
 /** The O in SURVIVORS: an orange sun rising out of striped water. Sized in em, so it follows the text. */
-export function SunO({ water = 0.42, seeThrough = false }: SunOProps) {
+export const SunO = forwardRef<HTMLSpanElement, SunOProps>(function SunO(
+  { water = 0.42, seeThrough = false },
+  ref
+) {
   return (
     <span
+      ref={ref}
       aria-hidden="true"
       className="relative mx-[0.03em] inline-block h-[0.72em] w-[0.72em] overflow-hidden rounded-full align-[-0.01em]"
       style={{
@@ -31,7 +36,7 @@ export function SunO({ water = 0.42, seeThrough = false }: SunOProps) {
       )}
     </span>
   );
-}
+});
 
 interface LockupProps {
   className?: string;
