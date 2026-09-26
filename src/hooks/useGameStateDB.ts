@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GameState, Player, Contestant, ScoringEvent, DraftType, GameType } from "@/types/survivor";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/customerio";
+import { importOfficialCast } from "@/lib/officialCast";
 import { ScoringConfig } from "@/lib/scoring";
 
 const LOCAL_MODE_KEY = "survivor-local-mode";
@@ -839,8 +840,8 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
   // Teams, members and scoring settings carry over automatically (they live on the league).
   const startNewSeason = async (
     targetSeason?: number
-  ): Promise<"started" | "switched" | "failed"> => {
-    if (!leagueId || !sessionId) return "failed";
+  ): Promise<{ result: "started" | "switched" | "failed"; castImported: number }> => {
+    if (!leagueId || !sessionId) return { result: "failed", castImported: 0 };
 
     const endingSeason = state.season;
     const nextSeason =
@@ -861,7 +862,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         setSessionStatus("active");
         await loadGameState(newest.id);
         toast.info("A new season was already started for this league. You're on it now.");
-        return "switched";
+        return { result: "switched", castImported: 0 };
       }
 
       // 1. Save final standings to History (once per season)
@@ -938,16 +939,44 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
         .single();
       if (createError || !newSession) throw createError || new Error("No session returned");
 
-      // 4. Switch the app over to it
+      // 4. Bring in the official cast for the new season, if it's been published.
+      //    A failure here shouldn't undo the rollover; the Draft tab offers the import again.
+      let castImported = 0;
+      try {
+        castImported = await importOfficialCast(newSession.id, nextSeason);
+      } catch (castError) {
+        console.error("Error importing official cast:", castError);
+      }
+
+      // 5. Switch the app over to it
       localStorage.setItem(LOCAL_MODE_KEY, "setup");
       setSessionId(newSession.id);
       setSessionStatus("active");
       await loadGameState(newSession.id);
-      return "started";
+      return { result: "started", castImported };
     } catch (error) {
       console.error("Error starting new season:", error);
       toast.error("Couldn't start the new season. Nothing was deleted, so it's safe to try again.");
-      return "failed";
+      return { result: "failed", castImported: 0 };
+    }
+  };
+
+  // One-click import of the official cast into an empty session (Draft tab empty state).
+  const importOfficialCastForSession = async (): Promise<number> => {
+    if (!sessionId) return 0;
+    try {
+      const added = await importOfficialCast(sessionId, state.season);
+      if (added > 0) {
+        await loadGameState(sessionId);
+        toast.success(`Added the ${added} official Season ${state.season} castaways.`);
+      } else {
+        toast.error(`The official Season ${state.season} cast isn't available yet. You can add castaways in Admin.`);
+      }
+      return added;
+    } catch (error) {
+      console.error("Error importing official cast:", error);
+      toast.error("Couldn't import the cast. Please try again.");
+      return 0;
     }
   };
 
@@ -983,6 +1012,7 @@ export const useGameStateDB = (options: UseGameStateDBOptions = {}) => {
     setScoringConfig,
     setState,
     startNewSeason,
+    importOfficialCast: importOfficialCastForSession,
     revertToSetup,
     setMode,
     setSeason,

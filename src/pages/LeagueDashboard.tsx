@@ -74,6 +74,7 @@ const LeagueDashboard = () => {
     exportData,
     importData,
     startNewSeason,
+    importOfficialCast,
     revertToSetup,
     updatePlayerAvatar,
     clearScores,
@@ -207,9 +208,13 @@ const LeagueDashboard = () => {
   };
 
   const handleConfirmNewSeason = async () => {
-    const result = await startNewSeason(rollover.to);
+    const { result, castImported } = await startNewSeason(rollover.to);
     if (result === "started") {
-      toast.success(`Season ${rollover.to} is ready. Import the cast on the Draft tab to get going.`);
+      toast.success(
+        castImported > 0
+          ? `Season ${rollover.to} is ready with all ${castImported} official castaways. Time to draft!`
+          : `Season ${rollover.to} is ready. The official cast isn't posted yet, so add castaways in Admin or check back soon.`
+      );
     }
     if (result !== "failed") setViewMode("draft");
     return result !== "failed";
@@ -427,6 +432,8 @@ const LeagueDashboard = () => {
             onStartGame={handleStartGame}
             onManualAssign={manualAssign}
             onManualFinalize={manualFinalize}
+            season={state.season}
+            onImportOfficialCast={importOfficialCast}
           />
         </>
       )}

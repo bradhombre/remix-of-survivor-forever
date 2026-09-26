@@ -67,7 +67,7 @@ export const NewSeasonDialog = ({
                 </li>
               )}
               <li>Your teams, members and scoring settings stay the same.</li>
-              <li>Next you'll import the Season {nextSeason} cast and run a new draft.</li>
+              <li>The official Season {nextSeason} cast is added automatically if it's posted. Then you run a new draft.</li>
             </ul>
           </AlertDialogDescription>
         </AlertDialogHeader>

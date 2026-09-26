@@ -26,6 +26,8 @@ interface DraftModeProps {
   onStartGame: () => void;
   onManualAssign?: (contestantId: string, teamName: string) => Promise<void>;
   onManualFinalize?: () => Promise<void>;
+  season?: number;
+  onImportOfficialCast?: () => Promise<number>;
 }
 
 export const DraftMode = ({
@@ -41,12 +43,15 @@ export const DraftMode = ({
   onStartGame,
   onManualAssign,
   onManualFinalize,
+  season,
+  onImportOfficialCast,
 }: DraftModeProps) => {
   // Get league teams for avatars
   const { teams } = useLeagueTeams({ leagueId });
   const { user } = useAuth();
   const { isLeagueAdmin } = useLeagueRole(leagueId);
   const [manualMode, setManualMode] = useState(false);
+  const [importingCast, setImportingCast] = useState(false);
 
   // Map team names to their avatar URLs
   const teamAvatarMap = useMemo(() => {
@@ -246,7 +251,29 @@ export const DraftMode = ({
           {availableContestants.length === 0 && contestants.length === 0 ? (
             <div className="text-center py-8 space-y-2">
               <p className="text-muted-foreground">No contestants have been added yet.</p>
-              <p className="text-sm text-muted-foreground">Contestants need to be added in the <strong>Admin</strong> tab before drafting can begin.</p>
+              {isLeagueAdmin && onImportOfficialCast ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Bring in the official Season {season} cast with photos and tribes, or add castaways yourself in the <strong>Admin</strong> tab.
+                  </p>
+                  <Button
+                    className="mt-2"
+                    disabled={importingCast}
+                    onClick={async () => {
+                      setImportingCast(true);
+                      try {
+                        await onImportOfficialCast();
+                      } finally {
+                        setImportingCast(false);
+                      }
+                    }}
+                  >
+                    {importingCast ? "Importing..." : `Import Season ${season} cast`}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Your commissioner needs to add the cast before drafting can begin.</p>
+              )}
             </div>
           ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
