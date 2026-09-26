@@ -87,9 +87,14 @@ const Index = () => {
         />
         <span
           aria-hidden="true"
-          className="absolute left-[-30px] h-5 w-[100px] sm:left-[-40px] sm:h-10 sm:w-[320px] bg-[#24402F]"
-          style={{ top: horizon - 10, borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
-        />
+          className="absolute left-[-30px] sm:left-[-40px]"
+          style={{ top: horizon }}
+        >
+          <span
+            className="block h-5 w-[100px] sm:h-10 sm:w-[320px] bg-[#24402F] -translate-y-full"
+            style={{ borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
+          />
+        </span>
 
         {/* Top bar */}
         <div className="relative container max-w-5xl mx-auto px-5 pt-5 flex items-center justify-between">
