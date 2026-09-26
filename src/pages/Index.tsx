@@ -104,19 +104,18 @@ const Index = () => {
 
         {/* Wordmark sitting on the horizon: the sun rises out of the real water */}
         <div className="absolute inset-x-0 top-[180px] sm:top-[205px]">
-          {/* Phone: left-aligned. Tablet and up: the whole logo block is centered as one unit,
-              with its lines still left-aligned inside it. */}
-          <div className="container max-w-5xl mx-auto px-5 sm:flex sm:justify-center">
-            <div className="w-fit">
+          {/* All lines center-aligned on every screen size */}
+          <div className="container max-w-5xl mx-auto px-5 flex justify-center">
+            <div className="w-fit text-center">
               <h1 className="font-display leading-none text-[#E9E3D3]" style={titleShadow}>
-                <span className="flex items-baseline text-[54px] sm:text-[72px]">
+                <span className="flex items-baseline justify-center text-[54px] sm:text-[72px]">
                   SURVIV
                   <SunO ref={sunRef} water={0.5} seeThrough />
                   RS
                 </span>
                 <span className="block text-[54px] sm:text-[72px] tracking-[0.02em] mt-1">READY</span>
               </h1>
-              <p className="font-label mt-3 text-lg sm:text-xl tracking-[0.3em] text-[#E9E3D3]">
+              <p className="font-label mt-3 pl-[0.3em] text-lg sm:text-xl tracking-[0.3em] text-[#E9E3D3]">
                 DRAFT · SCORE · OUTLAST
               </p>
             </div>
