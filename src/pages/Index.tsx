@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SunO } from "@/components/Lockup";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -10,10 +11,7 @@ const Index = () => {
   const [code, setCode] = useState("");
   const heroRef = useRef<HTMLElement>(null);
   const sunRef = useRef<HTMLSpanElement>(null);
-  const line1Ref = useRef<HTMLSpanElement>(null);
-  const readyRef = useRef<HTMLSpanElement>(null);
-  // READY is letter-spaced so it's exactly as wide as SURVIV☉RS, like a title card
-  const [readySpacing, setReadySpacing] = useState(0);
+
   // Where the horizon sits, measured from the sun in the wordmark so the sun always
   // rises exactly out of the water, whatever the font metrics or screen size.
   const [horizon, setHorizon] = useState(215);
@@ -26,18 +24,6 @@ const Index = () => {
       const h = hero.getBoundingClientRect();
       const r = sun.getBoundingClientRect();
       setHorizon(Math.round(r.top - h.top + r.height / 2));
-
-      const line1 = line1Ref.current;
-      const ready = readyRef.current;
-      if (line1 && ready) {
-        const prev = ready.style.letterSpacing;
-        ready.style.letterSpacing = "0px";
-        const natural = ready.getBoundingClientRect().width;
-        ready.style.letterSpacing = prev;
-        const target = line1.getBoundingClientRect().width;
-        // 5 letters: spacing goes after each one; the trailing space is cancelled with a negative margin
-        setReadySpacing(Math.max(0, (target - natural) / 5));
-      }
     };
     measure();
     document.fonts?.ready.then(measure).catch(() => {});
@@ -118,25 +104,22 @@ const Index = () => {
 
         {/* Wordmark sitting on the horizon: the sun rises out of the real water */}
         <div className="absolute inset-x-0 top-[180px] sm:top-[205px]">
-          <div className="container max-w-5xl mx-auto px-5">
-            <h1 className="font-display leading-none text-[#E9E3D3] sm:text-center" style={titleShadow}>
-              <span ref={line1Ref} className="inline-flex items-baseline text-[54px] sm:text-[72px]">
-                SURVIV
-                <SunO ref={sunRef} water={0.5} seeThrough />
-                RS
-              </span>
-              <br />
-              <span
-                ref={readyRef}
-                className="inline-block text-[54px] sm:text-[72px] mt-1"
-                style={{ letterSpacing: readySpacing, marginRight: -readySpacing }}
-              >
-                READY
-              </span>
-            </h1>
-            <p className="font-label mt-3 text-lg sm:text-xl tracking-[0.32em] sm:pl-[0.32em] sm:text-center text-[#E9E3D3]">
-              DRAFT · SCORE · OUTLAST
-            </p>
+          {/* Phone: left-aligned. Tablet and up: the whole logo block is centered as one unit,
+              with its lines still left-aligned inside it. */}
+          <div className="container max-w-5xl mx-auto px-5 sm:flex sm:justify-center">
+            <div className="w-fit">
+              <h1 className="font-display leading-none text-[#E9E3D3]" style={titleShadow}>
+                <span className="flex items-baseline text-[54px] sm:text-[72px]">
+                  SURVIV
+                  <SunO ref={sunRef} water={0.5} seeThrough />
+                  RS
+                </span>
+                <span className="block text-[54px] sm:text-[72px] tracking-[0.02em] mt-1">READY</span>
+              </h1>
+              <p className="font-label mt-3 text-lg sm:text-xl tracking-[0.3em] text-[#E9E3D3]">
+                DRAFT · SCORE · OUTLAST
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -189,13 +172,239 @@ const Index = () => {
             </div>
           </div>
 
-          <p className="container max-w-5xl mx-auto px-5 pb-6 text-xs text-muted-foreground">
-            Palm illustration by Delapouite, game-icons.net (CC BY 3.0).
-          </p>
         </div>
+      </section>
+
+      {/* How it works */}
+      <section className="container max-w-5xl mx-auto px-5 py-10" aria-labelledby="how-heading">
+        <p className="label-caps text-accent">How it works</p>
+        <h2 id="how-heading" className="font-display text-4xl sm:text-5xl leading-[0.95] text-primary mt-2">
+          Three steps to Tribal
+        </h2>
+        <ol className="mt-6 grid gap-4 md:grid-cols-3">
+          {HOW_IT_WORKS.map((step, i) => (
+            <li key={step.title} className="plank p-5 flex flex-col gap-2">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-plank bg-warning text-lg font-black text-warning-foreground">
+                {i + 1}
+              </span>
+              <h3 className="font-display text-2xl leading-none mt-1">{step.title}</h3>
+              <p className="text-[15px] leading-relaxed text-muted-foreground">{step.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* A look inside */}
+      <section className="bg-header" aria-labelledby="inside-heading">
+        <div className="buff-trim" aria-hidden="true" />
+        <div className="container max-w-5xl mx-auto px-5 py-10">
+          <p className="label-caps text-header-label">A look inside</p>
+          <h2 id="inside-heading" className="font-display text-4xl sm:text-5xl leading-[0.95] mt-2">
+            Built for the couch on Wednesday night
+          </h2>
+          <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-header-label">
+            Big buttons, one-tap scoring, and standings that update for everyone as points come in. Shown with a
+            sample league.
+          </p>
+          <div className="mt-8 grid gap-8 md:grid-cols-2 justify-items-center">
+            <PhoneFrame caption="The Game tab: live standings">
+              <SampleLeaderboard />
+            </PhoneFrame>
+            <PhoneFrame caption="Scoring: tap what happened">
+              <SampleScoring />
+            </PhoneFrame>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="container max-w-3xl mx-auto px-5 py-10" aria-labelledby="faq-heading">
+        <p className="label-caps text-accent">Questions</p>
+        <h2 id="faq-heading" className="font-display text-4xl sm:text-5xl leading-[0.95] text-primary mt-2">
+          FAQ
+        </h2>
+        <Accordion type="single" collapsible className="mt-6 plank px-5">
+          {FAQ.map((item, i) => (
+            <AccordionItem key={item.q} value={`q${i}`} className={i === FAQ.length - 1 ? "border-b-0" : "border-border"}>
+              <AccordionTrigger className="text-left text-base font-bold hover:no-underline">{item.q}</AccordionTrigger>
+              <AccordionContent className="text-[15px] leading-relaxed text-muted-foreground">{item.a}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </section>
+
+      {/* Closing call to action */}
+      <section className="container max-w-3xl mx-auto px-5 pb-8 text-center flex flex-col items-center gap-4">
+        <h2 className="font-display text-4xl sm:text-5xl leading-[0.95] text-primary">Survivors ready?</h2>
+        <p className="text-muted-foreground">Start a league in about a minute. It's free.</p>
+        <Button variant="accent" size="lg" className="h-[58px] text-lg w-full max-w-sm" onClick={() => navigate("/auth")}>
+          Start a league
+        </Button>
+        <p className="mt-6 text-xs text-muted-foreground">
+          Palm illustration by Delapouite, game-icons.net (CC BY 3.0).
+        </p>
       </section>
     </div>
   );
 };
+
+const HOW_IT_WORKS = [
+  {
+    title: "Start a league",
+    body: "Name it, pick full fantasy or winner takes all, and share an invite code or link. Anywhere from 2 to 20 teams.",
+  },
+  {
+    title: "Draft the cast",
+    body: "The official cast loads with photos and tribes. Run a snake or straight draft, live or at your own pace.",
+  },
+  {
+    title: "Score every episode",
+    body: "Tap what happened: immunity wins, idols, vote-outs, the episode title. Standings update for everyone right away.",
+  },
+];
+
+const FAQ = [
+  { q: "Is it free?", a: "Yes. Every league and every feature is free. There's an optional tip jar if you want to buy us a coffee." },
+  {
+    q: "Is this affiliated with CBS or the show?",
+    a: "No. Survivors Ready is a free fan game made by a Survivor fan. It isn't affiliated with or endorsed by CBS or the show.",
+  },
+  { q: "How many people can play?", a: "A league can have 2 to 20 teams. Most leagues are a group of friends or family with 4 to 12." },
+  {
+    q: "Do I need to download an app?",
+    a: "No. It works in the browser on your phone or computer. On a phone you can add it to your home screen so it opens like an app.",
+  },
+  {
+    q: "Who does the scoring?",
+    a: "The commissioner scores each episode, during or after it airs. Commissioners can also let everyone in the league score.",
+  },
+  {
+    q: "How do points work?",
+    a: "Pick a scoring template (Standard, Competitive, Simple, Survival Only or Idol Hunter) or set your own point values for every action.",
+  },
+  {
+    q: "The season already started. Can we still play?",
+    a: "Yes. Draft whenever your group is ready, then score the episodes you missed. Nothing locks after the premiere.",
+  },
+  {
+    q: "What's winner takes all?",
+    a: "Instead of scoring every episode, each team picks who they think will win. The last pick standing takes the league.",
+  },
+  {
+    q: "What happens at the end of the season?",
+    a: "Final standings are saved to your league's History. Next season, the same league starts fresh with the new cast.",
+  },
+];
+
+/** Phone-shaped frame for the sample screens */
+function PhoneFrame({ caption, children }: { caption: string; children: React.ReactNode }) {
+  return (
+    <figure className="flex flex-col items-center gap-3">
+      <div className="w-[300px] max-w-full overflow-hidden rounded-[36px] border-[8px] border-[#121611] bg-background text-foreground shadow-2xl">
+        {children}
+      </div>
+      <figcaption className="text-sm font-semibold text-header-label">{caption}</figcaption>
+    </figure>
+  );
+}
+
+const SAMPLE_TEAMS = [
+  { name: "Dana", total: 412, ep: 46, active: 4, color: "#4E8A64" },
+  { name: "Marco", total: 389, ep: 31, active: 5, color: "#D8B55E" },
+  { name: "Priya", total: 355, ep: 12, active: 3, color: "#6B8FA8" },
+  { name: "Jules", total: 301, ep: 25, active: 2, color: "#C07A5A" },
+];
+
+function SampleLeaderboard() {
+  return (
+    <div aria-hidden="true" className="select-none">
+      <div className="bg-header px-4 pt-4 pb-3">
+        <p className="label-caps text-header-label text-[10px]">Season 51 · Full fantasy</p>
+        <p className="font-display text-[26px] leading-none mt-1">Beach House League</p>
+        <div className="mt-3 flex items-center gap-2">
+          <span className="rounded-[8px] bg-[#E9E3D3] px-3 py-1.5 text-sm font-black text-[#1D3326]">− Ep 6 +</span>
+          <span className="rounded-full border-2 border-[#9DB2A2] px-2 py-0.5 text-[11px] font-bold text-[#CFDCD1]">Pre-merge</span>
+        </div>
+      </div>
+      <div className="buff-trim" />
+      <div className="flex flex-col gap-2 p-3">
+        {SAMPLE_TEAMS.map((t, i) => (
+          <div key={t.name} className="plank flex items-center gap-2.5 px-3 py-2">
+            <span className="w-4 text-base font-black text-primary">{i + 1}</span>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-plank text-sm font-extrabold text-[#18201B]"
+              style={{ background: t.color }}
+            >
+              {t.name[0]}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-xl leading-none">{t.name}</p>
+              <div className="mt-1 flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, k) => (
+                  <span
+                    key={k}
+                    className={`h-2 w-2 rounded-full ${k < t.active ? "bg-success" : "border border-input"}`}
+                  />
+                ))}
+                <span className="ml-1 text-[10px] font-semibold text-muted-foreground">{t.active}/5</span>
+              </div>
+            </div>
+            <div className="text-right leading-none">
+              <p className="text-xl font-black tabular">{t.total}</p>
+              <p className="text-[10px] font-bold text-success">+{t.ep} ep 6</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const SAMPLE_EVENTS = [
+  { label: "Won immunity", pts: 25 },
+  { label: "Found an idol", pts: 100 },
+  { label: "Survived the vote", pts: 5 },
+  { label: "Correct Tribal vote", pts: 10 },
+  { label: "Said the episode title", pts: 25 },
+  { label: "Cried", pts: 10 },
+];
+
+function SampleScoring() {
+  return (
+    <div aria-hidden="true" className="select-none">
+      <div className="buff-trim" />
+      <div className="flex flex-col gap-3 p-3">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-plank bg-muted text-sm font-extrabold">
+            RA
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-[22px] leading-none">Riley Adair</p>
+            <p className="text-[11px] font-medium text-muted-foreground">Dana's team · Still in</p>
+          </div>
+          <div className="ml-auto text-right leading-none">
+            <p className="text-xl font-black tabular">138</p>
+            <p className="text-[10px] font-bold text-success">+30 ep 6</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {SAMPLE_EVENTS.map((e) => (
+            <div
+              key={e.label}
+              className="flex h-14 flex-col justify-center rounded-[10px] border-2 border-plank border-b-4 bg-card px-2.5"
+            >
+              <span className="text-[12px] font-bold leading-tight">{e.label}</span>
+              <span className="text-sm font-black text-success">+{e.pts}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex h-11 items-center justify-center rounded-[10px] border-2 border-plank border-b-4 bg-accent text-sm font-extrabold text-accent-foreground">
+          Voted out this episode
+        </div>
+        <p className="text-center text-[10px] text-muted-foreground">Sample league · Standard scoring</p>
+      </div>
+    </div>
+  );
+}
 
 export default Index;
