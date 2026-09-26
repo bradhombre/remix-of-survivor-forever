@@ -10,6 +10,10 @@ const Index = () => {
   const [code, setCode] = useState("");
   const heroRef = useRef<HTMLElement>(null);
   const sunRef = useRef<HTMLSpanElement>(null);
+  const line1Ref = useRef<HTMLSpanElement>(null);
+  const readyRef = useRef<HTMLSpanElement>(null);
+  // READY is letter-spaced so it's exactly as wide as SURVIV☉RS, like a title card
+  const [readySpacing, setReadySpacing] = useState(0);
   // Where the horizon sits, measured from the sun in the wordmark so the sun always
   // rises exactly out of the water, whatever the font metrics or screen size.
   const [horizon, setHorizon] = useState(215);
@@ -22,6 +26,18 @@ const Index = () => {
       const h = hero.getBoundingClientRect();
       const r = sun.getBoundingClientRect();
       setHorizon(Math.round(r.top - h.top + r.height / 2));
+
+      const line1 = line1Ref.current;
+      const ready = readyRef.current;
+      if (line1 && ready) {
+        const prev = ready.style.letterSpacing;
+        ready.style.letterSpacing = "0px";
+        const natural = ready.getBoundingClientRect().width;
+        ready.style.letterSpacing = prev;
+        const target = line1.getBoundingClientRect().width;
+        // 5 letters: spacing goes after each one; the trailing space is cancelled with a negative margin
+        setReadySpacing(Math.max(0, (target - natural) / 5));
+      }
     };
     measure();
     document.fonts?.ready.then(measure).catch(() => {});
@@ -104,12 +120,19 @@ const Index = () => {
         <div className="absolute inset-x-0 top-[180px] sm:top-[205px]">
           <div className="container max-w-5xl mx-auto px-5">
             <h1 className="font-display leading-none text-[#E9E3D3] sm:text-center" style={titleShadow}>
-              <span className="flex items-baseline text-[54px] sm:justify-center sm:text-[72px]">
+              <span ref={line1Ref} className="inline-flex items-baseline text-[54px] sm:text-[72px]">
                 SURVIV
                 <SunO ref={sunRef} water={0.5} seeThrough />
                 RS
               </span>
-              <span className="block text-[54px] sm:text-[72px] tracking-[0.16em] sm:pl-[0.16em] mt-1">READY</span>
+              <br />
+              <span
+                ref={readyRef}
+                className="inline-block text-[54px] sm:text-[72px] mt-1"
+                style={{ letterSpacing: readySpacing, marginRight: -readySpacing }}
+              >
+                READY
+              </span>
             </h1>
             <p className="font-label mt-3 text-lg sm:text-xl tracking-[0.32em] sm:pl-[0.32em] sm:text-center text-[#E9E3D3]">
               DRAFT · SCORE · OUTLAST
